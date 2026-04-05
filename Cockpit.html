@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+    :root { --red: #d9534f; --dark-bg: #0d0d0d; --card-bg: #1a1a1a; --cyan: #00f2ff; --neon: #39ff14; }
+    body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--dark-bg); color: #fff; margin: 0; padding: 0; }
+    .header-panel { background: var(--red); padding: 20px 10px; text-align: center; border-bottom: 5px solid #a9322d; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    .header-panel label { display: block; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+    .date-display { background: #fff; color: #000; border-radius: 8px; padding: 12px; font-size: 22px; font-weight: 900; width: 85%; margin: auto; border: none; text-align: center; }
+    .container { padding: 15px; padding-bottom: 100px; }
+    .job-card { 
+      background: var(--card-bg); border-radius: 15px; padding: 15px; margin-bottom: 20px; 
+      border-left: 10px solid var(--red); box-shadow: 8px 8px 16px #000; position: relative;
+    }
+    .btn-ordner { 
+      position: absolute; right: 15px; top: 15px; background: var(--cyan); color: #000; 
+      border: none; border-radius: 8px; padding: 10px 15px; font-weight: bold; font-size: 12px;
+    }
+    .brenner-info { color: #f0ad4e; font-weight: bold; font-size: 14px; margin-bottom: 5px; }
+    .owner-name { font-size: 24px; font-weight: 900; color: #fff; text-transform: uppercase; margin: 5px 0; }
+    .sub-info { color: var(--cyan); font-size: 13px; margin-bottom: 15px; font-weight: bold; }
+    .grid-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .cell { background: #222; border-radius: 8px; padding: 8px; text-align: center; border: 1px solid #333; }
+    .cell label { font-size: 9px; color: #888; display: block; margin-bottom: 4px; }
+    .cell span { font-weight: bold; font-size: 15px; color: #fff; }
+    .cell input { 
+      width: 100%; background: transparent; border: none; color: var(--neon); 
+      text-align: center; font-size: 18px; font-weight: bold; outline: none;
+    }
+    .footer-action { 
+      position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.85); 
+      padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; border-top: 1px solid #333;
+    }
+    .btn-large { 
+      padding: 18px; border-radius: 12px; border: none; font-weight: bold; font-size: 16px; 
+      text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+    }
+    .btn-blue { background: var(--cyan); color: #000; }
+    .btn-red { background: var(--red); color: #fff; }
+  </style>
+</head>
+<body>
+
+  <div class="header-panel">
+    <label>Datum des Brandtags:</label>
+    <input type="date" id="tagPicker" class="date-display" onchange="fetchJobs()">
+  </div>
+
+  <div class="container" id="jobList">
+    <p style="text-align: center; color: #666;">Lade Brände...</p>
+  </div>
+
+  <div class="footer-action">
+    <button class="btn-large btn-blue" onclick="google.script.run.protokollDrucken()">🖨️ DRUCK-PAKET</button>
+    <button class="btn-large btn-red" onclick="triggerNotfall()">🚨 ZOLL NOTFALL</button>
+  </div>
+
+<script>
+  window.onload = function() {
+    document.getElementById('tagPicker').valueAsDate = new Date();
+    fetchJobs();
+  };
+
+  function fetchJobs() {
+    const datum = document.getElementById('tagPicker').value;
+    google.script.run.withSuccessHandler(drawJobs).getLeitstandData(datum);
+  }
+
+  function drawJobs(res) {
+    const cont = document.getElementById('jobList');
+    cont.innerHTML = "";
+
+    if (!res || !res.jobs || res.jobs.length === 0) {
+      cont.innerHTML = "<p style='text-align:center;'>Keine Brände für diesen Tag.</p>";
+      return;
+    }
+
+    res.jobs.forEach(function(j) {
+      const card = document.createElement('div');
+      card.className = 'job-card';
+      card.innerHTML = `
+        <button class="btn-ordner" onclick="openLinkSafe('${escapeJs_(j.link || "")}')">📂 ORDNER</button>
+        <div class="brenner-info">Brenner: ${escapeHtml_(j.brenner || "Aktiv")}</div>
+        <div class="owner-name">${escapeHtml_(j.owner || "")}</div>
+        <div class="sub-info">${escapeHtml_(j.material || "")} | Reg: ${escapeHtml_(j.regNr || "")}</div>
+        <div class="grid-row">
+          <div class="cell"><label>VON</label><span>${escapeHtml_(j.von || "")}</span></div>
+          <div class="cell"><label>BIS</label><span>${escapeHtml_(j.bis || "")}</span></div>
+          <div class="cell"><label>ALK %</label><input type="number" value="${escapeAttr_(j.alk || "")}" onchange="saveVal(${Number(j.row) || 0}, 'ALKOHOL', this.value)"></div>
+          <div class="cell"><label>LITER</label><input type="number" value="${escapeAttr_(j.ausbeute || "")}" onchange="saveVal(${Number(j.row) || 0}, 'AUSBEUTE', this.value)"></div>
+        </div>
+      `;
+      cont.appendChild(card);
+    });
+  }
+
+  function saveVal(r, f, v) {
+    google.script.run.saveLeitstandField(r, f, v);
+  }
+
+  function openLinkSafe(url) {
+    if (!url) return;
+    window.open(url, '_blank');
+  }
+
+  function triggerNotfall() {
+    if (confirm("ZOLL-NOTFALL wirklich melden?")) {
+      google.script.run.systemLogSchreiben_("EMERGENCY", "Brenner", "ZOLL NOTFALL", "", "Notfall-Knopf gedrückt");
+      alert("Meldung abgesetzt!");
+    }
+  }
+
+  function escapeHtml_(text) {
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function escapeAttr_(text) {
+    return escapeHtml_(text);
+  }
+
+  function escapeJs_(text) {
+    return String(text == null ? "" : text)
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/\r/g, "\\r")
+      .replace(/\n/g, "\\n")
+      .replace(/</g, "\\x3C")
+      .replace(/>/g, "\\x3E");
+  }
+</script>
+</body>
+</html>

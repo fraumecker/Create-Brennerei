@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+<script>
+  const serverVId = <?= JSON.stringify(editVId || "") ?>;
+  const startTabServer = <?= JSON.stringify(startTab || "tab1") ?>;
+</script>
+
+<div class="main-frame">
+  <div class="header-top">
+    <div class="visual-cal" id="visualCal">
+      <b id="monthLabel">MONAT</b>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <div class="header-center">
+      <h2 id="mainTitle">OGV BREITFURT</h2>
+      <div id="vorgangInfo" class="sub-info-strong">VORGANG: NEU</div>
+      <p id="curDate" class="sub-info"></p>
+    </div>
+
+    <div class="ticker-led">
+      <div class="ticker-label" id="tickerTitle">SUMME BRÄNDE</div>
+      <span id="tickerVal">00</span>
+    </div>
+  </div>
+
+  <div id="saveStatus" class="status-box status-info" style="display:none;"></div>
+
+  <div class="tab-nav">
+    <button type="button" class="tab-btn active" id="btn_tab1" onclick="openTab(event, 'tab1')">1. ANMELDUNG (ANRUF)</button>
+    <button type="button" class="tab-btn" id="btn_tab2" onclick="openTab(event, 'tab2')">2. DISPOSITION (PLANUNG)</button>
+    <button type="button" class="tab-btn" id="btn_tab3" onclick="openTab(event, 'tab3')">3. MAISCHEANNAHME (VOR ORT)</button>
+  </div>
+
+  <div class="content-shell">
+    <div id="tab1" class="tab-content active">
+      <div class="card toolbar" id="toolbar" style="display:none;">
+        <button type="button" class="btn-util" onclick="openDossier()">📂 DOSSIER</button>
+        <button type="button" class="btn-util" onclick="google.script.run.stoffbesitzerChecklisteErstellen()">📄 CHECKLISTE</button>
+      </div>
+
+      <div class="card top-grid">
+        <div>
+          <label for="anrufDatum">Anruf-Datum</label>
+          <input type="date" id="anrufDatum">
+        </div>
+        <div>
+          <label for="stoffbesitzer">Stoffbesitzer</label>
+          <select id="stoffbesitzer" onchange="syncName()"></select>
+        </div>
+        <div>
+          <label for="terminMaische">Maische-Termin</label>
+          <input type="date" id="terminMaische">
+        </div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>GRÖSSE (L)</th>
+              <th>INHALT (L)</th>
+              <th>ROHSTOFF</th>
+              <th>GEWÜRZE / ZUSÄTZE</th>
+              <th>BRÄNDE</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="fassGrid"></tbody>
+        </table>
+        <div class="grid-actions">
+          <button type="button" class="tab-btn tab-btn-small" onclick="addNewBarrel()">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab2" class="tab-content">
+      <div class="card">
+        <div class="owner-header" id="owner2">BESITZER: ---</div>
+        <table>
+          <thead>
+            <tr>
+              <th>FASS [MATERIAL]</th>
+              <th>BRANDTAG</th>
+              <th>VON</th>
+              <th>BIS</th>
+              <th>BRENNER</th>
+              <th>INFO</th>
+            </tr>
+          </thead>
+          <tbody id="dispoGrid"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab3" class="tab-content">
+      <div class="card">
+        <div class="owner-header" id="owner3">BESITZER: ---</div>
+        <table>
+          <thead>
+            <tr>
+              <th>FASS-NR.</th>
+              <th>GRÖSSE</th>
+              <th>INHALT</th>
+              <th>MATERIAL</th>
+              <th>REG.NR. (ZOLL)</th>
+              <th>ZOLL OK</th>
+            </tr>
+          </thead>
+          <tbody id="maischeGrid"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="save-shell">
+    <div class="status-select-wrap">
+      <label for="statusGlobal">Globaler Status</label>
+      <select id="statusGlobal">
+        <option value="GEPLANT">GEPLANT</option>
+        <option value="ÜBERNOMMEN">ÜBERNOMMEN</option>
+      </select>
+    </div>
+    <button type="button" class="btn-save" onclick="speichern()" id="saveBtn">VORGANG SPEICHERN</button>
+  </div>
+</div>
+
+<?!= include('Scripts'); ?>
+</body>
+</html>

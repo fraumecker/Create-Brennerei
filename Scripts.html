@@ -1,0 +1,748 @@
+<script>
+let stammdaten = {
+  mitglieder: [],
+  brenner: [],
+  materialien: [],
+  gewuerze: [],
+  maxBlase: 120
+};
+
+let barrels = [];
+let currentServerVId_ = (typeof serverVId !== "undefined" && serverVId !== null) ? String(serverVId) : "";
+let currentTabName_ = (typeof startTabServer !== "undefined" && startTabServer !== null) ? String(startTabServer) : "tab1";
+let statusTimeout_ = null;
+let initLaeuft_ = false;
+let initAbgeschlossen_ = false;
+
+document.addEventListener("DOMContentLoaded", function() {
+  initMaske_();
+}, { once: true });
+
+window.addEventListener("error", function(event) {
+  const msg = event && event.error && event.error.message
+    ? event.error.message
+    : (event && event.message ? event.message : "Unbekannter JavaScript-Fehler");
+  showError_(msg);
+});
+
+window.addEventListener("unhandledrejection", function(event) {
+  const grund = event && event.reason ? event.reason : "Unbekannter Promise-Fehler";
+  showError_(grund);
+});
+
+function initMaske_() {
+  if (initLaeuft_ || initAbgeschlossen_) return;
+  initLaeuft_ = true;
+
+  try {
+    initVisualCal();
+    offeneGrundstrukturPruefen_();
+    openTabByName_("tab1");
+    showStatus_("Maske wird initialisiert.", "info");
+
+    google.script.run
+      .withSuccessHandler(function(daten) {
+        try {
+          stammdaten = normalizeStammdaten_(daten);
+          fillStoffbesitzer_();
+
+          if (currentServerVId_ && currentServerVId_ !== "null" && currentServerVId_ !== "undefined") {
+            ladeVorgang_(currentServerVId_);
+          } else {
+            resetNeuModus_();
+            initAbgeschlossen_ = true;
+            initLaeuft_ = false;
+            showStatus_("Neueingabe bereit.", "ok");
+          }
+        } catch (err) {
+          initLaeuft_ = false;
+          resetNeuModus_();
+          showError_(err);
+        }
+      })
+      .withFailureHandler(function(err) {
+        initLaeuft_ = false;
+        resetNeuModus_();
+        showError_(err);
+      })
+      .getMaskenStammdaten();
+  } catch (err) {
+    initLaeuft_ = false;
+    resetNeuModus_();
+    showError_(err);
+  }
+}
+
+function offeneGrundstrukturPruefen_() {
+  const pflichtIds = [
+    "anrufDatum",
+    "stoffbesitzer",
+    "terminMaische",
+    "fassGrid",
+    "dispoGrid",
+    "maischeGrid",
+    "saveBtn",
+    "tickerVal",
+    "tickerTitle",
+    "statusGlobal",
+    "vorgangInfo"
+  ];
+
+  const fehlend = pflichtIds.filter(function(id) {
+    return !getEl_(id);
+  });
+
+  if (fehlend.length > 0) {
+    throw new Error("DOM-Element(e) fehlen: " + fehlend.join(", "));
+  }
+}
+
+function ladeVorgang_(vId) {
+  google.script.run
+    .withSuccessHandler(function(vorgang) {
+      try {
+        fillEditData(vorgang);
+        initAbgeschlossen_ = true;
+        initLaeuft_ = false;
+        showStatus_("Vorgang geladen.", "ok");
+      } catch (err) {
+        initLaeuft_ = false;
+        resetNeuModus_();
+        showError_(err);
+      }
+    })
+    .withFailureHandler(function(err) {
+      initLaeuft_ = false;
+      resetNeuModus_();
+      showError_(err);
+    })
+    .holeVorgangsDatenFuerMaske(vId);
+}
+
+function normalizeStammdaten_(daten) {
+  const d = daten || {};
+  return {
+    mitglieder: Array.isArray(d.mitglieder) ? d.mitglieder.filter(Boolean).map(String) : [],
+    brenner: Array.isArray(d.brenner) ? d.brenner.filter(Boolean).map(String) : [],
+    materialien: Array.isArray(d.materialien) ? d.materialien.filter(Boolean).map(String) : [],
+    gewuerze: Array.isArray(d.gewuerze) ? d.gewuerze.filter(Boolean).map(String) : [],
+    maxBlase: Number(d.maxBlase) > 0 ? Number(d.maxBlase) : 120
+  };
+}
+
+function normalizeFass_(fass) {
+  const quelle = fass || {};
+  return {
+    tagBrand: quelle.tagBrand ? String(quelle.tagBrand) : "",
+    von: quelle.von ? String(quelle.von) : "",
+    bis: quelle.bis ? String(quelle.bis) : "",
+    brenner: quelle.brenner ? String(quelle.brenner) : "",
+    material: quelle.material ? String(quelle.material) : "",
+    gewuerze: quelle.gewuerze ? String(quelle.gewuerze) : "",
+    fassgroesse: quelle.fassgroesse != null ? quelle.fassgroesse : "",
+    inhalt: quelle.inhalt != null ? quelle.inhalt : "",
+    anzahlBraende: quelle.anzahlBraende != null ? quelle.anzahlBraende : "",
+    info: quelle.info ? String(quelle.info) : "",
+    fassNr: quelle.fassNr != null ? quelle.fassNr : "",
+    regNr: quelle.regNr != null ? quelle.regNr : "",
+    zollOk: quelle.zollOk != null ? quelle.zollOk : "",
+    ausbeute: quelle.ausbeute != null ? quelle.ausbeute : "",
+    alkohol: quelle.alkohol != null ? quelle.alkohol : "",
+    statusAktion: quelle.statusAktion != null ? quelle.statusAktion : "",
+    dossierLink: quelle.dossierLink != null ? quelle.dossierLink : ""
+  };
+}
+
+function zahlNormalisieren_(wert) {
+  const roh = String(wert == null ? "" : wert).trim();
+  if (!roh) return 0;
+  const clean = roh.replace(/\s+/g, "").replace(",", ".");
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+function heuteAlsInputDatum_() {
+  const jetzt = new Date();
+  const lokal = new Date(jetzt.getTime() - (jetzt.getTimezoneOffset() * 60000));
+  return lokal.toISOString().slice(0, 10);
+}
+
+function setzeHeutigesDatum_(id) {
+  const el = getEl_(id);
+  if (el) el.value = heuteAlsInputDatum_();
+}
+
+function resetNeuModus_() {
+  currentServerVId_ = "";
+  currentTabName_ = "tab1";
+  barrels = [normalizeFass_({})];
+
+  setzeHeutigesDatum_("anrufDatum");
+  setValue_("stoffbesitzer", "");
+  setValue_("terminMaische", "");
+  setValue_("statusGlobal", "GEPLANT");
+
+  const toolbar = getEl_("toolbar");
+  if (toolbar) toolbar.style.display = "none";
+
+  setText_("owner2", "BESITZER: ---");
+  setText_("owner3", "BESITZER: ---");
+
+  renderAllGrids_();
+  openTabByName_("tab1");
+  aktualisiereKopfbereich_();
+  recalcTicker();
+}
+
+function fillStoffbesitzer_() {
+  const select = getEl_("stoffbesitzer");
+  if (!select) return;
+
+  const alterWert = String(select.value || "");
+  select.innerHTML = "";
+
+  const leer = document.createElement("option");
+  leer.value = "";
+  leer.textContent = "-- Name wählen --";
+  select.appendChild(leer);
+
+  (stammdaten.mitglieder || []).forEach(function(name) {
+    const opt = document.createElement("option");
+    opt.value = String(name);
+    opt.textContent = String(name);
+    select.appendChild(opt);
+  });
+
+  if (alterWert) {
+    select.value = alterWert;
+  }
+}
+
+function stelleStoffbesitzerSicher_(wert) {
+  const select = getEl_("stoffbesitzer");
+  if (!select) return;
+
+  const ziel = String(wert || "");
+  if (!ziel) {
+    select.value = "";
+    return;
+  }
+
+  let vorhanden = false;
+  Array.from(select.options).forEach(function(opt) {
+    if (String(opt.value) === ziel) {
+      vorhanden = true;
+    }
+  });
+
+  if (!vorhanden) {
+    const opt = document.createElement("option");
+    opt.value = ziel;
+    opt.textContent = ziel;
+    select.appendChild(opt);
+  }
+
+  select.value = ziel;
+}
+
+function fillEditData(daten) {
+  if (!daten || !daten.vId) {
+    resetNeuModus_();
+    return;
+  }
+
+  currentServerVId_ = String(daten.vId || "");
+  currentTabName_ = (currentTabName_ && ["tab1", "tab2", "tab3"].indexOf(currentTabName_) !== -1) ? currentTabName_ : "tab1";
+
+  const toolbar = getEl_("toolbar");
+  if (toolbar) toolbar.style.display = "block";
+
+  setValue_("anrufDatum", daten.anruf || heuteAlsInputDatum_());
+  stelleStoffbesitzerSicher_(daten.stoff || "");
+  setValue_("terminMaische", daten.terminMaische || "");
+  setValue_("statusGlobal", daten.status || "GEPLANT");
+
+  barrels = Array.isArray(daten.faesser) && daten.faesser.length > 0
+    ? daten.faesser.map(function(fass) { return normalizeFass_(fass); })
+    : [normalizeFass_({})];
+
+  syncName();
+  renderAllGrids_();
+  openTabByName_(currentTabName_);
+  aktualisiereKopfbereich_();
+  recalcTicker();
+}
+
+function renderAllGrids_() {
+  if (!Array.isArray(barrels) || barrels.length === 0) {
+    barrels = [normalizeFass_({})];
+  }
+
+  renderFassGrid_();
+  renderDispoGrid_();
+  renderMaischeGrid_();
+}
+
+function renderFassGrid_() {
+  const grid = getEl_("fassGrid");
+  if (!grid) return;
+
+  let html = "";
+
+  barrels.forEach(function(fass, index) {
+    const braende = Math.max(1, Number(fass.anzahlBraende) || calcBraende_(fass.inhalt));
+
+    html += `
+      <tr>
+        <td>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            data-index="${index}"
+            data-field="fassgroesse"
+            value="${escAttr_(fass.fassgroesse)}"
+            onchange="updateBarrelField(${index}, 'fassgroesse', this.value)"
+          >
+        </td>
+        <td>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            data-index="${index}"
+            data-field="inhalt"
+            value="${escAttr_(fass.inhalt)}"
+            onchange="updateBarrelField(${index}, 'inhalt', this.value)"
+          >
+        </td>
+        <td>${buildSelectHtml_(stammdaten.materialien, fass.material, "updateBarrelField(" + index + ", 'material', this.value)", false)}</td>
+        <td>${buildSelectHtml_(stammdaten.gewuerze, fass.gewuerze, "updateBarrelField(" + index + ", 'gewuerze', this.value)", true)}</td>
+        <td>
+          <div class="fass-brand-wrap">
+            <span class="brand-badge" id="brandBadge_${index}">${escHtml_(String(braende))}</span>
+            <input
+              class="inline-number"
+              type="number"
+              min="1"
+              step="1"
+              data-index="${index}"
+              data-field="anzahlBraende"
+              value="${escAttr_(braende)}"
+              onchange="updateBarrelField(${index}, 'anzahlBraende', this.value)"
+            >
+          </div>
+        </td>
+        <td>
+          <button class="btn-util btn-remove" type="button" onclick="removeBarrel(${index})">–</button>
+        </td>
+      </tr>
+    `;
+  });
+
+  grid.innerHTML = html;
+}
+
+function renderDispoGrid_() {
+  const grid = getEl_("dispoGrid");
+  if (!grid) return;
+
+  let html = "";
+
+  barrels.forEach(function(fass, index) {
+    const fassLabel = (fass.fassgroesse || "---") + "L [" + (fass.material || "---") + "]";
+
+    html += `
+      <tr>
+        <td>${escHtml_(fassLabel)}</td>
+        <td><input type="date" value="${escAttr_(fass.tagBrand)}" onchange="updateBarrelField(${index}, 'tagBrand', this.value)"></td>
+        <td><input type="time" value="${escAttr_(fass.von)}" onchange="updateBarrelField(${index}, 'von', this.value)"></td>
+        <td><input type="time" value="${escAttr_(fass.bis)}" onchange="updateBarrelField(${index}, 'bis', this.value)"></td>
+        <td>${buildSelectHtml_(stammdaten.brenner, fass.brenner, "updateBarrelField(" + index + ", 'brenner', this.value)", true)}</td>
+        <td>${escHtml_(fass.info || "")}</td>
+      </tr>
+    `;
+  });
+
+  grid.innerHTML = html;
+}
+
+function renderMaischeGrid_() {
+  const grid = getEl_("maischeGrid");
+  if (!grid) return;
+
+  let html = "";
+
+  barrels.forEach(function(fass, index) {
+    html += `
+      <tr>
+        <td><input type="text" value="${escAttr_(fass.fassNr)}" onchange="updateBarrelField(${index}, 'fassNr', this.value)"></td>
+        <td>${escHtml_(String(fass.fassgroesse || ""))}</td>
+        <td>${escHtml_(String(fass.inhalt || ""))}</td>
+        <td>${escHtml_(String(fass.material || ""))}</td>
+        <td><input type="text" value="${escAttr_(fass.regNr)}" onchange="updateBarrelField(${index}, 'regNr', this.value)"></td>
+        <td><input type="text" value="${escAttr_(fass.zollOk)}" onchange="updateBarrelField(${index}, 'zollOk', this.value)"></td>
+      </tr>
+    `;
+  });
+
+  grid.innerHTML = html;
+}
+
+function addNewBarrel() {
+  barrels.push(normalizeFass_({}));
+  renderAllGrids_();
+  recalcTicker();
+  focusErstesFeldDesFasses_(barrels.length - 1);
+  showStatus_("Neues Fass angelegt.", "info");
+}
+
+function removeBarrel(index) {
+  if (index < 0 || index >= barrels.length) return;
+
+  barrels.splice(index, 1);
+
+  if (barrels.length === 0) {
+    barrels.push(normalizeFass_({}));
+  }
+
+  renderAllGrids_();
+  recalcTicker();
+  showStatus_("Fass entfernt.", "info");
+}
+
+function updateBarrelField(index, field, value) {
+  if (!barrels[index]) return;
+
+  barrels[index][field] = value;
+
+  if (field === "inhalt") {
+    barrels[index].anzahlBraende = calcBraende_(value);
+    updateBrandBadge_(index, barrels[index].anzahlBraende);
+    renderDispoGrid_();
+    renderMaischeGrid_();
+  } else if (field === "anzahlBraende") {
+    barrels[index].anzahlBraende = Math.max(1, Number(value) || calcBraende_(barrels[index].inhalt));
+    updateBrandBadge_(index, barrels[index].anzahlBraende);
+  } else if (field === "fassgroesse" || field === "material") {
+    renderDispoGrid_();
+    renderMaischeGrid_();
+  }
+
+  recalcTicker();
+}
+
+function calcBraende_(inhalt) {
+  const menge = zahlNormalisieren_(inhalt);
+  const maxBlase = Number(stammdaten.maxBlase) || 120;
+  return menge > 0 ? Math.max(1, Math.ceil(menge / maxBlase)) : 1;
+}
+
+function updateBrandBadge_(index, wert) {
+  const badge = getEl_("brandBadge_" + index);
+  if (badge) {
+    badge.textContent = String(Math.max(1, Number(wert) || 1));
+  }
+}
+
+function aktualisiereKopfbereich_() {
+  setText_("tickerTitle", "SUMME BRÄNDE");
+
+  if (currentServerVId_ && currentServerVId_ !== "null" && currentServerVId_ !== "undefined") {
+    setText_("vorgangInfo", "VORGANG: " + currentServerVId_);
+  } else {
+    setText_("vorgangInfo", "VORGANG: NEU");
+  }
+}
+
+function recalcTicker() {
+  let summe = 0;
+
+  barrels.forEach(function(fass) {
+    summe += Math.max(1, Number(fass.anzahlBraende) || calcBraende_(fass.inhalt));
+  });
+
+  setText_("tickerVal", String(summe).padStart(2, "0"));
+  aktualisiereKopfbereich_();
+}
+
+function sammelnPayload_() {
+  const stoff = getValue_("stoffbesitzer");
+
+  return {
+    vId: (currentServerVId_ && currentServerVId_ !== "null" && currentServerVId_ !== "undefined") ? currentServerVId_ : "",
+    anrufDatum: getValue_("anrufDatum") || heuteAlsInputDatum_(),
+    stoff: stoff,
+    terminMaische: getValue_("terminMaische"),
+    status: getValue_("statusGlobal") || "GEPLANT",
+    faesser: barrels
+      .map(function(fass) {
+        const clean = normalizeFass_(fass);
+        clean.fassgroesse = zahlNormalisieren_(clean.fassgroesse) || "";
+        clean.inhalt = zahlNormalisieren_(clean.inhalt) || "";
+        clean.alkohol = zahlNormalisieren_(clean.alkohol) || "";
+        clean.ausbeute = zahlNormalisieren_(clean.ausbeute) || "";
+        clean.anzahlBraende = Math.max(1, Number(clean.anzahlBraende) || calcBraende_(clean.inhalt));
+        return clean;
+      })
+      .filter(function(fass) {
+        return (
+          zahlNormalisieren_(fass.inhalt) > 0 ||
+          !!fass.material ||
+          !!fass.tagBrand ||
+          !!fass.brenner ||
+          !!fass.fassNr ||
+          !!fass.regNr
+        );
+      })
+  };
+}
+
+function speichern() {
+  if (!initAbgeschlossen_) {
+    showStatus_("Die Maske ist noch nicht vollständig bereit.", "error");
+    return;
+  }
+
+  const stoff = getValue_("stoffbesitzer");
+  if (!stoff) {
+    showStatus_("Stoffbesitzer fehlt.", "error");
+    openTabByName_("tab1");
+    return;
+  }
+
+  const payload = sammelnPayload_();
+
+  if (!payload.faesser || payload.faesser.length === 0) {
+    showStatus_("Es wurden keine Fässer erfasst.", "error");
+    openTabByName_("tab1");
+    return;
+  }
+
+  setSaveBusy_(true);
+  showStatus_("Speichervorgang läuft.", "info");
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.vId) {
+        setSaveBusy_(false);
+        showStatus_("Speichern abgeschlossen, aber ohne Vorgangs-ID in der Rückgabe.", "error");
+        return;
+      }
+
+      currentServerVId_ = String(res.vId || "");
+      aktualisiereKopfbereich_();
+
+      google.script.run
+        .withSuccessHandler(function(datenNeu) {
+          setSaveBusy_(false);
+          fillEditData(datenNeu);
+          showStatus_("Vorgang gespeichert: " + currentServerVId_, "ok");
+        })
+        .withFailureHandler(function(err) {
+          setSaveBusy_(false);
+          showError_(err);
+        })
+        .holeVorgangsDatenFuerMaske(currentServerVId_);
+    })
+    .withFailureHandler(function(err) {
+      setSaveBusy_(false);
+      showError_(err);
+    })
+    .vorgangSpeichern(payload);
+}
+
+function setSaveBusy_(istBusy) {
+  const saveBtn = getEl_("saveBtn");
+  if (!saveBtn) return;
+
+  saveBtn.disabled = !!istBusy;
+  saveBtn.textContent = istBusy ? "VORGANG WIRD GESPEICHERT" : "VORGANG SPEICHERN";
+}
+
+function openDossier() {
+  const aktive = barrels.find(function(fass) {
+    return !!fass.dossierLink;
+  });
+
+  if (aktive && aktive.dossierLink) {
+    window.open(String(aktive.dossierLink), "_blank");
+    return;
+  }
+
+  showStatus_("Kein Dossier-Link vorhanden.", "error");
+}
+
+function syncName() {
+  const stoff = getValue_("stoffbesitzer");
+  setText_("owner2", "BESITZER: " + (stoff || "---"));
+  setText_("owner3", "BESITZER: " + (stoff || "---"));
+}
+
+function openTab(event, tabName) {
+  openTabByName_(tabName);
+
+  if (event && event.currentTarget) {
+    const buttons = document.querySelectorAll(".tab-btn");
+    buttons.forEach(function(btn) {
+      btn.classList.remove("active");
+    });
+    event.currentTarget.classList.add("active");
+  }
+}
+
+function openTabByName_(tabName) {
+  const erlaubteTabs = ["tab1", "tab2", "tab3"];
+  currentTabName_ = erlaubteTabs.indexOf(tabName) !== -1 ? tabName : "tab1";
+
+  const tabs = document.querySelectorAll(".tab-content");
+  tabs.forEach(function(tab) {
+    tab.classList.remove("active");
+  });
+
+  const target = getEl_(currentTabName_) || getEl_("tab1");
+  if (target) {
+    target.classList.add("active");
+  }
+
+  const buttons = document.querySelectorAll(".tab-btn");
+  buttons.forEach(function(btn) {
+    btn.classList.remove("active");
+  });
+
+  const activeBtn = getEl_("btn_" + currentTabName_);
+  if (activeBtn) {
+    activeBtn.classList.add("active");
+  }
+}
+
+function initVisualCal() {
+  const calGrid = getEl_("calGrid");
+  const monthLabel = getEl_("monthLabel");
+  const curDate = getEl_("curDate");
+
+  if (!calGrid || !monthLabel || !curDate) return;
+
+  const heute = new Date();
+  const monate = ["JANUAR", "FEBRUAR", "MÄRZ", "APRIL", "MAI", "JUNI", "JULI", "AUGUST", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DEZEMBER"];
+  const tage = ["MO", "DI", "MI", "DO", "FR", "SA", "SO"];
+
+  monthLabel.textContent = monate[heute.getMonth()] + " " + heute.getFullYear();
+  curDate.textContent = heute.toLocaleDateString("de-DE");
+  calGrid.innerHTML = "";
+
+  tage.forEach(function(tag) {
+    const div = document.createElement("div");
+    div.className = "cal-h";
+    div.textContent = tag;
+    calGrid.appendChild(div);
+  });
+
+  const erster = new Date(heute.getFullYear(), heute.getMonth(), 1);
+  let offset = erster.getDay();
+  offset = offset === 0 ? 6 : offset - 1;
+
+  for (let i = 0; i < offset; i++) {
+    const div = document.createElement("div");
+    div.className = "cal-d";
+    div.textContent = "";
+    calGrid.appendChild(div);
+  }
+
+  const letzterTag = new Date(heute.getFullYear(), heute.getMonth() + 1, 0).getDate();
+
+  for (let tag = 1; tag <= letzterTag; tag++) {
+    const div = document.createElement("div");
+    div.className = "cal-d" + (tag === heute.getDate() ? " cal-today" : "");
+    div.textContent = String(tag);
+    calGrid.appendChild(div);
+  }
+}
+
+function buildSelectHtml_(werte, selected, onChangeJs, allowEmpty) {
+  const list = Array.isArray(werte) ? werte : [];
+  const sel = String(selected == null ? "" : selected);
+  let html = '<select onchange="' + escAttr_(onChangeJs) + '">';
+
+  if (allowEmpty !== false) {
+    html += '<option value=""></option>';
+  }
+
+  list.forEach(function(wert) {
+    const s = String(wert);
+    const isSelected = s === sel ? ' selected' : '';
+    html += '<option value="' + escAttr_(s) + '"' + isSelected + '>' + escHtml_(s) + '</option>';
+  });
+
+  html += '</select>';
+  return html;
+}
+
+function showStatus_(text, typ) {
+  const box = getEl_("saveStatus");
+  if (!box) return;
+
+  if (statusTimeout_) {
+    clearTimeout(statusTimeout_);
+    statusTimeout_ = null;
+  }
+
+  box.style.display = "block";
+  box.className = "status-box " + (
+    typ === "ok" ? "status-ok" :
+    typ === "error" ? "status-error" :
+    "status-info"
+  );
+  box.textContent = text == null ? "" : String(text);
+
+  if (typ !== "error") {
+    statusTimeout_ = setTimeout(function() {
+      box.style.display = "none";
+    }, 4000);
+  }
+}
+
+function focusErstesFeldDesFasses_(index) {
+  const feld = document.querySelector('input[data-index="' + index + '"][data-field="fassgroesse"]');
+  if (feld) feld.focus();
+}
+
+function getEl_(id) {
+  return document.getElementById(id);
+}
+
+function getValue_(id) {
+  const el = getEl_(id);
+  return el ? el.value : "";
+}
+
+function setValue_(id, value) {
+  const el = getEl_(id);
+  if (el) el.value = value == null ? "" : value;
+}
+
+function setText_(id, text) {
+  const el = getEl_(id);
+  if (el) el.textContent = text == null ? "" : text;
+}
+
+function showError_(err) {
+  const msg = err && err.message ? err.message : String(err || "Unbekannter Fehler");
+  setSaveBusy_(false);
+  openTabByName_("tab1");
+  showStatus_(msg, "error");
+}
+
+function escHtml_(value) {
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function escAttr_(value) {
+  return escHtml_(value);
+}
+</script>
