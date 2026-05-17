@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_self">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= HtmlService.createHtmlOutputFromFile('Styles').getContent(); ?>
+  </head>
+  <body>
+    <div class="main-frame">
+      <h1 class="brandplanung-header-ausgeblendet">OGV BREITFURT – BRANDPLANUNG</h1>
+
+      <div id="startAnsicht" class="card" style="display:block; text-align:center; padding:22px 14px;">
+        <button
+          id="btnStartBrandplanung"
+          class="btn-save"
+          type="button"
+          onclick="brandplanungStarten()"
+          style="max-width:360px; margin:0 auto;"
+        >
+          Brandplanung öffnen
+        </button>
+      </div>
+
+      <div id="formularAnsicht" class="card" style="display:none;">
+        <input id="vorgangsId" type="hidden">
+
+        <div style="display:grid; grid-template-columns:1fr; gap:10px;">
+          <div>
+            <label for="brandplanungVorgang">Vorgang aus Vorplanung</label>
+            <select id="brandplanungVorgang" onchange="vorgangGeaendert()" style="color:#00ff00;"></select>
+          </div>
+
+          <div id="vorplanungBlock" style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(150px, 210px) minmax(120px, 150px) minmax(170px, 220px); gap:10px; align-items:start;">
+            <div style="max-width:360px;">
+              <label for="bemerkungVorplanung" class="bemerkung-tab-label">Bemerkung_Vorplanung</label>
+              <textarea
+                id="bemerkungVorplanung"
+                rows="2"
+                readonly
+                style="background:#2a2a2a; color:#00ff00; border:1px solid #444; border-radius:10px; resize:vertical; width:100%; min-height:62px; height:62px; padding:10px 12px; font-weight:700; box-shadow:var(--neo-in);"
+              ></textarea>
+            </div>
+
+            <div>
+              <label for="datumMaischeannahmeGlobal">Datum_Maischeannahme</label>
+              <input
+                id="datumMaischeannahmeGlobal"
+                type="date"
+                style="color:#00ff00;"
+              >
+            </div>
+
+            <div>
+              <label for="anzahlBraendeGlobal">Anzahl_Brände</label>
+              <input
+                id="anzahlBraendeGlobal"
+                type="number"
+                min="1"
+                step="1"
+                value="1"
+                style="color:#00ff00;"
+              >
+            </div>
+
+            <div>
+              <label for="checklisteVersenden" class="checkliste-tab-label">Checkliste</label>
+              <label for="checklisteVersenden" class="checkliste-tab-field">
+                <input
+                  id="checklisteVersenden"
+                  type="checkbox"
+                  class="checkliste-checkbox"
+                >
+                <span class="checkliste-text">Versenden</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div id="brandtageBereich" class="card" style="margin-top:12px; padding:14px;">
+          <div id="brandtageContainer" style="display:grid; gap:10px;"></div>
+
+          <div style="margin-top:8px; display:grid; grid-template-columns:minmax(54px, 62px) minmax(200px, 300px); gap:10px; align-items:end; max-width:372px;">
+            <div>
+              <button
+                type="button"
+                class="btn-save btn-plus-klein"
+                onclick="brandtagZeileHinzufuegen()"
+                aria-label="Brand hinzufügen"
+                title="Brand hinzufügen"
+              >+</button>
+            </div>
+
+            <div>
+              <label for="statusGlobal">Status</label>
+              <select id="statusGlobal" style="color:#00ff00;"></select>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px; display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:10px;">
+          <button
+            id="btnSchliessen"
+            class="btn-save"
+            type="button"
+            onclick="zurueckOderUebersicht()"
+            style="width:100%;"
+          >
+            Zurück zur Übersicht
+          </button>
+
+          <button id="btnSpeichern" class="btn-save" type="button" onclick="speichernBrandplanung()" style="width:100%;">
+            Speichern
+          </button>
+        </div>
+      </div>
+
+      <div id="statusBox" class="toast-box" style="display:none;"></div>
+    </div>
+
+    <script>
+      let busy = false;
+      const RETURN_MODUS = '<?!= typeof returnModus !== "undefined" ? returnModus : "" ?>';
+      const ORIGIN_MODUS = '<?!= typeof originModus !== "undefined" ? originModus : "" ?>';
+      const IST_ADMIN_RUECKSPRUNG = <?!= typeof istAdminRuecksprung !== "undefined" && istAdminRuecksprung ? 'true' : 'false' ?>;
+      const WEBAPP_URL = '<?!= typeof webAppUrl !== "undefined" ? webAppUrl : "" ?>';
+      const GITHUB_INDEX_URL = 'https://fraumecker.github.io/brennerei-startogv/';
+      const GITHUB_ADMIN_URL = 'https://fraumecker.github.io/brennerei-startogv/admin.html';
+      const IST_COCKPIT_RUECKSPRUNG = String(ORIGIN_MODUS || '').toLowerCase() === 'cockpit' || String(RETURN_MODUS || '').toLowerCase() === 'cockpit';
+      let vorgaenge = [];
+      let brennerListe = [];
+      let statusListe = ['IN ORGA', 'TERMINIERT', 'IN MAISCHEANNAHME ÜBERGEBEN'];
+      let brandtagIndex = 0;
+
+      function escapeHtml(text) {
+        if (text == null) return '';
+        return String(text).replace(/[&<>"']/g, function(m) {
+          return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+          }[m];
+        });
+      }
+
+      function leseFehler(err) {
+        return err && err.message ? err.message : String(err || 'Unbekannter Fehler');
+      }
+
+      function holeBasisUrl() {
+        const webApp = String(WEBAPP_URL || '').trim();
+        if (webApp) return webApp.split('?')[0];
+
+        const href = String(window.location.href || '').trim();
+        if (!href) return '';
+        return href.split('?')[0];
+      }
+
+      function setBusy(status) {
+        busy = !!status;
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(function(btn) {
+          btn.disabled = busy;
+        });
+      }
+
+      function zeigeStatus(text, typ) {
+        const box = document.getElementById('statusBox');
+        const meldung = String(text || '');
+        const istNurBedienhinweis = /Bitte Vorgang auswählen/i.test(meldung);
+
+        if (istNurBedienhinweis) {
+          box.style.display = 'none';
+          box.innerHTML = '';
+          box.className = 'toast-box';
+          return;
+        }
+
+        box.style.display = text ? 'block' : 'none';
+        box.className = 'toast-box';
+        box.style.borderLeft = '6px solid #ff007f';
+        box.innerHTML = '';
+
+        if (!text) return;
+
+        if (typ === 'ok') box.style.borderLeft = '6px solid #00ff00';
+        else if (typ === 'error') box.style.borderLeft = '6px solid #ff3b3b';
+        else box.style.borderLeft = '6px solid #ff007f';
+
+        box.innerHTML = '<div class="toast-text">' + escapeHtml(text) + '</div>';
+
+        const istLadevorgang = /wird|werden|lädt|geladen …|speichert/i.test(meldung);
+        if (istLadevorgang) return;
+
+        const dauer = typ === 'error' ? 22000 : (typ === 'ok' ? 7000 : 12000);
+        window.setTimeout(function() {
+          if (box.textContent === meldung) zeigeStatus('', 'info');
+        }, dauer);
+      }
+
+      function zielModusFuerRuecksprung() {
+        const istAdmin = IST_ADMIN_RUECKSPRUNG ||
+          String(ORIGIN_MODUS || '').toLowerCase() === 'admin' ||
+          String(RETURN_MODUS || '').toLowerCase() === 'admin';
+
+        if (istAdmin) return 'admin';
+        if (IST_COCKPIT_RUECKSPRUNG) return 'index';
+        return '';
+      }
+
+      function geheZurueckZumHauptmenue() {
+        const zielModus = zielModusFuerRuecksprung();
+
+        if (zielModus === 'admin') {
+          window.top.location.href = GITHUB_ADMIN_URL;
+          return;
+        }
+
+        if (zielModus === 'index') {
+          window.top.location.href = GITHUB_INDEX_URL;
+          return;
+        }
+
+        startansichtZeigen();
+      }
+
+      function nachSpeichernZurueckInsHauptmenue() {
+        zeigeStatus('', 'info');
+        geheZurueckZumHauptmenue();
+      }
+
+      function zurueckOderUebersicht() {
+        zeigeStatus('', 'info');
+        geheZurueckZumHauptmenue();
+      }
+
+      function optionenHtml(liste, selectedValue, placeholder) {
+        const selected = String(selectedValue || '').trim();
+        let html = '<option value="">' + escapeHtml(placeholder || 'Bitte wählen') + '</option>';
+
+        (liste || []).forEach(function(item) {
+          const value = typeof item === 'string' ? item : String(item.value || '');
+          const label = typeof item === 'string' ? item : String(item.label || item.value || '');
+          if (!String(value || '').trim()) return;
+          html += '<option value="' + escapeHtml(value) + '"' + (value === selected ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+        });
+
+        return html;
+      }
+
+      function startansichtZeigen() {
+        document.getElementById('startAnsicht').style.display = 'block';
+        document.getElementById('formularAnsicht').style.display = 'none';
+      }
+
+      function formularansichtZeigen() {
+        document.getElementById('startAnsicht').style.display = 'none';
+        document.getElementById('formularAnsicht').style.display = 'block';
+      }
+
+      function setzeStatusGlobalDropdown(selectedValue) {
+        document.getElementById('statusGlobal').innerHTML = optionenHtml(
+          statusListe,
+          selectedValue || 'TERMINIERT',
+          'Bitte Status wählen'
+        );
+      }
+
+      function formularLeeren() {
+        document.getElementById('brandplanungVorgang').innerHTML = '<option value="">Bitte Vorgang wählen</option>';
+        document.getElementById('vorgangsId').value = '';
+        document.getElementById('bemerkungVorplanung').value = '';
+        document.getElementById('datumMaischeannahmeGlobal').value = '';
+        document.getElementById('anzahlBraendeGlobal').value = '1';
+        document.getElementById('brandtageContainer').innerHTML = '';
+        document.getElementById('checklisteVersenden').checked = false;
+        brandtagIndex = 0;
+        setzeStatusGlobalDropdown('TERMINIERT');
+      }
+
+      function resetVorgangsdatenOhneDropdown() {
+        document.getElementById('vorgangsId').value = '';
+        document.getElementById('bemerkungVorplanung').value = '';
+        document.getElementById('datumMaischeannahmeGlobal').value = '';
+        document.getElementById('anzahlBraendeGlobal').value = '1';
+        document.getElementById('brandtageContainer').innerHTML = '';
+        document.getElementById('checklisteVersenden').checked = false;
+        brandtagIndex = 0;
+        setzeStatusGlobalDropdown('TERMINIERT');
+      }
+
+      function fuelleVorgangsDropdown() {
+        const liste = vorgaenge.map(function(item) {
+          return {
+            value: item.vorgangsId || '',
+            label: item.anzeige || item.vorgangsId || ''
+          };
+        });
+
+        document.getElementById('brandplanungVorgang').innerHTML = optionenHtml(liste, '', 'Bitte Vorgang wählen');
+      }
+
+      function fuelleGespeicherteBrandplanung(details) {
+        document.getElementById('vorgangsId').value = details && details.vorgangsId ? details.vorgangsId : '';
+        document.getElementById('bemerkungVorplanung').value = details && details.bemerkungVorplanung ? details.bemerkungVorplanung : '';
+        document.getElementById('datumMaischeannahmeGlobal').value = details && details.datumMaischeannahmeGlobal ? details.datumMaischeannahmeGlobal : '';
+        document.getElementById('anzahlBraendeGlobal').value = details && details.anzahlBraendeGlobal ? details.anzahlBraendeGlobal : '1';
+        setzeStatusGlobalDropdown(details && details.statusGlobal ? details.statusGlobal : 'TERMINIERT');
+
+        const container = document.getElementById('brandtageContainer');
+        container.innerHTML = '';
+        brandtagIndex = 0;
+
+        const planungen = details && Array.isArray(details.planungen) ? details.planungen : [];
+        if (planungen.length) {
+          planungen.forEach(function(item) {
+            brandtagZeileHinzufuegen(item);
+          });
+        } else {
+          brandtagZeileHinzufuegen();
+        }
+      }
+
+      function vorgangGeaendert() {
+        const vorgangsId = document.getElementById('brandplanungVorgang').value;
+
+        if (!vorgangsId) {
+          resetVorgangsdatenOhneDropdown();
+          return;
+        }
+
+        setBusy(true);
+        zeigeStatus('Brandplanung wird geladen …', 'info');
+
+        google.script.run
+          .withSuccessHandler(function(details) {
+            setBusy(false);
+            fuelleGespeicherteBrandplanung(details || {});
+            zeigeStatus('Vorgang geladen.', 'ok');
+          })
+          .withFailureHandler(function(err) {
+            setBusy(false);
+            zeigeStatus('Vorgang konnte nicht geladen werden: ' + leseFehler(err), 'error');
+          })
+          .getBrandplanungDetails(vorgangsId);
+      }
+
+      function naechstesBrandtagFeldAktivieren(aktuellesElement) {
+        if (!aktuellesElement) return;
+        const wrapper = aktuellesElement.closest('[data-brandtag-index]');
+        if (!wrapper) return;
+
+        const felder = Array.from(wrapper.querySelectorAll('.bp-brandtag, .bp-zeitslotVon, .bp-zeitslotBis, .bp-brenner, .bp-bemerkungIntern'));
+        const index = felder.indexOf(aktuellesElement);
+        if (index < 0 || index >= felder.length - 1) return;
+
+        const nextField = felder[index + 1];
+        if (nextField && typeof nextField.focus === 'function') {
+          window.setTimeout(function() {
+            nextField.focus();
+            if (typeof nextField.select === 'function' && nextField.tagName === 'INPUT') nextField.select();
+          }, 30);
+        }
+      }
+
+      function zeitfeldEingabeBehandeln(event) {
+        const feld = event && event.target ? event.target : null;
+        if (!feld) return;
+        const wert = String(feld.value || '').trim();
+        if (/^\d{2}:\d{2}$/.test(wert)) {
+          naechstesBrandtagFeldAktivieren(feld);
+        }
+      }
+
+      function brandtagZeileHinzufuegen(vorbelegung) {
+        brandtagIndex += 1;
+        const idx = brandtagIndex;
+        const container = document.getElementById('brandtageContainer');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'card compact-brandtab';
+        wrapper.setAttribute('data-brandtag-index', String(idx));
+
+        wrapper.innerHTML = ''
+          + '<div class="brandtab-grid-main">'
+          + '  <div><label class="brandtab-label-green">Brandtag</label><input type="date" class="bp-brandtag brandtab-input-green"></div>'
+          + '  <div><label class="brandtab-label-green">von</label><input type="time" class="bp-zeitslotVon brandtab-input-green" oninput="zeitfeldEingabeBehandeln(event)" onchange="zeitfeldEingabeBehandeln(event)"></div>'
+          + '  <div><label class="brandtab-label-green">bis</label><input type="time" class="bp-zeitslotBis brandtab-input-green" oninput="zeitfeldEingabeBehandeln(event)" onchange="zeitfeldEingabeBehandeln(event)"></div>'
+          + '  <div><label class="brandtab-label-green">Brenner</label><select class="bp-brenner brandtab-input-green">' + optionenHtml(brennerListe, '', 'Bitte Brenner wählen') + '</select></div>'
+          + '  <div><label for="bpBemerkungIntern_' + idx + '" class="bemerkung-tab-label">Bemerkung_Intern</label><textarea id="bpBemerkungIntern_' + idx + '" class="bp-bemerkungIntern bemerkung-tab-field" rows="1"></textarea></div>'
+          + '  <div class="brandtab-remove-cell"><button type="button" class="compact-remove-btn" onclick="brandtagZeileEntfernen(' + idx + ')" aria-label="Brand entfernen" title="Brand entfernen">X</button></div>'
+          + '</div>';
+
+        container.appendChild(wrapper);
+
+        if (vorbelegung) {
+          wrapper.querySelector('.bp-brandtag').value = vorbelegung.brandtag || '';
+          wrapper.querySelector('.bp-brenner').value = vorbelegung.brenner || '';
+          wrapper.querySelector('.bp-zeitslotVon').value = vorbelegung.zeitslotVon || '';
+          wrapper.querySelector('.bp-zeitslotBis').value = vorbelegung.zeitslotBis || '';
+          wrapper.querySelector('.bp-bemerkungIntern').value = vorbelegung.bemerkungIntern || '';
+        }
+      }
+
+      function brandtagZeileEntfernen(idx) {
+        if (busy) return;
+        const container = document.getElementById('brandtageContainer');
+        const element = container.querySelector('[data-brandtag-index="' + idx + '"]');
+        if (element) {
+          element.remove();
+        }
+        if (!container.children.length) {
+          brandtagZeileHinzufuegen();
+        }
+      }
+
+      function brandplanungStarten() {
+        if (busy) return;
+
+        setBusy(true);
+        zeigeStatus('Interne Brandplanung wird geladen …', 'info');
+
+        google.script.run
+          .withSuccessHandler(function(offen) {
+            vorgaenge = offen && Array.isArray(offen.vorgaenge) ? offen.vorgaenge : [];
+
+            google.script.run
+              .withSuccessHandler(function(brenner) {
+                setBusy(false);
+                brennerListe = Array.isArray(brenner) ? brenner : [];
+                formularLeeren();
+                fuelleVorgangsDropdown();
+                formularansichtZeigen();
+
+                if (!vorgaenge.length) {
+                  zeigeStatus('Keine offenen Vorgänge für die Brandplanung vorhanden.', 'info');
+                  return;
+                }
+
+                zeigeStatus('Bitte Vorgang auswählen.', 'info');
+              })
+              .withFailureHandler(function(err) {
+                setBusy(false);
+                zeigeStatus('Brennerliste konnte nicht geladen werden: ' + leseFehler(err), 'error');
+              })
+              .getBrandplanungBrennerListe();
+          })
+          .withFailureHandler(function(err) {
+            setBusy(false);
+            zeigeStatus('Brandplanung konnte nicht geladen werden: ' + leseFehler(err), 'error');
+          })
+          .getBrandplanungOffeneVorgaenge();
+      }
+
+      function istBrandzeileLeer(eintrag) {
+        return !(
+          String(eintrag.brandtag || '').trim() ||
+          String(eintrag.brenner || '').trim() ||
+          String(eintrag.zeitslotVon || '').trim() ||
+          String(eintrag.zeitslotBis || '').trim() ||
+          String(eintrag.bemerkungIntern || '').trim()
+        );
+      }
+
+      function liesPlanungenAusMaske() {
+        const datumMaischeannahmeGlobal = document.getElementById('datumMaischeannahmeGlobal').value;
+        const anzahlBraendeGlobal = document.getElementById('anzahlBraendeGlobal').value || '1';
+        const statusGlobal = document.getElementById('statusGlobal').value;
+        const rows = Array.from(document.querySelectorAll('#brandtageContainer [data-brandtag-index]'));
+
+        return rows.map(function(row) {
+          return {
+            datumMaischeannahme: datumMaischeannahmeGlobal,
+            brandtag: row.querySelector('.bp-brandtag').value,
+            brenner: row.querySelector('.bp-brenner').value,
+            zeitslotVon: row.querySelector('.bp-zeitslotVon').value,
+            zeitslotBis: row.querySelector('.bp-zeitslotBis').value,
+            anzahlBraende: anzahlBraendeGlobal,
+            status: statusGlobal,
+            bemerkungIntern: row.querySelector('.bp-bemerkungIntern').value.trim()
+          };
+        }).filter(function(eintrag) {
+          return !istBrandzeileLeer(eintrag);
+        });
+      }
+
+      function payloadLesen() {
+        return {
+          vorgangsId: document.getElementById('vorgangsId').value.trim(),
+          anzahlBraende: document.getElementById('anzahlBraendeGlobal').value || '1',
+          checklisteVersenden: document.getElementById('checklisteVersenden').checked === true,
+          planungen: liesPlanungenAusMaske()
+        };
+      }
+
+      function validiere(payload) {
+        const statusGlobal = document.getElementById('statusGlobal').value;
+
+        if (!payload.vorgangsId) {
+          zeigeStatus('Vorgangs_ID fehlt.', 'error');
+          return false;
+        }
+
+        if (!statusGlobal) {
+          zeigeStatus('Status fehlt.', 'error');
+          return false;
+        }
+
+        if (!Array.isArray(payload.planungen) || !payload.planungen.length) {
+          zeigeStatus('Es wurde kein Brandtag erfasst.', 'error');
+          return false;
+        }
+
+        for (let i = 0; i < payload.planungen.length; i++) {
+          const p = payload.planungen[i];
+          const nr = i + 1;
+
+          if (!p.brandtag) {
+            zeigeStatus('Brandtag fehlt in Brand ' + nr + '.', 'error');
+            return false;
+          }
+          if (!p.brenner) {
+            zeigeStatus('Brenner fehlt in Brand ' + nr + '.', 'error');
+            return false;
+          }
+          if (!p.zeitslotVon) {
+            zeigeStatus('von fehlt in Brand ' + nr + '.', 'error');
+            return false;
+          }
+          if (!p.zeitslotBis) {
+            zeigeStatus('bis fehlt in Brand ' + nr + '.', 'error');
+            return false;
+          }
+
+          const von = new Date('1970-01-01T' + p.zeitslotVon + ':00');
+          const bis = new Date('1970-01-01T' + p.zeitslotBis + ':00');
+
+          if (isNaN(von.getTime())) {
+            zeigeStatus('von ist ungültig in Brand ' + nr + '.', 'error');
+            return false;
+          }
+          if (isNaN(bis.getTime())) {
+            zeigeStatus('bis ist ungültig in Brand ' + nr + '.', 'error');
+            return false;
+          }
+          if (bis.getTime() <= von.getTime()) {
+            zeigeStatus('bis muss nach von liegen. Fehler in Brand ' + nr + '.', 'error');
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      function zurStartansicht() {
+        if (busy) return;
+        formularLeeren();
+        startansichtZeigen();
+        zeigeStatus('', 'info');
+      }
+
+      function speichernBrandplanung() {
+        if (busy) return;
+
+        const payload = payloadLesen();
+        if (!validiere(payload)) return;
+
+        setBusy(true);
+        zeigeStatus('Brandplanung wird gespeichert …', 'info');
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            let meldung = 'Brandplanung gespeichert. Datensätze: ' + (result && result.anzahl ? result.anzahl : payload.planungen.length) + '.';
+
+            if (payload.checklisteVersenden === true && result && result.checkliste) {
+              if (result.checkliste.versendet && result.checkliste.kanal === 'E-MAIL') {
+                meldung += ' Checkliste per E-Mail versendet.';
+              } else if (result.checkliste.hinweis) {
+                meldung += ' ' + result.checkliste.hinweis;
+              }
+            }
+
+            setBusy(false);
+            startansichtZeigen();
+            zeigeStatus(meldung, 'ok');
+            window.setTimeout(nachSpeichernZurueckInsHauptmenue, 1200);
+          })
+          .withFailureHandler(function(err) {
+            setBusy(false);
+            zeigeStatus('Speichern fehlgeschlagen: ' + leseFehler(err), 'error');
+          })
+          .saveBrandplanung(payload);
+      }
+
+      window.addEventListener('load', function() {
+        setzeStatusGlobalDropdown();
+
+        const direktOeffnen =
+          IST_ADMIN_RUECKSPRUNG ||
+          String(ORIGIN_MODUS || '').toLowerCase() === 'admin' ||
+          String(RETURN_MODUS || '').toLowerCase() === 'admin';
+
+        if (direktOeffnen) {
+          brandplanungStarten();
+          return;
+        }
+
+        startansichtZeigen();
+      });
+    </script>
+
+    <style>
+      /* GitHub-Wrapper schneidet oben 80px ab, um den Google-Hinweis auszublenden.
+         Dieser Ausgleich macht Überschrift und obere Buttons wieder sichtbar. */
+      .main-frame {
+        margin-top: 80px !important;
+      }
+
+      .brandplanung-header-ausgeblendet {
+        display: block !important;
+        margin: 0 0 14px 0 !important;
+        color: var(--pink);
+        font-weight: 900;
+        letter-spacing: 1.2px;
+        text-shadow: 0 0 12px rgba(255, 0, 127, 0.6);
+        font-size: 24px;
+        line-height: 1.15;
+      }
+
+      .compact-brandtab {
+        padding: 8px !important;
+        border-radius: 12px !important;
+      }
+
+      .brandtab-grid-main {
+        display: grid;
+        grid-template-columns: minmax(108px, 0.85fr) minmax(68px, 0.44fr) minmax(68px, 0.44fr) minmax(118px, 0.86fr) minmax(120px, 0.82fr) 38px;
+        gap: 7px;
+        align-items: end;
+      }
+
+      .brandtab-label-green {
+        color: #ff007f !important;
+        font-size: 13px !important;
+        line-height: 1.1 !important;
+        margin-bottom: 4px !important;
+      }
+
+      .brandtab-input-green {
+        color: #00ff00 !important;
+      }
+
+      .bemerkung-tab-label {
+        display: inline-block;
+        background: #1b1b1b;
+        color: #ff007f !important;
+        border: 1px solid #444;
+        border-bottom: none;
+        border-radius: 10px 10px 0 0;
+        padding: 6px 10px;
+        font-size: 13px !important;
+        line-height: 1.1 !important;
+        margin-bottom: 0 !important;
+        box-shadow: var(--neo-out);
+      }
+
+      .bemerkung-tab-field {
+        background: #2a2a2a !important;
+        color: #00ff00 !important;
+        border: 1px solid #444 !important;
+        border-radius: 0 10px 10px 10px !important;
+        width: 100% !important;
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 7px 9px !important;
+        resize: vertical !important;
+        font-weight: 700 !important;
+        box-shadow: var(--neo-in) !important;
+      }
+
+      .brandtab-remove-cell {
+        display: flex;
+        justify-content: flex-end;
+        align-items: end;
+      }
+
+      .compact-remove-btn {
+        width: 38px;
+        min-width: 38px;
+        max-width: 38px;
+        height: 38px;
+        min-height: 38px;
+        padding: 0 !important;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(145deg, #7a0000, #ff2b2b);
+        color: #ffffff;
+        font-size: 18px !important;
+        font-weight: 900;
+        box-shadow: var(--neo-out);
+        cursor: pointer;
+      }
+
+      .checkliste-tab-label {
+        display: inline-block;
+        background: #1b1b1b;
+        color: #ff007f !important;
+        border: 1px solid #444;
+        border-bottom: none;
+        border-radius: 10px 10px 0 0;
+        padding: 6px 10px;
+        font-size: 13px !important;
+        line-height: 1.1 !important;
+        margin-bottom: 0 !important;
+        box-shadow: var(--neo-out);
+      }
+
+      .checkliste-tab-field {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #2a2a2a !important;
+        color: #ff007f !important;
+        border: 1px solid #444 !important;
+        border-radius: 0 10px 10px 10px !important;
+        width: 100% !important;
+        min-height: 48px !important;
+        height: 48px !important;
+        padding: 10px 12px !important;
+        box-shadow: var(--neo-in) !important;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .checkliste-checkbox {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 28px;
+        min-width: 28px;
+        height: 28px;
+        border: 2px solid #ff007f;
+        border-radius: 8px;
+        background: #111111;
+        box-shadow: var(--neo-in);
+        display: inline-grid;
+        place-items: center;
+        margin: 0;
+        cursor: pointer;
+      }
+
+      .checkliste-checkbox::after {
+        content: '';
+        width: 8px;
+        height: 14px;
+        border: solid #00ff00;
+        border-width: 0 3px 3px 0;
+        transform: rotate(45deg) scale(0);
+        transition: transform 0.12s ease-in-out;
+        margin-top: -2px;
+      }
+
+      .checkliste-checkbox:checked::after {
+        transform: rotate(45deg) scale(1);
+      }
+
+      .checkliste-text {
+        color: #ff007f !important;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+      }
+
+      .btn-plus-klein {
+        width: 36px !important;
+        min-width: 36px !important;
+        max-width: 36px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        font-size: 22px !important;
+        line-height: 1 !important;
+      }
+
+      input[type="time"]::-webkit-calendar-picker-indicator,
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        opacity: 0.85;
+      }
+
+      .toast-box {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 9999;
+        min-width: min(520px, calc(100vw - 34px));
+        max-width: min(640px, calc(100vw - 34px));
+        padding: 18px 20px;
+        border-radius: 18px;
+        background: var(--card-bg);
+        color: #ffffff;
+        font-weight: 800;
+        box-shadow: var(--neo-out);
+        border: 1px solid #333;
+      }
+
+      .toast-text {
+        margin-bottom: 12px;
+        white-space: pre-wrap;
+      }
+
+      @media (max-width: 700px) {
+        #vorplanungBlock {
+          grid-template-columns: 1fr !important;
+        }
+
+        .brandtab-grid-main {
+          grid-template-columns: 1fr 1fr 1fr !important;
+        }
+
+        .brandtab-remove-cell {
+          justify-content: flex-start;
+        }
+
+        #brandtageContainer [data-brandtag-index] textarea {
+          max-width: 100% !important;
+        }
+
+        #btnSpeichern,
+        #btnSchliessen {
+          max-width: 100% !important;
+        }
+      }
+
+      @media (max-width: 430px) {
+        .brandtab-grid-main {
+          grid-template-columns: 1fr 1fr !important;
+          gap: 7px !important;
+        }
+
+        .compact-brandtab {
+          padding: 8px !important;
+        }
+
+        #formularAnsicht {
+          padding: 12px !important;
+        }
+
+        .compact-remove-btn {
+          width: 42px;
+          max-width: 42px;
+        }
+      }
+    </style>
+  </body>
+</html>

@@ -1,196 +1,659 @@
 /**
  * DATEI: 12_PRINTSERVICE.GS
- * DRUCKFUNKTIONEN FÜR PROTOKOLLE AUF BASIS DES AKTUELLEN MAPPING-SYSTEMS
+ * DRUCKFUNKTIONEN FÜR BRENNPROTOKOLL
  */
 
-// FUNKTION: Druckt die markierten Datenzeilen des aktiven Blatts als HTML-Protokoll | EINGRIFF: UI / DRIVE / TABELLENMAPPING
+// FUNKTION: Druckt die markierten Datenzeilen als Brennprotokoll | EINGRIFF: UI / DRIVE / URLFETCH
 function protokollDrucken() {
-  // FUNKTION: Referenziert die aktive Arbeitsmappe | EINGRIFF: SpreadsheetApp
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  // FUNKTION: Referenziert das aktive Blatt | EINGRIFF: SpreadsheetApp
   const sh = ss.getActiveSheet();
-  // FUNKTION: Liest das dynamische Spalten-Mapping | EINGRIFF: 02_BASISHELPER
   const map = spaltenZuordnungHolen_(sh);
-  // FUNKTION: Ermittelt alle markierten Datenzeilen | EINGRIFF: UI-Selektion
   const zeilen = protokollZeilenAuswahlHolen_(sh);
 
-  // CHECK: Gibt es mindestens eine markierte Datenzeile? | FOLGE: Abbruch bei leerer Auswahl
   if (zeilen.length === 0) {
     SpreadsheetApp.getUi().alert("Bitte markieren Sie zuerst mindestens eine Datenzeile.");
     return;
   }
 
-  // FUNKTION: Initialisiert das Logo | EINGRIFF: Drive-Bildlogik
   let logoBase64 = "";
-
   try {
-    // FUNKTION: Liest den Logo-Ordner | EINGRIFF: 01_CONFIG
     const files = DriveApp.getFolderById(KONFIGURATION.DRIVE_ORDNER.LOGO_ORDNER_ID).getFiles();
-
-    // FUNKTION: Sucht gezielt die Logodatei | EINGRIFF: Drive
     while (files.hasNext()) {
-      // FUNKTION: Referenziert die aktuelle Datei | EINGRIFF: Drive
       const f = files.next();
-      // FUNKTION: Liest den Dateinamen in Kleinbuchstaben | EINGRIFF: String-Vergleich
       const n = String(f.getName() || "").toLowerCase();
-
-      // CHECK: Ist die Datei ein Logo? | FOLGE: Verwendung im Druckkopf
-      if (n.indexOf("ogv") !== -1 || n.indexOf("logo") !== -1) {
+      if (n.indexOf("ogv") !== -1 || n.indexOf("logo") !== -1 || n.match(/\.(png|jpg|jpeg|svg|webp)$/)) {
         logoBase64 = "data:" + f.getMimeType() + ";base64," + Utilities.base64Encode(f.getBlob().getBytes());
         break;
       }
     }
   } catch (e) {
-    // FUNKTION: Protokolliert Fehler beim Logo-Abruf | EINGRIFF: SYSTEM_LOG
     systemLogSchreiben_("WARN", "PrintService", "Logoabruf fehlgeschlagen", "", String(e));
   }
 
-  // FUNKTION: Initialisiert den HTML-Rahmen | EINGRIFF: Druckdarstellung
+  const brennereiNummer = (KONFIGURATION.IDENTITAET && KONFIGURATION.IDENTITAET.BRENNEREI_NUMMER)
+    ? KONFIGURATION.IDENTITAET.BRENNEREI_NUMMER
+    : "1460927";
+
+  const zollOrdnerUrl = "https://drive.google.com/drive/folders/1W8OO9I6viZYlCqapX2uqcONDES0vySPn";
+
+  let qrZollOrdner = "";
+  try {
+    const qrBlob = UrlFetchApp.fetch(
+      "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(zollOrdnerUrl),
+      { muteHttpExceptions: true }
+    ).getBlob();
+    qrZollOrdner = "data:" + qrBlob.getContentType() + ";base64," + Utilities.base64Encode(qrBlob.getBytes());
+  } catch (e) {
+    systemLogSchreiben_("WARN", "PrintService", "QR-Code für Zollordner fehlgeschlagen", "", String(e));
+  }
+
   let html = `<html><head><style>
-    @page{size:landscape;margin:8mm;}
-    body{font-family:sans-serif;}
-    .h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #d9534f;padding-bottom:8px;}
-    table{width:100%;border-collapse:collapse;margin-top:10px;}
-    th{background:#eee;border:1.2px solid #000;font-size:9px;padding:4px;}
-    td{border:1.2px solid #000;padding:5px 3px;font-size:11px;}
-    .pfeil{text-align:center;font-weight:bold;color:green;}
-    .logo{height:90px;max-width:180px;object-fit:contain;}
-    @media print{.no-p{display:none;}}
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Segoe UI", sans-serif;
+      font-size: 10px;
+      line-height: 1.2;
+      color: #333;
+      background: #fff;
+    }
+
+    .page {
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+      min-height: 100%;
+      padding-bottom: 46px;
+    }
+
+    .no-p {
+      text-align: center;
+      padding: 0;
+      margin: 0;
+    }
+
+    .print-btn {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 10px;
+      z-index: 9999;
+      padding: 6px 14px;
+      background: #d9534f;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 11px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+
+    .header {
+      display: grid;
+      grid-template-columns: 300px 1fr 260px;
+      align-items: start;
+      column-gap: 12px;
+      border-bottom: 3px solid #d9534f;
+      padding-bottom: 4px;
+      margin-bottom: 4px;
+    }
+
+    .logo-wrap {
+      text-align: left;
+    }
+
+    .logo-img {
+      width: 150px;
+      max-width: 300px;
+      height: auto;
+      display: block;
+    }
+
+    .title-block {
+      text-align: center;
+      color: #000;
+      line-height: 1.05;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    .title-main {
+      font-weight: 800;
+      font-size: 26px;
+      letter-spacing: 0.2px;
+    }
+
+    .title-sub {
+      margin-top: 4px;
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .contact-info {
+      text-align: right;
+      font-size: 9.5px;
+      line-height: 1.15;
+      color: #333;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    .zoll-contact-inline {
+      margin-top: 4px;
+      text-align: right;
+      color: #b3b3b3;
+      font-size: 7.8px;
+      line-height: 1.1;
+      filter: grayscale(1) opacity(0.32);
+    }
+
+    .zoll-contact-inline img {
+      width: 38px;
+      height: 38px;
+      object-fit: contain;
+      display: block;
+      margin: 0 0 2px auto;
+      border: 1px solid #e3e3e3;
+      background: #fff;
+    }
+
+    .zoll-contact-title {
+      font-weight: 700;
+      color: #b3b3b3;
+      margin-bottom: 1px;
+    }
+
+    .protokoll-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .protokoll-table th {
+      border: 1.2px solid #000;
+      background: #eaeaea;
+      color: #000;
+      padding: 4px 3px;
+      font-size: 8.2px;
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 1.05;
+    }
+
+    .protokoll-table td {
+      border: 1.2px solid #000;
+      padding: 5px 4px;
+      font-size: 9.5px;
+      line-height: 1.15;
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    .qr-col {
+      text-align: center;
+      padding: 2px !important;
+    }
+
+    .row-qr {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+
+    @media print {
+      .no-p {
+        display: none;
+      }
+    }
   </style></head><body>
-  <div class="no-p"><button onclick="window.print()" style="padding:10px 20px; cursor:pointer;">DRUCKEN</button></div>
-  <div class="h">
-    <img src="${logoBase64}" class="logo">
-    <div><h1>Brenn-Protokoll</h1><b>Brennereinummer: ${printEscapeHtml_(KONFIGURATION.IDENTITAET.BRENNEREI_NUMMER)}</b></div>
-    <div style="text-align:right;"><strong>OGV Breitfurt e.V.</strong><br>${printEscapeHtml_(KONFIGURATION.KONTAKT.NAME)}<br>📞 ${printEscapeHtml_(KONFIGURATION.KONTAKT.TEL)}</div>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>DATUM</th><th>BRENNER</th><th>VON</th><th>BIS</th><th>BESITZER</th>
-        <th>REG-NR.</th><th>MATERIAL</th><th>FASS</th><th>LIT.</th><th>ALK %</th><th>AUSB.</th>
-      </tr>
-    </thead>
-    <tbody>`;
+    <div class="no-p">
+      <button class="print-btn" onclick="window.print()">DRUCKEN</button>
+    </div>
 
-  // FUNKTION: Baut jede markierte Zeile in das Protokoll ein | EINGRIFF: Tabellenexport
+    <div class="page">
+      <div class="header">
+        <div class="logo-wrap">
+          ${logoBase64 ? `<img src="${logoBase64}" class="logo-img">` : ``}
+        </div>
+
+        <div class="title-block">
+          <div class="title-main">Brennprotokoll</div>
+          <div class="title-sub">Brennereinummer: ${printEscapeHtml_(brennereiNummer)}</div>
+        </div>
+
+        <div class="contact-info">
+          Ansprechpartner: ${printEscapeHtml_(KONFIGURATION.KONTAKT.NAME)}<br>
+          📞 ${printEscapeHtml_(KONFIGURATION.KONTAKT.TEL)}<br>
+          📧 ${printEscapeHtml_(KONFIGURATION.KONTAKT.MAIL)}
+
+          <div class="zoll-contact-inline">
+            ${qrZollOrdner ? `<img src="${qrZollOrdner}" alt="">` : ``}
+            <div class="zoll-contact-title">Kontaktdaten Zoll</div>
+            <div>bei Notfall / Minderausbeute</div>
+          </div>
+        </div>
+      </div>
+
+      <table class="protokoll-table">
+        <thead>
+          <tr>
+            <th style="width:7%;">Brandtag</th>
+            <th style="width:7%;">Brenner</th>
+            <th style="width:5%;">Von</th>
+            <th style="width:5%;">Bis</th>
+            <th style="width:12%;">Stoffbesitzer</th>
+            <th style="width:7%;">Vorgangs_ID</th>
+            <th style="width:8%;">Registernr.</th>
+            <th style="width:12%;">Material</th>
+            <th style="width:7%;">Fass-Nr.</th>
+            <th style="width:7%;">Fassvolumen</th>
+            <th style="width:7%;">Inhalt</th>
+            <th style="width:6%;">Alkohol</th>
+            <th style="width:6%;">Ausbeute</th>
+            <th style="width:3%;">Wasser</th>
+            <th style="width:4%;">QR</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
   zeilen.forEach(function(z) {
-    // FUNKTION: Liest die komplette Zeile als Anzeigeformat | EINGRIFF: Physikalische Tabelle
-    const row = sh.getRange(z, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+    const valueRow = sh.getRange(z, 1, 1, sh.getLastColumn()).getValues()[0];
+    const displayRow = sh.getRange(z, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
 
-    // FUNKTION: Liest das Branddatum | EINGRIFF: Mapping
-    const datum = protokollWertAusZeile_(row, map, "TAG_BRAND");
-    // FUNKTION: Liest den Brenner | EINGRIFF: Mapping
-    const brenner = protokollWertAusZeile_(row, map, "BRENNER");
-    // FUNKTION: Liest Startzeit | EINGRIFF: Mapping
-    const von = protokollWertAusZeile_(row, map, "VON");
-    // FUNKTION: Liest Endzeit | EINGRIFF: Mapping
-    const bis = protokollWertAusZeile_(row, map, "BIS");
-    // FUNKTION: Liest Stoffbesitzer | EINGRIFF: Mapping
-    const stoff = protokollWertAusZeile_(row, map, "STOFFBESITZER");
-    // FUNKTION: Liest Register-Nummer | EINGRIFF: Mapping
-    const reg = protokollWertAusZeile_(row, map, "REGISTERNUMMER");
-    // FUNKTION: Liest Material | EINGRIFF: Mapping
-    const material = protokollWertAusZeile_(row, map, "MATERIAL");
-    // FUNKTION: Liest Fasswert aus Vorplanung oder Maische | EINGRIFF: Mapping
-    const fass = protokollWertAusZeile_(row, map, "FASS_VP") || protokollWertAusZeile_(row, map, "FASS_MA");
-    // FUNKTION: Liest Literwert aus Vorplanung oder Maische | EINGRIFF: Mapping
-    const liter = protokollWertAusZeile_(row, map, "INH_VP") || protokollWertAusZeile_(row, map, "INH_MA");
-    // FUNKTION: Liest Alkoholwert | EINGRIFF: Mapping
-    const alk = protokollWertAusZeile_(row, map, "ALKOHOL") || protokollWertAusZeile_(row, map, "ALKOHOL_PROZENT");
-    // FUNKTION: Liest Ausbeute | EINGRIFF: Mapping
-    const ausb = protokollWertAusZeile_(row, map, "AUSBEUTE") || protokollWertAusZeile_(row, map, "AUSBEUTE_LITER");
+    const brandtag = protokollDatumDeutschAusZeile_(valueRow, displayRow, map, "TAG_BRAND");
+    const brenner = protokollWertAusZeile_(displayRow, map, "BRENNER");
+    const von = protokollZeitAusZeile_(valueRow, displayRow, map, "VON");
+    const bis = protokollZeitAusZeile_(valueRow, displayRow, map, "BIS");
+    const stoffbesitzer = protokollWertAusZeile_(displayRow, map, "STOFFBESITZER");
+    const vorgangsId = protokollWertAusZeile_(displayRow, map, "VORGANGS_ID");
+    const registernummer = protokollWertAusZeile_(displayRow, map, "REGISTERNUMMER");
+    const material = protokollWertAusZeile_(displayRow, map, "MATERIAL");
+    const fassNr = protokollWertAusZeile_(displayRow, map, "FASS_NR") || protokollWertAusZeile_(displayRow, map, "FASS_VP");
+    const fassVolumen = protokollWertAusZeile_(displayRow, map, "FASSVOLUMEN") || protokollWertAusZeile_(displayRow, map, "FASS_VOLUMEN");
+    const inhalt = protokollWertAusZeile_(displayRow, map, "INHALT");
+    const alkohol = protokollWertAusZeile_(displayRow, map, "ALKOHOL");
+    const ausbeute = protokollWertAusZeile_(displayRow, map, "AUSBEUTE");
+    const wasser = protokollWertAusZeile_(displayRow, map, "WASSER");
+    const dossierLink =
+      protokollWertAusZeile_(displayRow, map, "DOSSIER_LINK") ||
+      protokollWertAusZeile_(displayRow, map, "DOSSIERLINK") ||
+      protokollWertAusZeile_(displayRow, map, "Dossier_Link");
 
-    // FUNKTION: Kennzeichnet Split-/Folgezeilen visuell | EINGRIFF: Drucklayout
-    const fassClass = (fass === "→" || fass === "↳") ? "pfeil" : "";
+    let rowQrHtml = "";
+    if (dossierLink) {
+      try {
+        const rowQrBlob = UrlFetchApp.fetch(
+          "https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=" + encodeURIComponent(dossierLink),
+          { muteHttpExceptions: true }
+        ).getBlob();
+        const rowQrBase64 = "data:" + rowQrBlob.getContentType() + ";base64," + Utilities.base64Encode(rowQrBlob.getBytes());
+        rowQrHtml = `<img src="${rowQrBase64}" class="row-qr">`;
+      } catch (e) {
+        rowQrHtml = "";
+        systemLogSchreiben_("WARN", "PrintService", "QR-Code pro Vorgang fehlgeschlagen", String(vorgangsId), String(e));
+      }
+    }
 
-    // FUNKTION: Hängt die Druckzeile an den HTML-Output | EINGRIFF: HTML-Generator
     html += `<tr>
-      <td>${printEscapeHtml_(datum)}</td>
+      <td>${printEscapeHtml_(brandtag)}</td>
       <td>${printEscapeHtml_(brenner)}</td>
       <td>${printEscapeHtml_(von)}</td>
       <td>${printEscapeHtml_(bis)}</td>
-      <td>${printEscapeHtml_(stoff)}</td>
-      <td>${printEscapeHtml_(reg)}</td>
+      <td>${printEscapeHtml_(stoffbesitzer)}</td>
+      <td>${printEscapeHtml_(vorgangsId)}</td>
+      <td>${printEscapeHtml_(registernummer)}</td>
       <td>${printEscapeHtml_(material)}</td>
-      <td class="${fassClass}">${printEscapeHtml_(fass)}</td>
-      <td>${printEscapeHtml_(liter)}</td>
-      <td>${printEscapeHtml_(alk)}</td>
-      <td>${printEscapeHtml_(ausb)}</td>
+      <td>${printEscapeHtml_(fassNr)}</td>
+      <td>${printEscapeHtml_(fassVolumen)}</td>
+      <td>${printEscapeHtml_(inhalt)}</td>
+      <td>${printEscapeHtml_(alkohol)}</td>
+      <td>${printEscapeHtml_(ausbeute)}</td>
+      <td>${printEscapeHtml_(wasser)}</td>
+      <td class="qr-col">${rowQrHtml}</td>
     </tr>`;
   });
 
-  // FUNKTION: Schließt das HTML-Dokument | EINGRIFF: HTML-Generator
-  html += "</tbody></table></body></html>";
+  html += `
+        </tbody>
+      </table>
+    </div>
+  </body></html>`;
 
-  // FUNKTION: Öffnet die Druckansicht | EINGRIFF: SpreadsheetApp UI
   SpreadsheetApp.getUi().showModalDialog(
-    HtmlService.createHtmlOutput(html).setWidth(1200).setHeight(900),
+    HtmlService.createHtmlOutput(html).setWidth(1280).setHeight(920),
     " "
   );
 }
 
-// FUNKTION: Erstellt eine kompakte HTML-Einzelansicht für eine Zeile | EINGRIFF: Einzeldruck / Vorschau
-function holeProtokollHtmlFuerEinzelzeile_(blatt, zeile) {
-  // FUNKTION: Liest das Mapping des Blatts | EINGRIFF: 02_BASISHELPER
-  const map = spaltenZuordnungHolen_(blatt);
-  // FUNKTION: Liest die komplette Zeile im Anzeigeformat | EINGRIFF: Physikalische Tabelle
-  const data = blatt.getRange(zeile, 1, 1, blatt.getLastColumn()).getDisplayValues()[0];
-
-  // FUNKTION: Hilfsleser für Mapping-Werte | EINGRIFF: Zeilenexport
-  const getV = function(key) {
-    // CHECK: Existiert die Spalte im Mapping? | FOLGE: Rückgabe Wert oder Platzhalter
-    return map[key] ? (data[map[key] - 1] || "---") : "---";
-  };
-
-  // FUNKTION: Baut die kompakte HTML-Einzelansicht | EINGRIFF: HTML-Generator
-  return `<html><body><h1>BRENNPROTOKOLL</h1><hr><p>ID: ${printEscapeHtml_(getV("VORGANGS_ID"))}</p><p>Besitzer: ${printEscapeHtml_(getV("STOFFBESITZER"))}</p><p>Ergebnis: ${printEscapeHtml_(getV("ALKOHOL"))}% / ${printEscapeHtml_(getV("AUSBEUTE"))}L</p></body></html>`;
-}
-
-// FUNKTION: Ermittelt alle markierten Datenzeilen robust auch bei Mehrfachauswahl | EINGRIFF: UI-Selektion
-function protokollZeilenAuswahlHolen_(blatt) {
-  // FUNKTION: Initialisiert die Ergebnismenge | EINGRIFF: Datenstruktur
-  const set = {};
-  // FUNKTION: Liest die Mehrfachauswahl, falls vorhanden | EINGRIFF: SpreadsheetApp
-  const rangeList = blatt.getActiveRangeList();
-  // FUNKTION: Baut eine Liste der zu prüfenden Bereiche | EINGRIFF: UI-Selektion
-  const ranges = rangeList ? rangeList.getRanges() : [blatt.getActiveRange()];
-
-  // FUNKTION: Iteriert über alle markierten Bereiche | EINGRIFF: Range-Loop
-  ranges.forEach(function(r) {
-    // CHECK: Ist der Bereich gültig? | FOLGE: Verarbeitung
-    if (!r) return;
-
-    // FUNKTION: Ermittelt Startzeile | EINGRIFF: Range-Metadaten
-    const start = r.getRow();
-    // FUNKTION: Ermittelt Anzahl Zeilen | EINGRIFF: Range-Metadaten
-    const count = r.getNumRows();
-
-    // FUNKTION: Übernimmt jede Datenzeile in das Ergebnis-Set | EINGRIFF: Zeilenliste
-    for (let i = 0; i < count; i++) {
-      const z = start + i;
-      if (z > 1) set[z] = true;
-    }
-  });
-
-  // FUNKTION: Wandelt das Set in eine sortierte Liste um | EINGRIFF: API-Rückgabe
-  return Object.keys(set).map(Number).sort(function(a, b) { return a - b; });
-}
-
-// FUNKTION: Liest einen Wert aus einer Zeile anhand des Mapping-Keys | EINGRIFF: Tabellenexport
+// FUNKTION: Liest einen Feldwert aus der Zeile über Mapping-Schlüssel | EINGRIFF: Mapping
 function protokollWertAusZeile_(row, map, key) {
-  // CHECK: Existiert die Spalte im Mapping? | FOLGE: Rückgabe des Inhalts oder Leerstring
   return map[key] ? (row[map[key] - 1] || "") : "";
 }
 
-// FUNKTION: Sichert HTML-Text gegen Sonderzeichen | EINGRIFF: Druck-HTML
-function printEscapeHtml_(text) {
-  // CHECK: Leerer Wert? | FOLGE: Leerstring
-  if (text == null) return "";
-  // FUNKTION: Wandelt kritische Zeichen um | EINGRIFF: HTML-Encoding
-  return String(text).replace(/[&<>"']/g, function(m) {
-    // FUNKTION: Zuordnungstabelle für HTML-Entities | EINGRIFF: Encoding
-    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
-    // FUNKTION: Gibt den umgewandelten Wert zurück | EINGRIFF: API-Rückgabe
-    return map[m];
+
+// FUNKTION: Liest und formatiert ein Datumsfeld für das Brennprotokoll stabil als dd.MM.yyyy | EINGRIFF: Druckdarstellung
+function protokollDatumDeutschAusZeile_(valueRow, displayRow, map, key) {
+  const raw = protokollWertAusZeile_(valueRow, map, key);
+
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    return Utilities.formatDate(
+      raw,
+      KONFIGURATION.ZOLL_PARAMETER.ZEIT_PARAMETER.ZEITZONE,
+      "dd.MM.yyyy"
+    );
+  }
+
+  const display = protokollWertAusZeile_(displayRow, map, key);
+  const text = textNormalisieren_(display || raw);
+  if (!text) return "";
+
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return iso[3] + "." + iso[2] + "." + iso[1];
+
+  const deutsch = text.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (deutsch) return deutsch[1] + "." + deutsch[2] + "." + deutsch[3];
+
+  return text;
+}
+
+// FUNKTION: Liest und formatiert ein Uhrzeitfeld für das Brennprotokoll stabil als HH:mm | EINGRIFF: Druckdarstellung
+function protokollZeitAusZeile_(valueRow, displayRow, map, key) {
+  const raw = protokollWertAusZeile_(valueRow, map, key);
+
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    return Utilities.formatDate(
+      raw,
+      KONFIGURATION.ZOLL_PARAMETER.ZEIT_PARAMETER.ZEITZONE,
+      "HH:mm"
+    );
+  }
+
+  const display = protokollWertAusZeile_(displayRow, map, key);
+  const text = textNormalisieren_(display || raw);
+  if (!text) return "";
+
+  const kurz = text.match(/^(\d{1,2}):(\d{2})$/);
+  if (kurz) return ("0" + kurz[1]).slice(-2) + ":" + kurz[2];
+
+  const lang = text.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+  if (lang) return ("0" + lang[1]).slice(-2) + ":" + lang[2];
+
+  const datumMitZeit = text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
+  if (datumMitZeit) return ("0" + datumMitZeit[1]).slice(-2) + ":" + datumMitZeit[2];
+
+  return text;
+}
+
+// FUNKTION: Ermittelt alle ausgewählten Datenzeilen | EINGRIFF: UI-Selektion
+function protokollZeilenAuswahlHolen_(blatt) {
+  const gesammelt = {};
+  const rangeList = blatt.getActiveRangeList();
+  const ranges = rangeList ? rangeList.getRanges() : [blatt.getActiveRange()];
+
+  ranges.forEach(function(r) {
+    if (!r) return;
+    const startRow = r.getRow();
+    const rowCount = r.getNumRows();
+
+    for (let i = 0; i < rowCount; i++) {
+      const zeile = startRow + i;
+      if (zeile > 1) gesammelt[zeile] = true;
+    }
   });
+
+  return Object.keys(gesammelt).map(Number).sort(function(a, b) {
+    return a - b;
+  });
+}
+
+// FUNKTION: Escaped HTML-sichere Ausgabe | EINGRIFF: Druckdarstellung
+function printEscapeHtml_(text) {
+  if (text == null) return "";
+  return String(text).replace(/[&<>"']/g, function(m) {
+    const esc = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#039;"
+    };
+    return esc[m];
+  });
+}
+
+// FUNKTION: Erzeugt das Druck-HTML für einen kompletten Brandtag | EINGRIFF: WEBAPP / DRIVE / URLFETCH
+function getProtokollHtmlFuerBrandtag(dateStr) {
+  const sh = tabelleHolen_("BRANDTAG_UEBERSICHT");
+  if (!sh) {
+    return protokollLeerHtmlErstellen_('Blatt ' + KONFIGURATION.TABELLEN.BRANDTAG_UEBERSICHT + ' nicht gefunden.');
+  }
+
+  const map = spaltenZuordnungHolen_(sh);
+  const zeilen = protokollZeilenFuerBrandtagHolen_(sh, map, dateStr);
+
+  if (zeilen.length === 0) {
+    return protokollLeerHtmlErstellen_('Keine Brände für den ausgewählten Brandtag.');
+  }
+
+  return protokollHtmlAusZeilenErstellen_(sh, map, zeilen);
+}
+
+// FUNKTION: Ermittelt alle Datenzeilen eines Brandtags | EINGRIFF: Tabellenlesezugriff
+function protokollZeilenFuerBrandtagHolen_(blatt, map, dateStr) {
+  if (!blatt || !map || !map.TAG_BRAND) return [];
+
+  const gesucht = protokollDatumAlsIsoString_(dateStr);
+  if (!gesucht) return [];
+
+  const daten = blatt.getDataRange().getValues();
+  const zeilen = [];
+
+  for (let i = 1; i < daten.length; i++) {
+    const row = daten[i];
+    const tagBrand = protokollDatumAlsIsoString_(row[map.TAG_BRAND - 1]);
+    const zollOk = protokollWertAusZeile_(row, map, "ZOLL_OK");
+    if (tagBrand === gesucht && zollOk === "✅ GENEHMIGT") {
+      zeilen.push(i + 1);
+    }
+  }
+
+  return zeilen;
+}
+
+// FUNKTION: Erstellt das vollständige Druck-HTML aus Datenzeilen | EINGRIFF: HTML-Aufbau / DRIVE / URLFETCH
+function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
+  let logoBase64 = "";
+  try {
+    const files = DriveApp.getFolderById(KONFIGURATION.DRIVE_ORDNER.LOGO_ORDNER_ID).getFiles();
+    while (files.hasNext()) {
+      const f = files.next();
+      const n = String(f.getName() || "").toLowerCase();
+      if (n.indexOf("ogv") !== -1 || n.indexOf("logo") !== -1 || n.match(/\.(png|jpg|jpeg|svg|webp)$/)) {
+        logoBase64 = "data:" + f.getMimeType() + ";base64," + Utilities.base64Encode(f.getBlob().getBytes());
+        break;
+      }
+    }
+  } catch (e) {
+    systemLogSchreiben_("WARN", "PrintService", "Logoabruf fehlgeschlagen", "", String(e));
+  }
+
+  const brennereiNummer = (KONFIGURATION.IDENTITAET && KONFIGURATION.IDENTITAET.BRENNEREI_NUMMER)
+    ? KONFIGURATION.IDENTITAET.BRENNEREI_NUMMER
+    : "1460927";
+
+  const zollOrdnerUrl = "https://drive.google.com/drive/folders/1W8OO9I6viZYlCqapX2uqcONDES0vySPn";
+
+  let qrZollOrdner = "";
+  try {
+    const qrBlob = UrlFetchApp.fetch(
+      "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(zollOrdnerUrl),
+      { muteHttpExceptions: true }
+    ).getBlob();
+    qrZollOrdner = "data:" + qrBlob.getContentType() + ";base64," + Utilities.base64Encode(qrBlob.getBytes());
+  } catch (e) {
+    systemLogSchreiben_("WARN", "PrintService", "QR-Code für Zollordner fehlgeschlagen", "", String(e));
+  }
+
+  let html = `<html><head><style>
+    @page { size: A4 landscape; margin: 8mm; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: "Segoe UI", sans-serif; font-size: 10px; line-height: 1.2; color: #333; background: #fff; }
+    .page { width: 100%; box-sizing: border-box; position: relative; min-height: 100%; padding-bottom: 46px; }
+    .no-p { text-align: center; padding: 0; margin: 0; }
+    .print-btn { position: fixed; left: 50%; transform: translateX(-50%); bottom: 10px; z-index: 9999; padding: 6px 14px; background: #d9534f; color: white; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 11px; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+    .header { display: grid; grid-template-columns: 300px 1fr 260px; align-items: start; column-gap: 12px; border-bottom: 3px solid #d9534f; padding-bottom: 4px; margin-bottom: 4px; }
+    .logo-wrap { text-align: left; }
+    .logo-img { width: 150px; max-width: 300px; height: auto; display: block; }
+    .title-block { text-align: center; color: #000; line-height: 1.05; padding-top: 0; margin-top: 0; }
+    .title-main { font-weight: 800; font-size: 26px; letter-spacing: 0.2px; }
+    .title-sub { margin-top: 4px; font-weight: 700; font-size: 16px; }
+    .contact-info { text-align: right; font-size: 9.5px; line-height: 1.15; color: #333; padding-top: 0; margin-top: 0; }
+    .zoll-contact-inline { margin-top: 4px; text-align: right; color: #b3b3b3; font-size: 7.8px; line-height: 1.1; filter: grayscale(1) opacity(0.32); }
+    .zoll-contact-inline img { width: 38px; height: 38px; object-fit: contain; display: block; margin: 0 0 2px auto; border: 1px solid #e3e3e3; background: #fff; }
+    .zoll-contact-title { font-weight: 700; color: #b3b3b3; margin-bottom: 1px; }
+    .protokoll-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 0; margin-bottom: 8px; }
+    .protokoll-table th { border: 1.2px solid #000; background: #eaeaea; color: #000; padding: 4px 3px; font-size: 8.2px; font-weight: 800; text-transform: uppercase; line-height: 1.05; }
+    .protokoll-table td { border: 1.2px solid #000; padding: 5px 4px; font-size: 9.5px; line-height: 1.15; vertical-align: top; word-break: break-word; }
+    .qr-col { text-align: center; padding: 2px !important; }
+    .row-qr { width: 28px; height: 28px; object-fit: contain; display: block; margin: 0 auto; }
+    @media print { .no-p { display: none; } }
+  </style></head><body>
+    <div class="no-p"><button class="print-btn" onclick="window.print()">DRUCKEN</button></div>
+    <div class="page">
+      <div class="header">
+        <div class="logo-wrap">${logoBase64 ? `<img src="${logoBase64}" class="logo-img">` : ``}</div>
+        <div class="title-block">
+          <div class="title-main">Brennprotokoll</div>
+          <div class="title-sub">Brennereinummer: ${printEscapeHtml_(brennereiNummer)}</div>
+        </div>
+        <div class="contact-info">
+          Ansprechpartner: ${printEscapeHtml_(KONFIGURATION.KONTAKT.NAME)}<br>
+          📞 ${printEscapeHtml_(KONFIGURATION.KONTAKT.TEL)}<br>
+          📧 ${printEscapeHtml_(KONFIGURATION.KONTAKT.MAIL)}
+          <div class="zoll-contact-inline">
+            ${qrZollOrdner ? `<img src="${qrZollOrdner}" alt="">` : ``}
+            <div class="zoll-contact-title">Kontaktdaten Zoll</div>
+            <div>bei Notfall / Minderausbeute</div>
+          </div>
+        </div>
+      </div>
+      <table class="protokoll-table">
+        <thead>
+          <tr>
+            <th style="width:7%;">Brandtag</th>
+            <th style="width:7%;">Brenner</th>
+            <th style="width:5%;">Von</th>
+            <th style="width:5%;">Bis</th>
+            <th style="width:12%;">Stoffbesitzer</th>
+            <th style="width:7%;">Vorgangs_ID</th>
+            <th style="width:8%;">Registernr.</th>
+            <th style="width:12%;">Material</th>
+            <th style="width:7%;">Fass-Nr.</th>
+            <th style="width:7%;">Fassvolumen</th>
+            <th style="width:7%;">Inhalt</th>
+            <th style="width:6%;">Alkohol</th>
+            <th style="width:6%;">Ausbeute</th>
+            <th style="width:3%;">Wasser</th>
+            <th style="width:4%;">QR</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  zeilen.forEach(function(z) {
+    const valueRow = sh.getRange(z, 1, 1, sh.getLastColumn()).getValues()[0];
+    const displayRow = sh.getRange(z, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+    const brandtag = protokollDatumDeutschAusZeile_(valueRow, displayRow, map, "TAG_BRAND");
+    const brenner = protokollWertAusZeile_(displayRow, map, "BRENNER");
+    const von = protokollZeitAusZeile_(valueRow, displayRow, map, "VON");
+    const bis = protokollZeitAusZeile_(valueRow, displayRow, map, "BIS");
+    const stoffbesitzer = protokollWertAusZeile_(displayRow, map, "STOFFBESITZER");
+    const vorgangsId = protokollWertAusZeile_(displayRow, map, "VORGANGS_ID");
+    const registernummer = protokollWertAusZeile_(displayRow, map, "REGISTERNUMMER");
+    const material = protokollWertAusZeile_(displayRow, map, "MATERIAL");
+    const fassNr = protokollWertAusZeile_(displayRow, map, "FASS_NR") || protokollWertAusZeile_(displayRow, map, "FASS_VP");
+    const fassVolumen = protokollWertAusZeile_(displayRow, map, "FASSVOLUMEN") || protokollWertAusZeile_(displayRow, map, "FASS_VOLUMEN");
+    const inhalt = protokollWertAusZeile_(displayRow, map, "INHALT");
+    const alkohol = protokollWertAusZeile_(displayRow, map, "ALKOHOL");
+    const ausbeute = protokollWertAusZeile_(displayRow, map, "AUSBEUTE");
+    const wasser = protokollWertAusZeile_(displayRow, map, "WASSER");
+    const dossierLink = protokollWertAusZeile_(displayRow, map, "DOSSIER_LINK") || protokollWertAusZeile_(displayRow, map, "DOSSIERLINK") || protokollWertAusZeile_(displayRow, map, "Dossier_Link");
+
+    let rowQrHtml = "";
+    if (dossierLink) {
+      try {
+        const rowQrBlob = UrlFetchApp.fetch("https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=" + encodeURIComponent(dossierLink), { muteHttpExceptions: true }).getBlob();
+        const rowQrBase64 = "data:" + rowQrBlob.getContentType() + ";base64," + Utilities.base64Encode(rowQrBlob.getBytes());
+        rowQrHtml = `<img src="${rowQrBase64}" class="row-qr">`;
+      } catch (e) {
+        rowQrHtml = "";
+        systemLogSchreiben_("WARN", "PrintService", "QR-Code pro Vorgang fehlgeschlagen", String(vorgangsId), String(e));
+      }
+    }
+
+    html += `<tr>
+      <td>${printEscapeHtml_(brandtag)}</td>
+      <td>${printEscapeHtml_(brenner)}</td>
+      <td>${printEscapeHtml_(von)}</td>
+      <td>${printEscapeHtml_(bis)}</td>
+      <td>${printEscapeHtml_(stoffbesitzer)}</td>
+      <td>${printEscapeHtml_(vorgangsId)}</td>
+      <td>${printEscapeHtml_(registernummer)}</td>
+      <td>${printEscapeHtml_(material)}</td>
+      <td>${printEscapeHtml_(fassNr)}</td>
+      <td>${printEscapeHtml_(fassVolumen)}</td>
+      <td>${printEscapeHtml_(inhalt)}</td>
+      <td>${printEscapeHtml_(alkohol)}</td>
+      <td>${printEscapeHtml_(ausbeute)}</td>
+      <td>${printEscapeHtml_(wasser)}</td>
+      <td class="qr-col">${rowQrHtml}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div></body></html>`;
+  return html;
+}
+
+// FUNKTION: Leeres Druck-HTML für WebApp-Rückgabe | EINGRIFF: HTML-Aufbau
+function protokollLeerHtmlErstellen_(meldung) {
+  return `<html><head><style>
+    body { font-family: "Segoe UI", sans-serif; margin: 0; padding: 32px; background: #ffffff; color: #333333; }
+    .msg { max-width: 720px; margin: 0 auto; border: 1px solid #d9d9d9; border-radius: 12px; padding: 24px; text-align: center; font-size: 18px; font-weight: 600; }
+  </style></head><body><div class="msg">${printEscapeHtml_(meldung || 'Keine Daten vorhanden.')}</div></body></html>`;
+}
+
+// FUNKTION: ISO-Datum für Brandtag-Vergleich | EINGRIFF: Datumsnormalisierung
+function protokollDatumAlsIsoString_(wert) {
+  if (!wert) return '';
+
+  if (wert instanceof Date) {
+    return Utilities.formatDate(
+      wert,
+      KONFIGURATION.ZOLL_PARAMETER.ZEIT_PARAMETER.ZEITZONE,
+      'yyyy-MM-dd'
+    );
+  }
+
+  const text = String(wert || '').trim();
+  if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+
+  const match = text.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (match) {
+    return match[3] + '-' + match[2] + '-' + match[1];
+  }
+
+  return '';
 }

@@ -1,145 +1,201 @@
 /**
- * DATEI: 03_IDSERVICE.GS
- * ZENTRALE VORGANGS-ID VERWALTUNG (DUBLETTEN-SCHUTZ & AUTO-INCREMENT)
+ * DATEI: 03_IDService.gs
+ * ZWECK: ZENTRALE ID-VERWALTUNG IM FORMAT V-YYYY-XXX
  */
 
 
-// FUNKTION: Erzeugt oder findet eine eindeutige Vorgangs_ID | EINGRIFF: Zentralregister
-// CHECK: Existenz eines "GEPLANT"-Eintrags für Stoffbesitzer | FOLGE: Rückgabe bestehende ID oder Generierung
-function vorgangsIdSicherstellen_(stoffbesitzer) {
-  // FUNKTION: Normalisiert den Stoffbesitzer | EINGRIFF: String-Cleaning
+/**
+ * FUNKTION: Sucht einen offenen ANGELEGT-Vorgang eines Stoffbesitzers.
+ * RÜCKGABE: Vorgangs-ID oder leer.
+ */
+function offeneVorgangsIdDesStoffbesitzersHolen_(stoffbesitzer) {
   const stoff = textNormalisieren_(stoffbesitzer);
-  // CHECK: Liegt ein Stoffbesitzer vor? | FOLGE: Abbruch bei Leerwert
   if (!stoff) return "";
 
-
-  // FUNKTION: Referenziert das Zentralregister | EINGRIFF: 01_CONFIG
   const shReg = tabelleHolen_("ZENTRALREGISTER");
-  // CHECK: Ist das Zentralregister vorhanden? | FOLGE: Abbruch bei Strukturfehler
-  if (!shReg) return "";
+  if (!shReg || shReg.getLastRow() < 2) return "";
 
-
-  // FUNKTION: Liest das Spalten-Mapping des Registers | EINGRIFF: 02_BASISHELPER
   const sMap = spaltenZuordnungHolen_(shReg);
-  // CHECK: Sind die Kernspalten vorhanden? | FOLGE: Abbruch bei Fehlstruktur
-  if (!sMap.VORGANGS_ID || !sMap.DATUM || !sMap.STOFFBESITZER || !sMap.STATUS) return "";
+  if (!sMap.VORGANGS_ID || !sMap.STOFFBESITZER || !sMap.STATUS) {
+    systemLogSchreiben_("ERROR", "IDService", "Mapping-Fehler im Zentralregister", "", "Pflichtspalten fehlen");
+    return "";
+  }
 
-
-  // FUNKTION: Liest alle Registerdaten | EINGRIFF: Physikalische Tabelle
   const daten = shReg.getDataRange().getValues();
 
-
-  // FUNKTION: Prüft auf bestehenden offenen Vorgang des Stoffbesitzers | EINGRIFF: Dubletten-Prüfung
   for (let i = 1; i < daten.length; i++) {
-    // FUNKTION: Liest Stoffbesitzer der Registerzeile | EINGRIFF: Mapping
     const regStoff = textNormalisieren_(daten[i][sMap.STOFFBESITZER - 1]);
-    // FUNKTION: Liest Status der Registerzeile | EINGRIFF: Mapping
     const regStatus = textNormalisieren_(daten[i][sMap.STATUS - 1]);
 
-
-    // CHECK: Gleicher Besitzer und Status GEPLANT? | FOLGE: Wiederverwendung der bestehenden ID
-    if (regStoff === stoff && regStatus === textNormalisieren_(KONFIGURATION.STATUSWERTE.GEPLANT)) {
+    if (regStoff === stoff && regStatus === KONFIGURATION.STATUSWERTE.ANGELEGT) {
       return textNormalisieren_(daten[i][sMap.VORGANGS_ID - 1]);
     }
   }
 
+  return "";
+}
 
-  // FUNKTION: Liest die konfigurierte Zeitzone | EINGRIFF: 01_CONFIG
-  const zeitzone = KONFIGURATION.ZOLL_PARAMETER.ZEIT_PARAMETER.ZEITZONE || "Europe/Berlin";
-  // FUNKTION: Ermittelt das Jahressegment der ID | EINGRIFF: Datumslogik
-  const jahr = Utilities.formatDate(new Date(), zeitzone, "yyyy");
-  // FUNKTION: Baut das Präfix der neuen ID im verbindlichen V-Format | EINGRIFF: ID-Logik
+
+/**
+ * FUNKTION: Ermittelt die nächste freie Vorgangs-ID des laufenden Jahres.
+ * FORMAT: V-YYYY-XXX
+ */
+function naechsteVorgangsIdErmitteln_() {
+  const shReg = tabelleHolen_("ZENTRALREGISTER");
+  if (!shReg) {
+    throw new Error("📂_ZENTRALREGISTER nicht gefunden.");
+  }
+
+  const sMap = spaltenZuordnungHolen_(shReg);
+  if (!sMap.VORGANGS_ID) {
+    throw new Error("Spalte Vorgangs_ID im Zentralregister fehlt.");
+  }
+
+  const daten = shReg.getDataRange().getValues();
+  const jahr = Utilities.formatDate(
+    new Date(),
+    KONFIGURATION.ZOLL_PARAMETER.ZEIT_PARAMETER.ZEITZONE,
+    "yyyy"
+  );
   const praefix = "V-" + jahr + "-";
-  // FUNKTION: Baut das exakte Prüfregex für gültige IDs des laufenden Jahres | EINGRIFF: ID-Validierung
-  const regex = new RegExp("^" + praefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\d{3})$");
-
-
-  // FUNKTION: Initialisiert den höchsten gefundenen Zähler | EINGRIFF: Laufnummernlogik
   let maxNr = 0;
 
-
-  // FUNKTION: Durchsucht das Register nach der höchsten bestehenden Nummer zum V-Präfix | EINGRIFF: Suffix-Logik
   for (let i = 1; i < daten.length; i++) {
-    // FUNKTION: Liest die bestehende ID der Registerzeile | EINGRIFF: Mapping
     const id = textNormalisieren_(daten[i][sMap.VORGANGS_ID - 1]);
-    // FUNKTION: Prüft die ID streng gegen das Sollformat des laufenden Jahres | EINGRIFF: ID-Validierung
-    const match = id.match(regex);
+    if (id.indexOf(praefix) !== 0) continue;
 
+    const teile = id.split("-");
+    const nr = parseInt(teile[teile.length - 1], 10);
 
-    // CHECK: Entspricht die ID exakt dem erwarteten Format? | FOLGE: Extraktion der laufenden Nummer
-    if (match) {
-      // FUNKTION: Ermittelt die numerische Endung der ID aus der Regex-Gruppe | EINGRIFF: String-Auswertung
-      const nr = parseInt(match[1], 10);
-      // CHECK: Ist die Nummer gültig und größer als der aktuelle Maximalwert? | FOLGE: Aktualisierung des Zählers
-      if (!isNaN(nr) && nr > maxNr) maxNr = nr;
+    if (!isNaN(nr) && nr > maxNr) {
+      maxNr = nr;
     }
   }
 
-
-  // FUNKTION: Baut die neue eindeutige Vorgangs-ID | EINGRIFF: ID-Generierung
-  const neueId = praefix + (maxNr + 1).toString().padStart(3, "0");
-
-
-  // FUNKTION: Erstellt eine leere Zielzeile in Registerbreite | EINGRIFF: Datenstruktur
-  const nZ = new Array(shReg.getLastColumn()).fill("");
-  // FUNKTION: Schreibt die neue ID in die Zielzeile | EINGRIFF: Registeraufbau
-  nZ[sMap.VORGANGS_ID - 1] = neueId;
-  // FUNKTION: Schreibt das aktuelle Datum in die Zielzeile | EINGRIFF: Registeraufbau
-  nZ[sMap.DATUM - 1] = new Date();
-  // FUNKTION: Schreibt den Stoffbesitzer in die Zielzeile | EINGRIFF: Registeraufbau
-  nZ[sMap.STOFFBESITZER - 1] = stoff;
-  // FUNKTION: Schreibt den Startstatus in die Zielzeile | EINGRIFF: Registeraufbau
-  nZ[sMap.STATUS - 1] = KONFIGURATION.STATUSWERTE.GEPLANT;
+  return praefix + String(maxNr + 1).padStart(3, "0");
+}
 
 
-  // FUNKTION: Hängt die neue Registerzeile an | EINGRIFF: Physikalische Tabelle
-  shReg.appendRow(nZ);
-  // FUNKTION: Protokolliert die ID-Neuanlage | EINGRIFF: SYSTEM_LOG
-  systemLogSchreiben_("INFO", "IDService", "Neue ID registriert", neueId, stoff);
+/**
+ * FUNKTION: Legt einen Registereintrag an oder aktualisiert ihn.
+ * LOGIK:
+ * - existiert die ID schon -> Stoffbesitzer/Status aktualisieren
+ * - existiert sie noch nicht -> neue Registerzeile anlegen
+ */
+function registereintragSicherstellen_(vId, stoffbesitzer, status) {
+  const vorgangsId = textNormalisieren_(vId);
+  const stoff = textNormalisieren_(stoffbesitzer);
+  const statusWert = textNormalisieren_(status) || KONFIGURATION.STATUSWERTE.ANGELEGT;
+
+  if (!vorgangsId) throw new Error("Vorgangs-ID fehlt.");
+  if (!stoff) throw new Error("Stoffbesitzer fehlt.");
+
+  const shReg = tabelleHolen_("ZENTRALREGISTER");
+  if (!shReg) throw new Error("📂_ZENTRALREGISTER nicht gefunden.");
+
+  const sMap = spaltenZuordnungHolen_(shReg);
+  if (!sMap.VORGANGS_ID || !sMap.STOFFBESITZER) {
+    throw new Error("Pflichtspalten im Zentralregister fehlen.");
+  }
+
+  const zeile = ersteZeileMitVorgangsIdHolen_(shReg, vorgangsId);
+
+  if (zeile > 1) {
+    if (sMap.STOFFBESITZER) {
+      shReg.getRange(zeile, sMap.STOFFBESITZER).setValue(stoff);
+    }
+    if (sMap.STATUS) {
+      shReg.getRange(zeile, sMap.STATUS).setValue(statusWert);
+    }
+
+    systemLogSchreiben_("INFO", "IDService", "Registereintrag aktualisiert", vorgangsId, "Besitzer: " + stoff);
+    return vorgangsId;
+  }
+
+  const neueZeile = new Array(shReg.getLastColumn()).fill("");
+
+  if (sMap.VORGANGS_ID) neueZeile[sMap.VORGANGS_ID - 1] = vorgangsId;
+  if (sMap.DATUM) neueZeile[sMap.DATUM - 1] = new Date();
+  if (sMap.STOFFBESITZER) neueZeile[sMap.STOFFBESITZER - 1] = stoff;
+  if (sMap.STATUS) neueZeile[sMap.STATUS - 1] = statusWert;
+
+  shReg.appendRow(neueZeile);
+
+  systemLogSchreiben_("INFO", "IDService", "Registereintrag angelegt", vorgangsId, "Besitzer: " + stoff);
+  return vorgangsId;
+}
 
 
-  // FUNKTION: Liefert die neue Vorgangs-ID zurück | EINGRIFF: API-Rückgabe
+/**
+ * FUNKTION: Standardverhalten für Tabellenbearbeitung.
+ * LOGIK:
+ * - wenn offener ANGELEGT-Vorgang desselben Stoffbesitzers existiert -> wiederverwenden
+ * - sonst neue ID anlegen
+ */
+function vorgangsIdSicherstellen_(stoffbesitzer) {
+  const stoff = textNormalisieren_(stoffbesitzer);
+  if (!stoff) return "";
+
+  const offeneId = offeneVorgangsIdDesStoffbesitzersHolen_(stoff);
+  if (offeneId) {
+    return offeneId;
+  }
+
+  return vorgangsIdNeuAnlegen_(stoff);
+}
+
+
+/**
+ * FUNKTION: Erzwingt immer eine neue Vorgangs-ID.
+ * EINSATZ: WebApp-Button „+ Neuer Vorgang“
+ */
+function vorgangsIdNeuAnlegen_(stoffbesitzer) {
+  const stoff = textNormalisieren_(stoffbesitzer);
+  if (!stoff) throw new Error("Stoffbesitzer fehlt.");
+
+  const neueId = naechsteVorgangsIdErmitteln_();
+  registereintragSicherstellen_(neueId, stoff, KONFIGURATION.STATUSWERTE.ANGELEGT);
+
+  systemLogSchreiben_("INFO", "IDService", "Neue ID generiert", neueId, "Besitzer: " + stoff);
   return neueId;
 }
 
 
-// FUNKTION: Erzeugt ein 2-stelliges Kürzel aus dem Namen | EINGRIFF: Alt-Kompatibilität
-function kuerzelGenerieren_(name) {
-  // FUNKTION: Normalisiert den Namen auf Großbuchstaben A-Z | EINGRIFF: String-Cleaning
-  const clean = String(name == null ? "" : name).toUpperCase().replace(/[^A-Z]/g, "");
-  // FUNKTION: Liefert zwei Zeichen mit Fallback X | EINGRIFF: API-Rückgabe
-  return (clean.length >= 2) ? clean.substring(0, 2) : (clean + "X").substring(0, 2);
+/**
+ * FUNKTION: Aktualisiert den Status im Zentralregister.
+ */
+function registerStatusAktualisieren_(vId, neu) {
+  const vorgangsId = textNormalisieren_(vId);
+  const neuerStatus = textNormalisieren_(neu);
+
+  if (!vorgangsId) return;
+
+  const sh = tabelleHolen_("ZENTRALREGISTER");
+  if (!sh) return;
+
+  const sMap = spaltenZuordnungHolen_(sh);
+  if (!sMap.STATUS) return;
+
+  const z = ersteZeileMitVorgangsIdHolen_(sh, vorgangsId);
+
+  if (z > 1) {
+    sh.getRange(z, sMap.STATUS).setValue(neuerStatus);
+    systemLogSchreiben_("INFO", "IDService", "Status-Update im Register", vorgangsId, "Neuer Status: " + neuerStatus);
+  } else {
+    systemLogSchreiben_("WARN", "IDService", "Status-Update fehlgeschlagen - ID nicht im Register", vorgangsId, "");
+  }
 }
 
 
-// FUNKTION: Aktualisiert den Status einer ID im Register | EINGRIFF: Zentralregister
-// CHECK: Übereinstimmung der Vorgangs_ID | FOLGE: Status-Update
-function registerStatusAktualisieren_(vId, neuerStatus) {
-  // FUNKTION: Normalisiert die Eingangs-ID | EINGRIFF: String-Cleaning
-  const id = textNormalisieren_(vId);
-  // CHECK: Liegt eine Vorgangs-ID vor? | FOLGE: Abbruch bei Leerwert
-  if (!id) return;
+/**
+ * FUNKTION: Prüft, ob eine Vorgangs-ID im Zentralregister existiert.
+ */
+function vorgangsIdExistiert_(vId) {
+  const vorgangsId = textNormalisieren_(vId);
+  if (!vorgangsId) return false;
 
-
-  // FUNKTION: Referenziert das Register | EINGRIFF: 01_CONFIG
   const sh = tabelleHolen_("ZENTRALREGISTER");
-  // CHECK: Ist das Register vorhanden? | FOLGE: Abbruch bei Fehlstruktur
-  if (!sh) return;
+  if (!sh) return false;
 
-
-  // FUNKTION: Liest das Register-Mapping | EINGRIFF: 02_BASISHELPER
-  const sMap = spaltenZuordnungHolen_(sh);
-  // CHECK: Sind ID- und Statusspalte vorhanden? | FOLGE: Abbruch bei Fehlstruktur
-  if (!sMap.VORGANGS_ID || !sMap.STATUS) return;
-
-
-  // FUNKTION: Ermittelt die Registerzeile zur Vorgangs-ID | EINGRIFF: 02_BASISHELPER
-  const zeile = ersteZeileMitVorgangsIdHolen_(sh, id);
-
-
-  // CHECK: Wurde eine gültige Datenzeile gefunden? | FOLGE: Schreiben des neuen Status
-  if (zeile > 1) {
-    // FUNKTION: Schreibt den neuen Status in das Register | EINGRIFF: Physikalische Tabelle
-    sh.getRange(zeile, sMap.STATUS).setValue(neuerStatus);
-  }
+  return ersteZeileMitVorgangsIdHolen_(sh, vorgangsId) > 1;
 }

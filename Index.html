@@ -1,137 +1,1660 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <base target="_top">
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <?!= include('Styles'); ?>
-</head>
-<body>
-<script>
-  const serverVId = <?= JSON.stringify(editVId || "") ?>;
-  const startTabServer = <?= JSON.stringify(startTab || "tab1") ?>;
-</script>
+  <head>
+    <base target="_self">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= HtmlService.createHtmlOutputFromFile('Styles').getContent(); ?>
 
-<div class="main-frame">
-  <div class="header-top">
-    <div class="visual-cal" id="visualCal">
-      <b id="monthLabel">MONAT</b>
-      <div class="cal-grid" id="calGrid"></div>
-    </div>
+    <style>
+      /* GitHub-Wrapper schneidet oben 80px ab, um den Google-Hinweis auszublenden.
+         Dieser Ausgleich macht Überschrift und obere Buttons wieder sichtbar. */
+      .main-frame {
+        margin-top: 80px !important;
+      }
 
-    <div class="header-center">
-      <h2 id="mainTitle">OGV BREITFURT</h2>
-      <div id="vorgangInfo" class="sub-info-strong">VORGANG: NEU</div>
-      <p id="curDate" class="sub-info"></p>
-    </div>
+      .app-shell {
+        display: grid;
+        gap: 12px;
+      }
 
-    <div class="ticker-led">
-      <div class="ticker-label" id="tickerTitle">SUMME BRÄNDE</div>
-      <span id="tickerVal">00</span>
-    </div>
-  </div>
+      .overview-stack {
+        display: grid;
+        gap: 10px;
+      }
 
-  <div id="saveStatus" class="status-box status-info" style="display:none;"></div>
 
-  <div class="tab-nav">
-    <button type="button" class="tab-btn active" id="btn_tab1" onclick="openTab(event, 'tab1')">1. ANMELDUNG (ANRUF)</button>
-    <button type="button" class="tab-btn" id="btn_tab2" onclick="openTab(event, 'tab2')">2. DISPOSITION (PLANUNG)</button>
-    <button type="button" class="tab-btn" id="btn_tab3" onclick="openTab(event, 'tab3')">3. MAISCHEANNAHME (VOR ORT)</button>
-  </div>
+      .zoll-access-btn {
+        background: #10233f !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(55, 142, 255, 0.65) !important;
+        box-shadow: 0 0 0 1px rgba(55,142,255,0.16), var(--shadow-out) !important;
+      }
 
-  <div class="content-shell">
-    <div id="tab1" class="tab-content active">
-      <div class="card toolbar" id="toolbar" style="display:none;">
-        <button type="button" class="btn-util" onclick="openDossier()">📂 DOSSIER</button>
-        <button type="button" class="btn-util" onclick="google.script.run.stoffbesitzerChecklisteErstellen()">📄 CHECKLISTE</button>
-      </div>
+      .overview-btn {
+        width: 100%;
+        min-height: 64px;
+        font-size: 24px;
+        font-weight: 900;
+        border-radius: 16px;
+      }
 
-      <div class="card top-grid">
-        <div>
-          <label for="anrufDatum">Anruf-Datum</label>
-          <input type="date" id="anrufDatum">
+      .section-title {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1.02;
+        font-weight: 900;
+        color: #ffffff;
+      }
+
+      .section-stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .action-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        align-items: stretch;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-5 {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .hidden-section {
+        display: none;
+      }
+
+      .full-width {
+        width: 100%;
+      }
+
+      .readonly-field {
+        background: #2a2a2a !important;
+        color: #ffffff !important;
+        border: 1px solid #444 !important;
+      }
+
+      .compact-card {
+        padding: 10px !important;
+      }
+
+      .slot-card {
+        display: grid;
+        gap: 6px;
+      }
+
+      .slot-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .slot-core input,
+      .slot-core select {
+        color: var(--neon) !important;
+        font-weight: 900;
+      }
+
+      .multi-picker {
+        position: relative;
+        width: 100%;
+      }
+
+      .multi-picker-input-wrap {
+        position: relative;
+        width: 100%;
+      }
+
+      .multi-picker-input-wrap::after {
+        content: "▾";
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--neon);
+        font-size: 18px;
+        line-height: 1;
+        pointer-events: none;
+      }
+
+      .multi-picker.open .multi-picker-input-wrap::after {
+        content: "▴";
+      }
+
+      .multi-picker-input {
+        width: 100%;
+        min-height: 48px;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 34px 10px 12px;
+        background: var(--input-bg);
+        color: #ffffff !important;
+        font-size: 15px;
+        font-weight: 900;
+        box-shadow: var(--neo-in);
+        outline: none;
+      }
+
+      .multi-picker-input.has-selection {
+        color: var(--neon) !important;
+        text-shadow: 0 0 8px rgba(0, 255, 0, 0.85);
+      }
+
+      .multi-picker-panel {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 6px);
+        z-index: 50;
+        max-height: 240px;
+        overflow-y: auto;
+        background: #222222;
+        color: #ffffff;
+        border: 1px solid #444;
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: var(--neo-out);
+      }
+
+      .multi-picker.open .multi-picker-panel {
+        display: block;
+      }
+
+      .stoffbesitzer-suche-wrap {
+        position: relative;
+        width: 100%;
+      }
+
+      .stoffbesitzer-suche {
+        width: 100%;
+        min-height: 48px;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: var(--input-bg);
+        color: var(--neon) !important;
+        font-size: 15px;
+        font-weight: 900;
+        box-shadow: var(--neo-in);
+        outline: none;
+      }
+
+      .stoffbesitzer-suche::placeholder {
+        color: #b8b8b8;
+        font-size: 12px;
+        font-weight: 700;
+        opacity: 1;
+      }
+
+      .stoffbesitzer-vorschlaege {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 6px);
+        z-index: 55;
+        max-height: 260px;
+        overflow-y: auto;
+        background: #222222;
+        color: #ffffff;
+        border: 1px solid #444444;
+        border-radius: 12px;
+        padding: 8px;
+        box-shadow: var(--shadow-out);
+      }
+
+      .stoffbesitzer-vorschlaege.open {
+        display: grid;
+        gap: 6px;
+      }
+
+      .stoffbesitzer-vorschlag {
+        width: 100%;
+        min-height: 42px;
+        padding: 8px 10px;
+        border: 1px solid #3a3a3a;
+        border-radius: 12px;
+        background: #2a2a2a;
+        color: #ffffff;
+        font-weight: 900;
+        text-align: left;
+        cursor: pointer;
+        box-shadow: var(--neo-out);
+      }
+
+      .stoffbesitzer-vorschlag:hover,
+      .stoffbesitzer-vorschlag:focus {
+        color: var(--neon);
+        border-color: var(--neon);
+        outline: none;
+      }
+
+      .stoffbesitzer-hinweis {
+        color: #b8b8b8;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 8px 10px;
+      }
+
+      .multi-picker-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .check-chip {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 32px;
+        padding: 5px 7px;
+        border-radius: 9px;
+        background: rgba(255,255,255,0.04);
+        color: #ffffff;
+        font-size: 13px !important;
+        font-weight: 800;
+        line-height: 1.15;
+        border: 1px solid transparent;
+      }
+
+      .check-chip:has(input:checked) {
+        color: var(--neon);
+        border-color: var(--neon);
+        box-shadow: 0 0 18px rgba(0, 255, 0, 0.9);
+        background: rgba(0,255,0,0.16);
+        text-shadow: 0 0 8px rgba(0, 255, 0, 0.9);
+      }
+
+      .check-chip input {
+        width: 18px;
+        height: 18px;
+        min-width: 18px;
+        accent-color: var(--neon);
+      }
+
+      .slot-remove-cell {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+      }
+
+      .slot-remove-btn {
+        width: 42px;
+        min-width: 42px;
+        max-width: 42px;
+        height: 42px;
+        padding: 0 !important;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(145deg, #7a0000, #ff2b2b);
+        color: #ffffff;
+        font-size: 18px !important;
+        font-weight: 900;
+        box-shadow: var(--neo-out);
+        cursor: pointer;
+      }
+
+      .small-plus-btn {
+        width: 34px;
+        min-width: 34px;
+        max-width: 34px;
+        height: 34px;
+        min-height: 34px;
+        padding: 0;
+        font-size: 22px !important;
+        line-height: 1;
+        border-radius: 10px;
+      }
+
+      .folder-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 48px;
+        border-radius: 10px;
+        background: var(--input-bg);
+        box-shadow: var(--neo-in);
+        color: var(--neon);
+        font-size: 28px;
+        text-decoration: none;
+        font-weight: 900;
+      }
+
+      .folder-link.disabled {
+        color: #777;
+        pointer-events: none;
+        opacity: .7;
+      }
+
+      #mainTitle {
+        font-size: 34px;
+        line-height: 1.02;
+        margin-bottom: 12px;
+      }
+
+      #toastBox {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 9999;
+        display: none;
+        min-width: min(92vw, 360px);
+        max-width: min(92vw, 520px);
+        padding: 18px 20px;
+        border-radius: 18px;
+        background: var(--card-bg);
+        color: #ffffff;
+        font-weight: 900;
+        font-size: 17px;
+        line-height: 1.35;
+        text-align: center;
+        box-shadow: var(--neo-out);
+        border: 1px solid #333;
+        border-left: 6px solid var(--pink);
+      }
+
+      #toastBox.ok {
+        border-left-color: var(--neon);
+        color: var(--neon);
+      }
+
+      #toastBox.error {
+        border-left-color: #ff3b3b;
+      }
+
+      #toastBox.info {
+        border-left-color: var(--pink);
+      }
+
+      .toast-text {
+        margin-bottom: 12px;
+        white-space: pre-wrap;
+      }
+
+      .toast-close {
+        min-width: 110px;
+        min-height: 38px;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(145deg, var(--pink), var(--pink-dark));
+        color: #ffffff;
+        font-weight: 900;
+        box-shadow: var(--neo-out);
+        cursor: pointer;
+      }
+
+      textarea.bemerkung-feld {
+        width: 100%;
+        min-height: 56px;
+        background: var(--input-bg);
+        color: #ffffff;
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 15px;
+        font-weight: 700;
+        box-shadow: var(--neo-in);
+        outline: none;
+        resize: vertical;
+      }
+
+      .multi-picker-hint {display:block;padding:8px 10px;color:#bdbdbd;font-size:13px;font-weight:800;}
+      .check-chip.selected {color:var(--neon) !important;border-color:var(--neon);box-shadow:0 0 22px rgba(0,255,0,.95);background:rgba(0,255,0,.20);text-shadow:0 0 10px rgba(0,255,0,1);}
+
+      #bereichMaischeannahme label {
+        margin-bottom: 3px;
+        font-size: 12px;
+      }
+
+      #bereichMaischeannahme input,
+      #bereichMaischeannahme select,
+      #bereichMaischeannahme textarea {
+        min-height: 38px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        font-size: 14px;
+      }
+
+      #bereichMaischeannahme .folder-link {
+        height: 38px;
+        font-size: 24px;
+      }
+
+      #bereichMaischeannahme .slot-remove-btn {
+        width: 34px;
+        min-width: 34px;
+        max-width: 34px;
+        height: 34px;
+        font-size: 15px !important;
+        border-radius: 10px;
+      }
+
+      #bereichMaischeannahme .grid-2,
+      #bereichMaischeannahme .grid-3,
+      #bereichMaischeannahme .grid-4,
+      #bereichMaischeannahme .grid-5,
+      #bereichMaischeannahme .action-row,
+      #bereichMaischeannahme #maischeSlotsContainer {
+        gap: 8px !important;
+      }
+
+      #bereichMaischeannahme .card {
+        border-radius: 18px;
+      }
+
+
+      @media (max-width: 980px) {
+
+        .grid-2,
+        .grid-3,
+        .grid-4,
+        .grid-5,
+        .action-row {
+          grid-template-columns: 1fr;
+        }
+
+        .section-title {
+          font-size: 26px;
+        }
+
+        .overview-btn {
+          min-height: 58px;
+          font-size: 21px;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .main-frame {
+          padding: 10px !important;
+        }
+
+        #mainTitle {
+          font-size: 26px;
+          line-height: 1.04;
+          margin-bottom: 8px;
+        }
+
+        .section-title {
+          font-size: 22px;
+        }
+
+        .overview-btn {
+          min-height: 52px;
+          font-size: 19px;
+        }
+
+        .compact-card {
+          padding: 10px !important;
+        }
+
+        .multi-picker-panel {
+          max-height: 220px;
+        }
+
+        .multi-picker-options {
+          grid-template-columns: 1fr;
+        }
+
+        label {
+          font-size: 13px !important;
+          margin-bottom: 4px !important;
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+          font-size: 15px !important;
+        }
+      }
+
+      .print-frame {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        width: 0;
+        height: 0;
+        border: 0;
+        opacity: 0;
+        pointer-events: none;
+      }
+      @media (max-width: 768px) {
+        .app-shell,
+        .section-stack {
+          gap: 8px;
+        }
+
+        .overview-btn {
+          min-height: 42px;
+          font-size: 16px;
+          border-radius: 12px;
+        }
+
+        .section-title {
+          font-size: 22px;
+          line-height: 1.05;
+        }
+
+        .compact-card {
+          padding: 8px !important;
+        }
+
+        .action-row {
+          gap: 8px;
+        }
+
+        .grid-2,
+        .grid-3,
+        .grid-4,
+        .grid-5 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .slot-header {
+          gap: 6px;
+        }
+
+        .multi-picker-input {
+          min-height: 38px;
+          padding: 8px 30px 8px 10px;
+          font-size: 13px;
+        }
+
+        .check-chip {
+          min-height: 28px;
+          padding: 4px 6px;
+          font-size: 11px !important;
+        }
+
+        .slot-remove-btn {
+          width: 34px;
+          min-width: 34px;
+          max-width: 34px;
+          height: 34px;
+        }
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <div id="toastBox"></div>
+
+    <div class="main-frame">
+      <h1 id="mainTitle">OGV BREITFURT – WEB APP</h1>
+
+      <div id="startUebersicht" class="card app-shell compact-card" style="display:block;">
+        <div class="overview-stack">
+          <button
+            id="startVorplanung"
+            class="btn-save overview-btn"
+            type="button"
+            onclick="oeffneVorplanung()">
+            Vorplanung
+          </button>
+
+          <button
+            id="startLeitstand"
+            class="btn-save overview-btn"
+            type="button"
+            onclick="oeffneLeitstand()">
+            Leitstand
+          </button>
+
+          <button
+            id="startZollkontakte"
+            class="btn-save overview-btn zoll-access-btn"
+            type="button"
+            onclick="oeffneZollkontakte()">
+            🚨 Zoll-Kontaktliste
+          </button>
         </div>
-        <div>
-          <label for="stoffbesitzer">Stoffbesitzer</label>
-          <select id="stoffbesitzer" onchange="syncName()"></select>
+      </div>
+
+      <div id="bereichVorplanung" class="hidden-section">
+        <div class="card section-stack compact-card">
+          <input id="vorgangsId" type="hidden">
+
+          <div class="section-stack">
+            <div class="grid-2">
+              <div>
+                <label for="stoffbesitzerSuche">Stoffbesitzer</label>
+                <div class="stoffbesitzer-suche-wrap">
+                  <input id="stoffbesitzer" type="hidden">
+                  <input
+                    id="stoffbesitzerSuche"
+                    class="stoffbesitzer-suche"
+                    type="text"
+                    placeholder="Stoffbesitzer wählen"
+                    autocomplete="off"
+                    oninput="stoffbesitzerVorschlaegeAktualisieren()"
+                    onfocus="stoffbesitzerVorschlaegeAktualisieren()">
+                  <div id="stoffbesitzerVorschlaege" class="stoffbesitzer-vorschlaege"></div>
+                </div>
+              </div>
+
+              <div>
+                <label for="anrufDatum">Anruf_Datum</label>
+                <input id="anrufDatum" type="date" readonly>
+              </div>
+            </div>
+
+            <div>
+              <label for="bemerkung">Bemerkung</label>
+              <textarea
+                id="bemerkung"
+                rows="3"
+                class="bemerkung-feld"
+                placeholder="Bitte beim Anruf auch abfragen, ob Kontaktdaten noch aktuell sind: E-Mail-Adresse, Telefonnummer, Anschrift."></textarea>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button
+              class="btn-save full-width"
+              type="button"
+              onclick="zurueckOderUebersicht()">
+              Zur Übersicht
+            </button>
+
+            <button
+              id="btnSpeichernVorplanung"
+              class="btn-save full-width"
+              type="button"
+              onclick="speichernVorplanungFrontend()">
+              Speichern
+            </button>
+          </div>
         </div>
-        <div>
-          <label for="terminMaische">Maische-Termin</label>
-          <input type="date" id="terminMaische">
+
+        <div id="statusBoxVorplanung" class="card" style="display:none; margin-top:18px;"></div>
+      </div>
+
+      <div id="bereichMaischeannahme" class="hidden-section">
+        <iframe id="maischePrintFrame" class="print-frame" title="Brennprotokoll-Druck"></iframe>
+        <div class="card section-stack compact-card">
+          <input id="prozessModus" type="hidden" value="maischeannahme">
+          <div id="maischeBereichTitel" style="font-weight:900; font-size:18px; color:var(--text-main);">Maischeannahme</div>
+          <input id="maischeVorgangsId" type="hidden">
+          <input id="maischeStoffbesitzer" type="hidden">
+          <input id="maischeDossierLink" type="hidden">
+
+          <div class="section-stack">
+            <div class="grid-4">
+              <div>
+                <label for="maischeVorgang">Vorgang</label>
+                <select id="maischeVorgang" onchange="maischeVorgangGeaendert()"></select>
+              </div>
+
+              <div>
+                <label for="maischeTerminMaischeGlobal">Termin_Maische</label>
+                <input id="maischeTerminMaischeGlobal" type="date">
+              </div>
+
+              <div id="blockRegistriernummer">
+                <label for="maischeRegistriernummer">Registriernummer</label>
+                <input id="maischeRegistriernummer" type="text">
+              </div>
+
+              <div>
+                <label>Dossier_Link</label>
+                <a id="maischeDossierLinkIcon" class="folder-link disabled" href="#" target="_blank" rel="noopener" title="Dossier öffnen">📁</a>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <label for="maischeBemerkungVorplanung">Bemerkung Vorplanung</label>
+                <textarea
+                  id="maischeBemerkungVorplanung"
+                  rows="3"
+                  readonly
+                  class="readonly-field bemerkung-feld"></textarea>
+              </div>
+
+              <div>
+                <label for="maischeAnzahlBraendeGlobal">Anzahl_Brände</label>
+                <input id="maischeAnzahlBraendeGlobal" type="number" min="1" step="1" value="1">
+              </div>
+            </div>
+          </div>
+
+          <div class="card compact-card" style="margin-top:2px;">
+            <div id="maischeSlotsContainer" style="display:grid; gap:10px;"></div>
+
+            <div style="margin-top:10px; display:flex; justify-content:flex-start;">
+              <button
+                type="button"
+                class="btn-save small-plus-btn"
+                onclick="maischeSlotHinzufuegen()"
+                aria-label="Slot hinzufügen"
+                title="Slot hinzufügen">+</button>
+            </div>
+          </div>
+
+          <div style="margin-top:2px; display:grid; grid-template-columns:minmax(180px, 260px); gap:8px;">
+            <div>
+              <label for="maischeZollOkGlobal">Status</label>
+              <select id="maischeZollOkGlobal"></select>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button
+              id="btnBrennprotokollDrucken"
+              class="btn-save full-width"
+              type="button"
+              onclick="druckeBrennprotokollAusMaske()"
+              style="display:none;">
+              Brennprotokoll drucken
+            </button>
+          </div>
+
+          <div class="action-row">
+            <button
+              class="btn-save full-width"
+              type="button"
+              onclick="zurueckOderUebersicht()">
+              Zur Übersicht
+            </button>
+
+            <button
+              id="btnSpeichernMaischebereich"
+              class="btn-save full-width"
+              type="button"
+              onclick="speichernMaischeannahmeFrontend()">
+              Speichern
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="card">
-        <table>
-          <thead>
-            <tr>
-              <th>GRÖSSE (L)</th>
-              <th>INHALT (L)</th>
-              <th>ROHSTOFF</th>
-              <th>GEWÜRZE / ZUSÄTZE</th>
-              <th>BRÄNDE</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="fassGrid"></tbody>
-        </table>
-        <div class="grid-actions">
-          <button type="button" class="tab-btn tab-btn-small" onclick="addNewBarrel()">+</button>
-        </div>
+        <div id="statusBoxMaische" class="card" style="display:none; margin-top:18px;"></div>
       </div>
     </div>
 
-    <div id="tab2" class="tab-content">
-      <div class="card">
-        <div class="owner-header" id="owner2">BESITZER: ---</div>
-        <table>
-          <thead>
-            <tr>
-              <th>FASS [MATERIAL]</th>
-              <th>BRANDTAG</th>
-              <th>VON</th>
-              <th>BIS</th>
-              <th>BRENNER</th>
-              <th>INFO</th>
-            </tr>
-          </thead>
-          <tbody id="dispoGrid"></tbody>
-        </table>
-      </div>
-    </div>
+    <script>
+      const START_MODUS = '<?!= typeof startModus !== "undefined" ? startModus : "" ?>';
+      const RETURN_MODUS = '<?!= typeof returnModus !== "undefined" ? returnModus : "" ?>';
+      const ORIGIN_MODUS = '<?!= typeof originModus !== "undefined" ? originModus : "" ?>';
+      const IST_ADMIN_RUECKSPRUNG = <?!= typeof istAdminRuecksprung !== "undefined" && istAdminRuecksprung ? 'true' : 'false' ?>;
+      const WEBAPP_URL = '<?!= typeof webAppUrl !== "undefined" ? webAppUrl : "" ?>';
+      const GITHUB_INDEX_URL = 'https://fraumecker.github.io/brennerei-startogv/';
+      const GITHUB_ADMIN_URL = 'https://fraumecker.github.io/brennerei-startogv/admin.html';
+      const IST_COCKPIT_RUECKSPRUNG = String(ORIGIN_MODUS || '').toLowerCase() === 'cockpit' || String(RETURN_MODUS || '').toLowerCase() === 'cockpit';
+      let busy = false;
+      let toastTimer = null;
 
-    <div id="tab3" class="tab-content">
-      <div class="card">
-        <div class="owner-header" id="owner3">BESITZER: ---</div>
-        <table>
-          <thead>
-            <tr>
-              <th>FASS-NR.</th>
-              <th>GRÖSSE</th>
-              <th>INHALT</th>
-              <th>MATERIAL</th>
-              <th>REG.NR. (ZOLL)</th>
-              <th>ZOLL OK</th>
-            </tr>
-          </thead>
-          <tbody id="maischeGrid"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+      let stoffbesitzerListe = [];
+      let maischeVorgaenge = [];
+      let maischeBrennerListe = [];
+      let maischeZollStatusListe = [];
+      let maischeFassgroessenListe = [];
+      let maischeMaterialListe = [];
+      let maischeGewuerzeListe = [];
+      let maischeSlotIndex = 0;
+      let prozessModus = START_MODUS === 'brennfreigabe' ? 'brennfreigabe' : 'maischeannahme';
 
-  <div class="save-shell">
-    <div class="status-select-wrap">
-      <label for="statusGlobal">Globaler Status</label>
-      <select id="statusGlobal">
-        <option value="GEPLANT">GEPLANT</option>
-        <option value="ÜBERNOMMEN">ÜBERNOMMEN</option>
-      </select>
-    </div>
-    <button type="button" class="btn-save" onclick="speichern()" id="saveBtn">VORGANG SPEICHERN</button>
-  </div>
-</div>
+      function escapeHtml(text) {
+        if (text == null) return '';
+        return String(text).replace(/[&<>"']/g, function(m) {
+          return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+          }[m];
+        });
+      }
 
-<?!= include('Scripts'); ?>
-</body>
+      function leseFehler(err) {
+        return err && err.message ? err.message : String(err || 'Unbekannter Fehler');
+      }
+
+      function heuteIso() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+
+      function optionenHtml(liste, selectedValue, placeholder) {
+        const selected = String(selectedValue || '').trim();
+        let html = '<option value="">' + escapeHtml(placeholder || 'Bitte wählen') + '</option>';
+
+        (liste || []).forEach(function(item) {
+          const value = typeof item === 'string' ? item : String(item.value || '');
+          const label = typeof item === 'string' ? item : String(item.label || item.value || '');
+          if (!String(value || '').trim()) return;
+          html += '<option value="' + escapeHtml(value) + '"' + (value === selected ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+        });
+
+        return html;
+      }
+
+      function stoffbesitzerEintragWert(item) {
+        return typeof item === 'string' ? item : String(item && item.value || '');
+      }
+
+      function stoffbesitzerEintragLabel(item) {
+        return typeof item === 'string' ? item : String(item && (item.label || item.value) || '');
+      }
+
+      function stoffbesitzerVorschlaegeAktualisieren() {
+        const eingabe = document.getElementById('stoffbesitzerSuche');
+        const ziel = document.getElementById('stoffbesitzerVorschlaege');
+        const hidden = document.getElementById('stoffbesitzer');
+        if (!eingabe || !ziel || !hidden) return;
+
+        const suchtext = String(eingabe.value || '').trim().toLowerCase();
+        hidden.value = '';
+        ziel.innerHTML = '';
+
+        if (suchtext.length < 2) {
+          ziel.classList.remove('open');
+          return;
+        }
+
+        const treffer = (stoffbesitzerListe || []).filter(function(item) {
+          const value = stoffbesitzerEintragWert(item);
+          const label = stoffbesitzerEintragLabel(item);
+          const suchbasis = String(value + ' ' + label).toLowerCase();
+          return suchbasis.indexOf(suchtext) >= 0;
+        }).slice(0, 20);
+
+        if (!treffer.length) {
+          ziel.innerHTML = '<div class="stoffbesitzer-hinweis">Kein passender Stoffbesitzer gefunden.</div>';
+          ziel.classList.add('open');
+          return;
+        }
+
+        treffer.forEach(function(item) {
+          const value = stoffbesitzerEintragWert(item);
+          const label = stoffbesitzerEintragLabel(item) || value;
+          if (!String(value || '').trim()) return;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'stoffbesitzer-vorschlag';
+          btn.textContent = label;
+          btn.onclick = function() {
+            hidden.value = value;
+            eingabe.value = label;
+            ziel.classList.remove('open');
+            ziel.innerHTML = '';
+          };
+          ziel.appendChild(btn);
+        });
+
+        ziel.classList.add('open');
+      }
+
+      function stoffbesitzerAuswahlZuruecksetzen() {
+        const hidden = document.getElementById('stoffbesitzer');
+        const eingabe = document.getElementById('stoffbesitzerSuche');
+        const ziel = document.getElementById('stoffbesitzerVorschlaege');
+        if (hidden) hidden.value = '';
+        if (eingabe) eingabe.value = '';
+        if (ziel) {
+          ziel.classList.remove('open');
+          ziel.innerHTML = '';
+        }
+      }
+
+      document.addEventListener('click', function(event) {
+        const wrap = event.target && event.target.closest ? event.target.closest('.stoffbesitzer-suche-wrap') : null;
+        if (wrap) return;
+        const ziel = document.getElementById('stoffbesitzerVorschlaege');
+        if (ziel) ziel.classList.remove('open');
+      });
+
+
+      function checkboxGruppeHtml(liste, selectedValues, klasse, titel) {
+        const selected = Array.isArray(selectedValues) ? selectedValues.map(function(v) { return String(v || '').trim(); }) : [];
+        let optionen = '';
+        (liste || []).forEach(function(item, i) {
+          const value = typeof item === 'string' ? item : String(item.value || '');
+          const label = typeof item === 'string' ? item : String(item.label || item.value || '');
+          if (!String(value || '').trim()) return;
+          const id = klasse + '_' + Math.random().toString(36).slice(2) + '_' + i;
+          const checked = selected.indexOf(value) >= 0;
+          optionen += '<label class="check-chip' + (checked ? ' selected' : '') + '" for="' + escapeHtml(id) + '" data-suchtext="' + escapeHtml((label + ' ' + value).toLowerCase()) + '">' +
+            '<input id="' + escapeHtml(id) + '" type="checkbox" class="' + escapeHtml(klasse) + '" value="' + escapeHtml(value) + '"' + (checked ? ' checked' : '') + ' onchange="multiPickerGeaendert(this)">' +
+            '<span>' + escapeHtml(label) + '</span></label>';
+        });
+        if (!optionen) optionen = '<div class="multi-picker-hint">Keine Werte geladen</div>';
+        return '<div class="multi-picker-input-wrap"><input type="text" class="multi-picker-input" placeholder="' + escapeHtml((titel || 'Auswahl') + ' eintippen') + '" onfocus="multiPickerVorbereiten(this)" onclick="multiPickerVorbereiten(this)" oninput="multiPickerFilternAusInput(this)" autocomplete="off"></div>' +
+          '<div class="multi-picker-panel"><div class="multi-picker-hint">Suchbegriff eintippen, dann Wert anklicken.</div><div class="multi-picker-options">' + optionen + '</div></div>';
+      }
+
+      function multiPickerVorbereiten(input) {
+        if (busy) return;
+        const picker = input.closest('.multi-picker');
+        if (!picker) return;
+        document.querySelectorAll('.multi-picker.open').forEach(function(offen) { if (offen !== picker) { offen.classList.remove('open'); aktualisiereMultiPicker(offen); } });
+        if (input.classList.contains('has-selection')) { input.value = ''; input.classList.remove('has-selection'); }
+        multiPickerFilternAusInput(input);
+      }
+
+      function multiPickerFilternAusInput(input) {
+        const picker = input.closest('.multi-picker');
+        if (!picker) return;
+        const suchtext = String(input.value || '').trim().toLowerCase();
+        let sichtbar = 0;
+        picker.querySelectorAll('.check-chip').forEach(function(chip) {
+          const cb = chip.querySelector('input[type="checkbox"]');
+          const basis = chip.getAttribute('data-suchtext') || chip.textContent.toLowerCase();
+          const passt = suchtext ? basis.indexOf(suchtext) >= 0 : (cb && cb.checked);
+          chip.style.display = passt ? 'flex' : 'none';
+          if (passt) sichtbar++;
+        });
+        let leer = picker.querySelector('.multi-picker-empty');
+        if (!leer) { leer = document.createElement('div'); leer.className = 'multi-picker-hint multi-picker-empty'; picker.querySelector('.multi-picker-panel').appendChild(leer); }
+        if (!suchtext && sichtbar === 0) { leer.textContent = 'Bitte Suchbegriff eintippen.'; leer.style.display = 'block'; picker.classList.add('open'); return; }
+        if (suchtext && sichtbar === 0) { leer.textContent = 'Kein passender Wert gefunden.'; leer.style.display = 'block'; } else { leer.style.display = 'none'; }
+        picker.classList.add('open');
+      }
+
+      function multiPickerGeaendert(input) {
+        const picker = input.closest('.multi-picker');
+        if (!picker) return;
+        const chip = input.closest('.check-chip');
+        if (chip) { if (input.checked) chip.classList.add('selected'); else chip.classList.remove('selected'); }
+        const suchfeld = picker.querySelector('.multi-picker-input');
+        if (suchfeld) multiPickerFilternAusInput(suchfeld);
+      }
+
+      function aktualisiereMultiPicker(picker) {
+        const input = picker.querySelector('.multi-picker-input');
+        const checked = Array.prototype.slice.call(picker.querySelectorAll('input[type="checkbox"]:checked')).map(function(el) { return el.value; }).filter(Boolean);
+        const titel = picker.getAttribute('data-titel') || 'Auswahl';
+        picker.querySelectorAll('.check-chip').forEach(function(chip) { const cb = chip.querySelector('input[type="checkbox"]'); if (cb && cb.checked) chip.classList.add('selected'); else chip.classList.remove('selected'); chip.style.display = 'flex'; });
+        const leer = picker.querySelector('.multi-picker-empty'); if (leer) leer.style.display = 'none';
+        if (!input) return;
+        if (!checked.length) { input.value = ''; input.placeholder = titel + ' eintippen'; input.classList.remove('has-selection'); }
+        else if (checked.length <= 2) { input.value = checked.join(' | '); input.classList.add('has-selection'); }
+        else { input.value = checked.length + ' ausgewählt'; input.classList.add('has-selection'); }
+      }
+
+      function aktualisiereMultiPickerInRoot(root) { root.querySelectorAll('.multi-picker').forEach(function(picker) { aktualisiereMultiPicker(picker); }); }
+
+      function splitMehrfachWert(text) { const roh = String(text || '').trim(); if (!roh) return []; return roh.split(/\s*\|\s*|\s*,\s*/).map(function(v) { return String(v || '').trim(); }).filter(Boolean); }
+      function checkboxGruppeWerte(root, klasse) { return Array.prototype.slice.call(root.querySelectorAll('input.' + klasse + ':checked')).map(function(el) { return el.value; }).filter(Boolean); }
+
+      function setBusy(status) {
+        busy = !!status;
+
+        document.querySelectorAll('button').forEach(function(btn) {
+          if (btn.classList.contains('toast-close')) return;
+          btn.disabled = busy;
+        });
+
+        document.querySelectorAll('select').forEach(function(sel) {
+          sel.disabled = busy;
+        });
+
+        document.querySelectorAll('input').forEach(function(inp) {
+          if (inp.readOnly) return;
+          inp.disabled = busy;
+        });
+
+        document.querySelectorAll('textarea').forEach(function(ta) {
+          if (ta.readOnly) return;
+          ta.disabled = busy;
+        });
+      }
+
+      function zeigeToast(text, typ, optionen) {
+        const box = document.getElementById('toastBox');
+        const opts = optionen || {};
+        if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+        if (!text) { box.style.display = 'none'; box.innerHTML = ''; box.className = ''; return; }
+        const art = typ || 'info';
+        const meldung = String(text || '');
+        const istLadevorgang = /wird|werden|lädt|geladen …|speichert|neu geladen/i.test(meldung);
+        const hatOk = opts.mitOk === true;
+        const autoMs = opts.autoMs === undefined ? (istLadevorgang || hatOk ? 0 : (art === 'ok' ? 11000 : (art === 'error' ? 20000 : 10000))) : Number(opts.autoMs || 0);
+        box.className = art;
+        box.innerHTML = '<div class="toast-text">' + escapeHtml(text) + '</div>' + (hatOk ? '<button type="button" class="toast-close" onclick="zeigeToast(\'\', \'info\')">OK</button>' : '');
+        box.style.display = 'block';
+        if (autoMs > 0) toastTimer = setTimeout(function() { zeigeToast('', 'info'); }, autoMs);
+      }
+
+      function zeigeStatus(boxId, text, typ) {
+        const box = document.getElementById(boxId);
+        if (!box) return;
+
+        const meldung = String(text || '');
+        const istLadevorgang = /wird|werden|lädt|geladen …|speichert/i.test(meldung);
+        const istNurBedienhinweis = /Bitte Vorgang auswählen/i.test(meldung);
+
+        if (!text) {
+          box.style.display = 'none';
+          box.innerHTML = '';
+          zeigeToast('', 'info');
+          return;
+        }
+
+        if (istLadevorgang) {
+          box.style.display = 'none';
+          box.innerHTML = '';
+          zeigeToast(meldung, typ || 'info', { autoMs: 0 });
+          return;
+        }
+
+        if (istNurBedienhinweis) {
+          box.style.display = 'none';
+          box.innerHTML = '';
+          return;
+        }
+
+        box.style.display = 'block';
+        box.className = 'card';
+        box.innerHTML = '<b>' + escapeHtml(text) + '</b>';
+        if (typ === 'error') zeigeToast(text, 'error');
+        else if (typ === 'ok') zeigeToast(text, 'ok');
+      }
+
+      function alleBereicheSchliessen() {
+        document.getElementById('startUebersicht').style.display = 'none';
+        document.getElementById('bereichVorplanung').style.display = 'none';
+        document.getElementById('bereichMaischeannahme').style.display = 'none';
+      }
+
+      function zeigeStartUebersicht() {
+        alleBereicheSchliessen();
+        document.getElementById('startUebersicht').style.display = 'block';
+        document.getElementById('mainTitle').textContent = 'OGV BREITFURT – WEB APP';
+        zeigeStatus('statusBoxVorplanung', '', 'info');
+        zeigeStatus('statusBoxMaische', '', 'info');
+      }
+
+      function zeigeVorplanung() {
+        alleBereicheSchliessen();
+        document.getElementById('bereichVorplanung').style.display = 'block';
+        document.getElementById('mainTitle').textContent = 'OGV BREITFURT – VORPLANUNG';
+      }
+
+      function wendeProzessModusAn() {
+        const istBrennfreigabe = prozessModus === 'brennfreigabe';
+        document.getElementById('prozessModus').value = prozessModus;
+        document.getElementById('maischeBereichTitel').textContent = istBrennfreigabe ? 'Brennfreigabe' : 'Maischeannahme';
+        document.getElementById('mainTitle').textContent = istBrennfreigabe ? 'OGV BREITFURT – BRENNFREIGABE' : 'OGV BREITFURT – MAISCHEANNAHME';
+        document.getElementById('blockRegistriernummer').style.display = istBrennfreigabe ? 'block' : 'none';
+        document.getElementById('btnBrennprotokollDrucken').style.display = 'none';
+        document.getElementById('btnSpeichernMaischebereich').textContent = istBrennfreigabe ? 'Brennfreigabe speichern' : 'Maischeannahme speichern';
+        document.getElementById('maischeZollOkGlobal').disabled = !istBrennfreigabe;
+      }
+
+      function zeigeMaischeannahme() {
+        prozessModus = 'maischeannahme';
+        alleBereicheSchliessen();
+        document.getElementById('bereichMaischeannahme').style.display = 'block';
+        wendeProzessModusAn();
+      }
+
+      function zeigeBrennfreigabe() {
+        prozessModus = 'brennfreigabe';
+        alleBereicheSchliessen();
+        document.getElementById('bereichMaischeannahme').style.display = 'block';
+        wendeProzessModusAn();
+      }
+
+
+      function zielModusFuerRuecksprung() {
+        const istAdmin = IST_ADMIN_RUECKSPRUNG ||
+          String(ORIGIN_MODUS || '').toLowerCase() === 'admin' ||
+          String(RETURN_MODUS || '').toLowerCase() === 'admin';
+
+        if (istAdmin) return 'admin';
+        if (IST_COCKPIT_RUECKSPRUNG) return 'index';
+        return '';
+      }
+
+      function geheZurueckZumHauptmenue() {
+        const zielModus = zielModusFuerRuecksprung();
+
+        if (zielModus === 'admin') {
+          window.top.location.href = GITHUB_ADMIN_URL;
+          return;
+        }
+
+        if (zielModus === 'index') {
+          window.top.location.href = GITHUB_INDEX_URL;
+          return;
+        }
+
+        zeigeStartUebersicht();
+      }
+
+      function nachSpeichernZurueckInsHauptmenue() {
+        zeigeToast('', 'info');
+        geheZurueckZumHauptmenue();
+      }
+
+      function zurueckOderUebersicht() {
+        zeigeToast('', 'info');
+        geheZurueckZumHauptmenue();
+      }
+
+      function formularLeerenVorplanung() {
+        document.getElementById('vorgangsId').value = '';
+        stoffbesitzerAuswahlZuruecksetzen();
+        document.getElementById('anrufDatum').value = heuteIso();
+        document.getElementById('bemerkung').value = '';
+      }
+
+      function oeffneVorplanung() {
+        if (busy) return;
+
+        setBusy(true);
+        zeigeStatus('statusBoxVorplanung', 'Vorplanung wird geladen …', 'info');
+
+        google.script.run
+          .withSuccessHandler(function(data) {
+            setBusy(false);
+            stoffbesitzerListe = data && Array.isArray(data.stoffbesitzer) ? data.stoffbesitzer : [];
+            formularLeerenVorplanung();
+            zeigeVorplanung();
+            zeigeStatus('statusBoxVorplanung', '', 'info');
+          })
+          .withFailureHandler(function(err) {
+            setBusy(false);
+            zeigeVorplanung();
+            zeigeStatus('statusBoxVorplanung', 'Dropdowns konnten nicht geladen werden: ' + leseFehler(err), 'error');
+          })
+          .ladeVorplanungDropdowns();
+      }
+
+      function payloadLesenVorplanung() {
+        return {
+          vorgangsId: document.getElementById('vorgangsId').value.trim(),
+          stoffbesitzer: document.getElementById('stoffbesitzer').value,
+          anrufDatum: document.getElementById('anrufDatum').value,
+          bemerkung: document.getElementById('bemerkung').value.trim()
+        };
+      }
+
+      function validiereVorplanung(payload) {
+        if (!payload.stoffbesitzer) {
+          zeigeStatus('statusBoxVorplanung', 'Stoffbesitzer fehlt.', 'error');
+          return false;
+        }
+
+        if (!payload.anrufDatum) {
+          zeigeStatus('statusBoxVorplanung', 'Anruf_Datum fehlt.', 'error');
+          return false;
+        }
+
+        if (!payload.bemerkung) {
+          zeigeStatus('statusBoxVorplanung', 'Bemerkung fehlt.', 'error');
+          return false;
+        }
+
+        return true;
+      }
+
+      function speichernVorplanungFrontend() {
+        if (busy) return;
+
+        const payload = payloadLesenVorplanung();
+        if (!validiereVorplanung(payload)) return;
+
+        setBusy(true);
+        zeigeStatus('statusBoxVorplanung', 'Vorplanung wird gespeichert …', 'info');
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            setBusy(false);
+            formularLeerenVorplanung();
+            zeigeStatus(
+              'statusBoxVorplanung',
+              'Vorplanung gespeichert. Vorgangs_ID: ' + (result && result.vorgangsId ? result.vorgangsId : '-'),
+              'ok'
+            );
+            window.setTimeout(nachSpeichernZurueckInsHauptmenue, 900);
+          })
+          .withFailureHandler(function(err) {
+            setBusy(false);
+            zeigeStatus('statusBoxVorplanung', 'Speichern fehlgeschlagen: ' + leseFehler(err), 'error');
+          })
+          .speichereVorplanung(payload);
+      }
+
+      function setzeDossierLink(link) {
+        const wert = String(link || '').trim();
+        const input = document.getElementById('maischeDossierLink');
+        const icon = document.getElementById('maischeDossierLinkIcon');
+
+        input.value = wert;
+        if (wert) {
+          icon.href = wert;
+          icon.classList.remove('disabled');
+        } else {
+          icon.href = '#';
+          icon.classList.add('disabled');
+        }
+      }
+
+      function resetMaischeFormular() {
+        document.getElementById('maischeVorgangsId').value = '';
+        document.getElementById('maischeStoffbesitzer').value = '';
+        document.getElementById('maischeTerminMaischeGlobal').value = '';
+        document.getElementById('maischeRegistriernummer').value = '';
+        setzeDossierLink('');
+        document.getElementById('maischeBemerkungVorplanung').value = '';
+        document.getElementById('maischeAnzahlBraendeGlobal').value = '1';
+        document.getElementById('maischeZollOkGlobal').innerHTML = optionenHtml(maischeZollStatusListe, '', 'Auswahl');
+        document.getElementById('maischeSlotsContainer').innerHTML = '';
+        maischeSlotIndex = 0;
+      }
+
+      function fuelleMaischeDropdownVorgaenge() {
+        const liste = (maischeVorgaenge || []).map(function(item) {
+          return {
+            value: item.vorgangsId || '',
+            label: item.anzeige || item.vorgangsId || ''
+          };
+        });
+
+        document.getElementById('maischeVorgang').innerHTML = optionenHtml(liste, '', 'Bitte Vorgang wählen');
+      }
+
+      function oeffneProzessBereich(modus) {
+        if (busy) return;
+
+        const istBrennfreigabe = modus === 'brennfreigabe';
+        setBusy(true);
+        zeigeStatus('statusBoxMaische', (istBrennfreigabe ? 'Brennfreigabe' : 'Maischeannahme') + ' wird geladen …', 'info');
+
+        google.script.run
+          .withSuccessHandler(function(data) {
+            setBusy(false);
+            prozessModus = istBrennfreigabe ? 'brennfreigabe' : 'maischeannahme';
+            maischeVorgaenge = data && Array.isArray(data.vorgaenge) ? data.vorgaenge : [];
+            maischeBrennerListe = data && Array.isArray(data.brennerListe) ? data.brennerListe : [];
+            maischeZollStatusListe = data && Array.isArray(data.zollStatusListe) ? data.zollStatusListe : [];
+            maischeFassgroessenListe = data && Array.isArray(data.fassgroessenListe) ? data.fassgroessenListe : [];
+            maischeMaterialListe = data && Array.isArray(data.materialListe) ? data.materialListe : [];
+            maischeGewuerzeListe = data && Array.isArray(data.gewuerzeListe) ? data.gewuerzeListe : [];
+            resetMaischeFormular();
+            fuelleMaischeDropdownVorgaenge();
+            if (istBrennfreigabe) zeigeBrennfreigabe(); else zeigeMaischeannahme();
+            zeigeStatus('statusBoxMaische', '', 'info');
+          })
+          .withFailureHandler(function(err) {
+            setBusy(false);
+            if (istBrennfreigabe) zeigeBrennfreigabe(); else zeigeMaischeannahme();
+            zeigeStatus('statusBoxMaische', (istBrennfreigabe ? 'Brennfreigabe' : 'Maischeannahme') + ' konnte nicht geladen werden: ' + leseFehler(err), 'error');
+          })[istBrennfreigabe ? 'getBrennfreigabeDropdowns' : 'getMaischeannahmeDropdowns']();
+      }
+
+      function oeffneMaischeannahme() {
+        oeffneProzessBereich('maischeannahme');
+      }
+
+      function oeffneBrennfreigabe() {
+        oeffneProzessBereich('brennfreigabe');
+      }
+
+      function oeffneLeitstand() {
+        if (WEBAPP_URL) {
+          window.location.href = WEBAPP_URL + '?mode=leitstand&origin=index';
+          return;
+        }
+
+        window.location.href = '?mode=leitstand&origin=index';
+      }
+
+      function oeffneZollkontakte() {
+        if (WEBAPP_URL) {
+          window.location.href = WEBAPP_URL + '?mode=zollkontakte&origin=index';
+          return;
+        }
+
+        window.location.href = '?mode=zollkontakte&origin=index';
+      }
+
+      function maischeVorgangGeaendert() {
+        const vorgangsId = document.getElementById('maischeVorgang').value;
+
+        if (!vorgangsId) {
+          resetMaischeFormular();
+          fuelleMaischeDropdownVorgaenge();
+          return;
+        }
+
+        setBusy(true);
+        zeigeStatus('statusBoxMaische', 'Vorgang wird geladen …', 'info');
+
+        google.script.run
+          .withSuccessHandler(function(details) {
+            setBusy(false);
+            fuelleMaischeFormular(details || {});
+            zeigeStatus('statusBoxMaische', '', 'info');
+          })
+          .withFailureHandler(function(err) {
+            setBusy(false);
+            zeigeStatus('statusBoxMaische', 'Vorgang konnte nicht geladen werden: ' + leseFehler(err), 'error');
+          })
+          .getMaischeannahmeDetails(vorgangsId);
+      }
+
+      function fuelleMaischeFormular(details) {
+        document.getElementById('maischeVorgang').value = details.vorgangsId || '';
+        document.getElementById('maischeVorgangsId').value = details.vorgangsId || '';
+        document.getElementById('maischeStoffbesitzer').value = details.stoffbesitzer || '';
+        document.getElementById('maischeTerminMaischeGlobal').value = details.terminMaische || '';
+        document.getElementById('maischeRegistriernummer').value = prozessModus === 'brennfreigabe' ? (details.registernummer || '') : '';
+        setzeDossierLink(details.dossierLink || '');
+        document.getElementById('maischeBemerkungVorplanung').value = details.bemerkungVorplanung || details.infoSystem || '';
+        document.getElementById('maischeAnzahlBraendeGlobal').value = (
+          details.slots && details.slots[0] && details.slots[0].anzahlBraende
+            ? details.slots[0].anzahlBraende
+            : '1'
+        );
+        document.getElementById('maischeZollOkGlobal').innerHTML = optionenHtml(maischeZollStatusListe, prozessModus === 'brennfreigabe' ? (details.zollOk || (details.slots && details.slots[0] ? details.slots[0].zollOk : '')) : '', 'Auswahl');
+
+        const container = document.getElementById('maischeSlotsContainer');
+        container.innerHTML = '';
+        maischeSlotIndex = 0;
+
+        const slots = details && Array.isArray(details.slots) ? details.slots : [];
+        if (slots.length) {
+          slots.forEach(function(slot) {
+            maischeSlotHinzufuegen(slot);
+          });
+        } else {
+          maischeSlotHinzufuegen();
+        }
+      }
+
+      function baueSlotHtml(idx) {
+        return ''
+          + '<div class="slot-card" data-slot-index="' + idx + '">'
+          + '  <input type="hidden" class="maische-bestehendeZeile">'
+          + '  <div class="slot-header">'
+          + '    <div></div>'
+          + '    <div class="slot-remove-cell"><button type="button" class="slot-remove-btn" onclick="maischeSlotLoeschen(this)" aria-label="Slot löschen" title="Slot löschen">X</button></div>'
+          + '  </div>'
+          + '  <div class="grid-4 slot-core">'
+          + '    <div><label>Brandtag</label><input type="date" class="maische-tagBrand"></div>'
+          + '    <div><label>von</label><input type="time" class="maische-von"></div>'
+          + '    <div><label>bis</label><input type="time" class="maische-bis"></div>'
+          + '    <div><label>Brenner</label><select class="maische-brenner"></select></div>'
+          + '  </div>'
+          + '  <div class="grid-3">'
+          + '    <div><label>Faßnummern</label><input type="text" class="maische-fassnummern"></div>'
+          + '    <div><label>Faßgröße</label><select class="maische-fassgroesse"></select></div>'
+          + '    <div><label>Inhalt</label><input type="text" class="maische-inhalt"></div>'
+          + '  </div>'
+          + '  <div class="grid-2">'
+          + '    <div>'
+          + '      <label>Material</label>'
+          + '      <div class="multi-picker maische-materialien" data-titel="Material"></div>'
+          + '    </div>'
+          + '    <div>'
+          + '      <label>Gewürze</label>'
+          + '      <div class="multi-picker maische-gewuerze" data-titel="Gewürze"></div>'
+          + '    </div>'
+          + '  </div>'
+          + '</div>';
+      }
+
+      function maischeSlotHinzufuegen(vorbelegung) {
+        maischeSlotIndex += 1;
+        const idx = maischeSlotIndex;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'card compact-card';
+        wrapper.innerHTML = baueSlotHtml(idx);
+        document.getElementById('maischeSlotsContainer').appendChild(wrapper);
+
+        const slotRoot = wrapper.querySelector('[data-slot-index]');
+        const data = vorbelegung || {};
+
+        slotRoot.querySelector('.maische-brenner').innerHTML = optionenHtml(maischeBrennerListe, data.brenner || '', 'Brenner');
+        slotRoot.querySelector('.maische-fassgroesse').innerHTML = optionenHtml(maischeFassgroessenListe, data.fassgroesse || '', 'Auswahl');
+        slotRoot.querySelector('.maische-materialien').innerHTML = checkboxGruppeHtml(maischeMaterialListe, splitMehrfachWert(data.material || ''), 'maische-material-check', 'Material');
+        slotRoot.querySelector('.maische-gewuerze').innerHTML = checkboxGruppeHtml(maischeGewuerzeListe, splitMehrfachWert(data.gewuerze || ''), 'maische-gewuerz-check', 'Gewürze');
+
+        slotRoot.querySelector('.maische-bestehendeZeile').value = data.bestehendeZeile || '';
+        slotRoot.querySelector('.maische-tagBrand').value = data.tagBrand || '';
+        slotRoot.querySelector('.maische-von').value = data.von || '';
+        slotRoot.querySelector('.maische-bis').value = data.bis || '';
+        slotRoot.querySelector('.maische-fassnummern').value = data.fassnummern || '';
+        slotRoot.querySelector('.maische-inhalt').value = data.inhalt || '';
+        aktualisiereMultiPickerInRoot(slotRoot);
+      }
+
+      function maischeSlotLoeschen(button) {
+        const card = button.closest('.card');
+        if (card) card.remove();
+      }
+
+      function leseMaischeSlots() {
+        const terminMaischeGlobal = document.getElementById('maischeTerminMaischeGlobal').value;
+        const anzahlBraendeGlobal = document.getElementById('maischeAnzahlBraendeGlobal').value || '1';
+        const zollOkGlobal = document.getElementById('maischeZollOkGlobal').value || '';
+
+        return Array.prototype.slice.call(document.querySelectorAll('#maischeSlotsContainer [data-slot-index]')).map(function(root) {
+          const materialien = checkboxGruppeWerte(root, 'maische-material-check');
+          const gewuerze = checkboxGruppeWerte(root, 'maische-gewuerz-check');
+          return {
+            bestehendeZeile: root.querySelector('.maische-bestehendeZeile').value.trim(),
+            terminMaische: terminMaischeGlobal,
+            tagBrand: root.querySelector('.maische-tagBrand').value,
+            von: root.querySelector('.maische-von').value,
+            bis: root.querySelector('.maische-bis').value,
+            brenner: root.querySelector('.maische-brenner').value,
+            fassnummern: root.querySelector('.maische-fassnummern').value.trim(),
+            fassgroesse: root.querySelector('.maische-fassgroesse').value,
+            inhalt: root.querySelector('.maische-inhalt').value.trim(),
+            materialien: materialien,
+            material: materialien,
+            gewuerze: gewuerze,
+            anzahlBraende: anzahlBraendeGlobal,
+            zollOk: zollOkGlobal
+          };
+        });
+      }
+
+      function validiereMaischePayload(payload) {
+        if (!payload.vorgangsId) {
+          zeigeStatus('statusBoxMaische', 'Vorgangs_ID fehlt.', 'error');
+          return false;
+        }
+
+        if (!payload.stoffbesitzer) {
+          zeigeStatus('statusBoxMaische', 'Stoffbesitzer fehlt.', 'error');
+          return false;
+        }
+
+        if (!payload.terminMaische) {
+          zeigeStatus('statusBoxMaische', 'Termin_Maische fehlt.', 'error');
+          return false;
+        }
+
+        if (!payload.slots.length) {
+          zeigeStatus('statusBoxMaische', 'Es ist kein Slot vorhanden.', 'error');
+          return false;
+        }
+
+        for (let i = 0; i < payload.slots.length; i++) {
+          const slot = payload.slots[i];
+          const nr = i + 1;
+
+          if (!slot.fassnummern) {
+            zeigeStatus('statusBoxMaische', 'Faßnummern fehlen in Slot ' + nr + '.', 'error');
+            return false;
+          }
+
+          if (!slot.tagBrand) {
+            zeigeStatus('statusBoxMaische', 'Brandtag fehlt in Slot ' + nr + '.', 'error');
+            return false;
+          }
+
+          if (!slot.von || !slot.bis) {
+            zeigeStatus('statusBoxMaische', 'von/bis fehlt in Slot ' + nr + '.', 'error');
+            return false;
+          }
+
+          if (!slot.brenner) {
+            zeigeStatus('statusBoxMaische', 'Brenner fehlt in Slot ' + nr + '.', 'error');
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      function speichernMaischeannahmeFrontend() {
+        if (busy) return;
+
+        const payload = {
+          vorgangsId: document.getElementById('maischeVorgang').value || document.getElementById('maischeVorgangsId').value,
+          stoffbesitzer: document.getElementById('maischeStoffbesitzer').value.trim(),
+          terminMaische: document.getElementById('maischeTerminMaischeGlobal').value,
+          bemerkungVorplanung: document.getElementById('maischeBemerkungVorplanung').value,
+          infoSystem: document.getElementById('maischeBemerkungVorplanung').value,
+          registernummer: prozessModus === 'brennfreigabe' ? document.getElementById('maischeRegistriernummer').value.trim() : '',
+          status: prozessModus === 'brennfreigabe' ? 'IN BRENNFREIGABE' : 'AN ZOLL GESENDET',
+          dossierLink: document.getElementById('maischeDossierLink').value.trim(),
+          slots: leseMaischeSlots().map(function(slot) {
+            if (prozessModus !== 'brennfreigabe') {
+              slot.zollOk = '';
+            }
+            return slot;
+          })
+        };
+
+        if (!validiereMaischePayload(payload)) return;
+
+        setBusy(true);
+        zeigeStatus('statusBoxMaische', (prozessModus === 'brennfreigabe' ? 'Brennfreigabe' : 'Maischeannahme') + ' wird gespeichert …', 'info');
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            setBusy(false);
+            resetMaischeFormular();
+            fuelleMaischeDropdownVorgaenge();
+            const meldung = result && result.archiviert
+              ? 'Brennfreigabe gespeichert und ins Jahresarchiv übergeben.'
+              : (prozessModus === 'brennfreigabe' ? 'Brennfreigabe gespeichert.' : 'Maischeannahme gespeichert.');
+            zeigeStatus('statusBoxMaische', meldung, 'ok');
+            window.setTimeout(nachSpeichernZurueckInsHauptmenue, 900);
+          })
+          .withFailureHandler(function(err) {
+            setBusy(false);
+            zeigeStatus('statusBoxMaische', 'Speichern fehlgeschlagen: ' + leseFehler(err), 'error');
+          })[prozessModus === 'brennfreigabe' ? 'saveBrennfreigabe' : 'saveMaischeannahme'](payload);
+      }
+
+      function druckeBrennprotokollAusMaske() {
+        if (busy || prozessModus !== 'brennfreigabe') return;
+
+        const datum = ermittleBrandtagAusMaske();
+        if (!datum) {
+          zeigeStatus('statusBoxMaische', 'Für den Druck muss genau ein Brandtag im Vorgang vorhanden sein.', 'error');
+          return;
+        }
+
+        setBusy(true);
+        zeigeStatus('statusBoxMaische', 'Brennprotokoll wird erstellt …', 'info');
+
+        google.script.run
+          .withSuccessHandler(function(html) {
+            setBusy(false);
+            if (!html || String(html).trim() === '') {
+              zeigeStatus('statusBoxMaische', 'Für den gewählten Brandtag wurde kein Brennprotokoll geliefert.', 'error');
+              return;
+            }
+
+            const frame = document.getElementById('maischePrintFrame');
+            const frameDoc = frame.contentWindow && frame.contentWindow.document;
+            if (!frameDoc) {
+              zeigeStatus('statusBoxMaische', 'Druckrahmen konnte nicht initialisiert werden.', 'error');
+              return;
+            }
+
+            frameDoc.open();
+            frameDoc.write(html || '');
+            frameDoc.close();
+
+            setTimeout(function() {
+              frame.contentWindow.focus();
+              frame.contentWindow.print();
+            }, 250);
+          })
+          .withFailureHandler(function(err) {
+            setBusy(false);
+            zeigeStatus('statusBoxMaische', 'Druck fehlgeschlagen: ' + leseFehler(err), 'error');
+          })
+          .getProtokollHtmlFuerBrandtag(datum);
+      }
+
+      function ermittleBrandtagAusMaske() {
+        const werte = Array.prototype.slice.call(document.querySelectorAll('#maischeSlotsContainer .maische-tagBrand'))
+          .map(function(el) { return String(el.value || '').trim(); })
+          .filter(Boolean);
+        const uniq = Array.from(new Set(werte));
+        return uniq.length === 1 ? uniq[0] : '';
+      }
+
+      document.addEventListener('click', function(event) {
+        if (!event.target.closest('.multi-picker')) {
+          document.querySelectorAll('.multi-picker.open').forEach(function(picker) {
+            picker.classList.remove('open');
+            aktualisiereMultiPicker(picker);
+          });
+        }
+      });
+
+      window.addEventListener('load', function() {
+        zeigeStartUebersicht();
+        document.getElementById('statusBoxVorplanung').style.display = 'none';
+        document.getElementById('statusBoxMaische').style.display = 'none';
+
+        if (START_MODUS === 'vorplanung') {
+          oeffneVorplanung();
+          return;
+        }
+
+        if (START_MODUS === 'maischeannahme') {
+          oeffneMaischeannahme();
+          return;
+        }
+
+        if (START_MODUS === 'brennfreigabe') {
+          oeffneBrennfreigabe();
+          return;
+        }
+      });
+    </script>
+  </body>
 </html>

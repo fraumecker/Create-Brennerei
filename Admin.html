@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_self">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= HtmlService.createHtmlOutputFromFile('Styles').getContent(); ?>
+
+    <style>
+      :root {
+        --admin-pink: #e0007a;
+        --admin-pink-dark: #a8005c;
+        --admin-green: #39ff14;
+        --admin-bg: rgba(255, 255, 255, 0.08);
+        --admin-border: rgba(255, 255, 255, 0.18);
+      }
+
+      .cockpit-stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .cockpit-btn {
+        width: 100%;
+        min-height: 60px;
+        font-size: 20px;
+        font-weight: 900;
+        border-radius: 18px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+
+      .admin-card {
+        display: grid;
+        gap: 12px;
+      }
+
+      .admin-row {
+        display: grid;
+        gap: 6px;
+      }
+
+      .admin-row label {
+        color: #fff;
+        font-weight: 900;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .admin-input,
+      .admin-select {
+        width: 100%;
+        min-height: 44px;
+        border-radius: 13px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        padding: 9px 11px;
+        font-size: 16px;
+        box-sizing: border-box;
+      }
+
+      .admin-hidden {
+        display: none !important;
+      }
+
+      body.admin-members-open .admin-entry-section,
+      body.admin-members-open #mainTitle {
+        display: none !important;
+      }
+
+      .admin-page {
+        display: grid;
+        gap: 14px;
+      }
+
+      .admin-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .admin-detail-topbar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .admin-members-entry-btn {
+        width: 100%;
+        min-height: 60px;
+        font-size: 20px;
+        font-weight: 900;
+        border-radius: 18px;
+        border: none;
+        background: linear-gradient(135deg, var(--admin-pink), var(--admin-pink-dark));
+        color: #fff;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-shadow: 0 14px 32px rgba(224, 0, 122, 0.26);
+      }
+
+      .admin-tab {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 24px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--admin-pink), var(--admin-pink-dark));
+        color: #fff;
+        font-size: 22px;
+        font-weight: 950;
+        box-shadow: 0 14px 32px rgba(224, 0, 122, 0.28);
+      }
+
+      .admin-green-btn {
+        min-height: 34px;
+        border-radius: 999px;
+        border: 1px solid rgba(57, 255, 20, 0.8);
+        background: rgba(57, 255, 20, 0.14);
+        color: var(--admin-green);
+        font-size: 13px;
+        font-weight: 950;
+        padding: 6px 12px;
+        cursor: pointer;
+        box-shadow: 0 0 18px rgba(57, 255, 20, 0.24);
+      }
+
+      .admin-pink-btn {
+        min-height: 42px;
+        border-radius: 13px;
+        border: none;
+        background: linear-gradient(135deg, var(--admin-pink), var(--admin-pink-dark));
+        color: #fff;
+        font-size: 15px;
+        font-weight: 950;
+        padding: 8px 15px;
+        cursor: pointer;
+        box-shadow: 0 12px 26px rgba(224, 0, 122, 0.25);
+      }
+
+      .admin-plus-btn {
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, var(--admin-pink), var(--admin-pink-dark));
+        color: #fff;
+        font-size: 28px;
+        font-weight: 950;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: 0 12px 26px rgba(224, 0, 122, 0.25);
+      }
+
+      .admin-muted-btn {
+        min-height: 36px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 900;
+        padding: 6px 13px;
+        cursor: pointer;
+      }
+
+      @keyframes zollPulse {
+        0%, 100% {
+          opacity: 1;
+          box-shadow: 0 0 0 4px rgba(55,142,255,0.18), 0 0 16px rgba(55,142,255,1);
+        }
+
+        50% {
+          opacity: 0.55;
+          box-shadow: 0 0 0 7px rgba(55,142,255,0.08), 0 0 24px rgba(55,142,255,1);
+        }
+      }
+
+      .zoll-access-btn {
+        position: relative;
+        background: #10233f !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(55, 142, 255, 0.55);
+        box-shadow: 0 0 0 1px rgba(55,142,255,0.16), 12px 12px 24px rgba(0,0,0,0.22);
+        padding-left: 52px;
+      }
+
+      .zoll-access-btn::before {
+        content: "🚨";
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        line-height: 1;
+        filter: hue-rotate(175deg) saturate(1.8);
+        animation: zollPulse 1.2s ease-in-out infinite;
+      }
+
+      .admin-search-line {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 8px;
+        align-items: end;
+      }
+
+      .admin-results {
+        display: grid;
+        gap: 8px;
+      }
+
+      .admin-result-card {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        align-items: center;
+        border: 1px solid var(--admin-border);
+        border-radius: 15px;
+        background: var(--admin-bg);
+        padding: 12px;
+        cursor: pointer;
+      }
+
+      .admin-result-name {
+        font-size: 17px;
+        font-weight: 950;
+        color: #fff;
+      }
+
+      .admin-result-meta {
+        margin-top: 4px;
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--text-soft);
+      }
+
+      .admin-status {
+        color: var(--text-soft);
+        font-weight: 850;
+        min-height: 20px;
+      }
+
+      .admin-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+        gap: 10px;
+      }
+
+      .admin-full {
+        grid-column: 1 / -1;
+      }
+
+      .admin-detail-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .admin-drive-line {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: end;
+      }
+
+      @media (max-width: 760px) {
+        .main-frame {
+          padding-left: 10px;
+          padding-right: 10px;
+        }
+
+        .admin-topbar {
+          display: grid;
+          grid-template-columns: 1fr auto;
+        }
+
+        .admin-tab {
+          min-height: 44px;
+          padding: 0 14px;
+          font-size: 18px;
+        }
+
+        .admin-search-line,
+        .admin-drive-line {
+          grid-template-columns: 1fr;
+        }
+
+        .admin-form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .admin-detail-actions {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .admin-detail-actions .admin-pink-btn {
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="main-frame">
+      <h1 id="mainTitle">OGV BREITFURT – ADMIN</h1>
+
+      <div class="card cockpit-stack admin-entry-section">
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorplanung&origin=admin" target="_top">Vorplanung</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=brandplanung&origin=admin" target="_top">Brandplanung</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=maischeannahme&origin=admin" target="_top">Maischeannahme</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=brennfreigabe&origin=admin" target="_top">Brennfreigabe</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=leitstand&origin=admin" target="_top">Leitstand</a>
+        <a class="btn-save cockpit-btn zoll-access-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=zollkontakte&origin=admin" target="_top">Zoll-Kontaktliste</a>
+      </div>
+
+      <div class="card admin-card admin-entry-section" style="margin-top: 16px;">
+        <div class="admin-members-entry-btn">Mitgliederverwaltung</div>
+
+        <div id="pinBox" class="admin-row">
+          <label for="adminPin">Admin-PIN</label>
+
+          <div class="admin-search-line" style="grid-template-columns: minmax(180px, 260px) auto; justify-content: start;">
+            <input id="adminPin" class="admin-input" type="password" placeholder="PIN" autocomplete="off">
+            <button class="admin-pink-btn" type="button" onclick="adminPinFreischalten()">Freischalten</button>
+          </div>
+
+          <div id="pinStatus" class="admin-status"></div>
+        </div>
+      </div>
+
+      <div id="mitgliederBereich" class="admin-page admin-hidden" style="margin-top: 16px;">
+        <div class="admin-topbar">
+          <div class="admin-tab">Mitgliederverwaltung</div>
+          <button class="admin-green-btn" type="button" onclick="zurueckZumAdminMenue()">Admin-Menü</button>
+        </div>
+
+        <div id="mitgliederSucheMaske" class="card admin-card">
+          <div class="admin-search-line">
+            <div class="admin-row">
+              <label for="mitgliedSuche">Suche</label>
+              <input id="mitgliedSuche" class="admin-input" type="text" placeholder="Name / SB-Nr. / Ort / Telefon / E-Mail" oninput="mitgliederSucheVerzoegert()" onkeydown="if(event.key==='Enter'){event.preventDefault(); mitgliederLaden(true);}">
+            </div>
+
+            <button class="admin-pink-btn" type="button" onclick="mitgliederLaden(true)">Suchen</button>
+            <button class="admin-plus-btn" type="button" title="Neues Mitglied" onclick="neuesMitgliedVorbereiten()">+</button>
+          </div>
+
+          <div id="listenStatus" class="admin-status"></div>
+          <div id="mitgliederTreffer" class="admin-results"></div>
+        </div>
+
+        <div id="mitgliederDetailMaske" class="card admin-card admin-hidden">
+          <div class="admin-detail-topbar">
+            <button class="admin-muted-btn" type="button" onclick="zurueckZurMitgliedersuche()">Zurück zur Suche</button>
+          </div>
+
+          <div id="detailStatus" class="admin-status"></div>
+
+          <div class="admin-form-grid">
+            <div class="admin-row">
+              <label for="feldMitgliederID">MitgliederID</label>
+              <input id="feldMitgliederID" class="admin-input" type="text" readonly>
+            </div>
+
+            <div class="admin-row">
+              <label for="feldStoffbesitzernummer">Stoffbesitzernummer</label>
+              <input id="feldStoffbesitzernummer" class="admin-input" type="text">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldZuname">Zuname</label>
+              <input id="feldZuname" class="admin-input" type="text">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldVorname">Vorname</label>
+              <input id="feldVorname" class="admin-input" type="text">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldGebdatum">Geburtsdatum</label>
+              <input id="feldGebdatum" class="admin-input" type="text" placeholder="TT.MM.JJJJ">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldEintritt">Eintritt</label>
+              <input id="feldEintritt" class="admin-input" type="text" placeholder="TT.MM.JJJJ">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldStrasse">Straße</label>
+              <input id="feldStrasse" class="admin-input" type="text">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldNr">Nr.</label>
+              <input id="feldNr" class="admin-input" type="text">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldPLZ">PLZ</label>
+              <input id="feldPLZ" class="admin-input" type="text">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldWohnort">Wohnort</label>
+              <input id="feldWohnort" class="admin-input" type="text">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldTelefon">Telefon</label>
+              <input id="feldTelefon" class="admin-input" type="text">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldEmail">E-Mail</label>
+              <input id="feldEmail" class="admin-input" type="email">
+            </div>
+
+            <div class="admin-row">
+              <label for="feldVereinsmitglied">Vereinsmitglied</label>
+              <select id="feldVereinsmitglied" class="admin-select">
+                <option value="">nein / leer</option>
+                <option value="x">ja</option>
+              </select>
+            </div>
+
+            <div class="admin-row">
+              <label for="feldNameAnzeige">NameAnzeige</label>
+              <input id="feldNameAnzeige" class="admin-input" type="text">
+            </div>
+
+            <div class="admin-row admin-full">
+              <label for="feldDriveOrdner">Drive-Ordner</label>
+              <div class="admin-drive-line">
+                <input id="feldDriveOrdner" class="admin-input" type="text" readonly>
+                <button class="admin-pink-btn" type="button" onclick="driveOrdnerOeffnenOderAnlegen()">Ordner</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-detail-actions">
+            <button class="admin-plus-btn" type="button" title="Neues Mitglied" onclick="neuesMitgliedVorbereiten()">+</button>
+            <button class="admin-pink-btn" type="button" onclick="mitgliedSpeichern()">Speichern</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let adminPinToken = '';
+      let mitgliederCache = [];
+      let sucheTimer = null;
+      let aktuellerModus = 'bearbeiten';
+      let aktuelleZeile = 0;
+      let aktuellerDriveUrl = '';
+
+      const feldMap = {
+        MitgliederID: 'feldMitgliederID',
+        Stoffbesitzernummer: 'feldStoffbesitzernummer',
+        Zuname: 'feldZuname',
+        Vorname: 'feldVorname',
+        PLZ: 'feldPLZ',
+        Wohnort: 'feldWohnort',
+        'Straße': 'feldStrasse',
+        'Nr.': 'feldNr',
+        'Geb.datum': 'feldGebdatum',
+        Eintritt: 'feldEintritt',
+        Telefon: 'feldTelefon',
+        'E-Mail': 'feldEmail',
+        NameAnzeige: 'feldNameAnzeige',
+        Vereinsmitglied: 'feldVereinsmitglied'
+      };
+
+      function setText(id, text) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text || '';
+      }
+
+      function esc(text) {
+        return String(text == null ? '' : text).replace(/[&<>"']/g, function(m) {
+          return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+          }[m];
+        });
+      }
+
+      function ansichtSuche() {
+        document.getElementById('mitgliederSucheMaske').classList.remove('admin-hidden');
+        document.getElementById('mitgliederDetailMaske').classList.add('admin-hidden');
+      }
+
+      function ansichtDetail() {
+        document.getElementById('mitgliederSucheMaske').classList.add('admin-hidden');
+        document.getElementById('mitgliederDetailMaske').classList.remove('admin-hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function adminPinFreischalten() {
+        const pin = document.getElementById('adminPin').value.trim();
+
+        if (!pin) {
+          setText('pinStatus', 'PIN fehlt.');
+          return;
+        }
+
+        setText('pinStatus', 'PIN wird geprüft ...');
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (!res || !res.ok) {
+              setText('pinStatus', 'PIN ungültig.');
+              return;
+            }
+
+            adminPinToken = pin;
+
+            document.getElementById('mitgliederBereich').classList.remove('admin-hidden');
+            document.body.classList.add('admin-members-open');
+
+            setText('pinStatus', '');
+            sucheLeeren();
+
+            mitgliederCache = [];
+            renderMitgliederTreffer();
+
+            setText('listenStatus', '');
+            ansichtSuche();
+
+            const suche = document.getElementById('mitgliedSuche');
+            if (suche) suche.focus();
+          })
+          .withFailureHandler(function(err) {
+            setText('pinStatus', err && err.message ? err.message : String(err));
+          })
+          .adminMitgliederPinPruefen(pin);
+      }
+
+      function zurueckZumAdminMenue() {
+        document.body.classList.remove('admin-members-open');
+        document.getElementById('mitgliederBereich').classList.add('admin-hidden');
+
+        adminPinToken = '';
+
+        const pin = document.getElementById('adminPin');
+        if (pin) pin.value = '';
+
+        sucheLeeren();
+        formularLeeren({ ohneAnsichtWechsel: true });
+
+        mitgliederCache = [];
+        renderMitgliederTreffer();
+
+        setText('listenStatus', '');
+        setText('pinStatus', '');
+      }
+
+      function mitgliederSucheVerzoegert() {
+        clearTimeout(sucheTimer);
+
+        const suchtext = document.getElementById('mitgliedSuche').value.trim();
+
+        if (suchtext.length < 2) {
+          mitgliederCache = [];
+          renderMitgliederTreffer();
+          setText('listenStatus', '');
+          return;
+        }
+
+        sucheTimer = setTimeout(function() {
+          mitgliederLaden(false);
+        }, 250);
+      }
+
+      function mitgliederLaden(force) {
+        if (!adminPinToken) {
+          setText('listenStatus', 'PIN fehlt.');
+          return;
+        }
+
+        const suchtext = document.getElementById('mitgliedSuche').value.trim();
+
+        if (suchtext.length < 2) {
+          mitgliederCache = [];
+          renderMitgliederTreffer();
+          setText('listenStatus', force ? 'Mindestens 2 Zeichen.' : '');
+          return;
+        }
+
+        setText('listenStatus', 'Lade ...');
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            const roh = res && res.mitglieder ? res.mitglieder : [];
+
+            mitgliederCache = roh.filter(function(m) {
+              return mitgliedHatInhalt(m);
+            });
+
+            renderMitgliederTreffer();
+
+            setText(
+              'listenStatus',
+              mitgliederCache.length ? mitgliederCache.length + ' Treffer. Eintrag anklicken.' : 'Keine Treffer'
+            );
+          })
+          .withFailureHandler(function(err) {
+            setText('listenStatus', err && err.message ? err.message : String(err));
+          })
+          .adminMitgliederListeLaden(adminPinToken, suchtext);
+      }
+
+      function mitgliedHatInhalt(m) {
+        if (!m) return false;
+
+        return !!String([
+          m.NameAnzeige,
+          m.Zuname,
+          m.Vorname,
+          m.Stoffbesitzernummer,
+          m.Wohnort,
+          m.Telefon,
+          m['E-Mail']
+        ].join('')).trim();
+      }
+
+      function mitgliedName(m) {
+        const nameAnzeige = String(m && m.NameAnzeige ? m.NameAnzeige : '').trim();
+
+        if (nameAnzeige) return nameAnzeige;
+
+        const teile = [];
+
+        if (m && m.Zuname) teile.push(String(m.Zuname).trim());
+        if (m && m.Vorname) teile.push(String(m.Vorname).trim());
+
+        return teile.filter(Boolean).join(', ');
+      }
+
+      function renderMitgliederTreffer() {
+        const box = document.getElementById('mitgliederTreffer');
+
+        if (!box) return;
+
+        if (!mitgliederCache.length) {
+          box.innerHTML = '';
+          return;
+        }
+
+        box.innerHTML = mitgliederCache.map(function(m, idx) {
+          const meta = [
+            m.Stoffbesitzernummer ? 'SB ' + m.Stoffbesitzernummer : '',
+            m.Wohnort || '',
+            m.Telefon || ''
+          ].filter(Boolean).join(' · ');
+
+          return '<div class="admin-result-card" onclick="mitgliedAuswaehlen(' + idx + ')">' +
+            '<div><div class="admin-result-name">' + esc(mitgliedName(m)) + '</div>' +
+            '<div class="admin-result-meta">' + esc(meta) + '</div></div>' +
+            '<button class="admin-pink-btn" type="button" onclick="event.stopPropagation(); mitgliedAuswaehlen(' + idx + ')">Ansehen</button>' +
+          '</div>';
+        }).join('');
+      }
+
+      function formularLeeren(optionen) {
+        const opts = optionen || {};
+
+        Object.keys(feldMap).forEach(function(key) {
+          const el = document.getElementById(feldMap[key]);
+          if (el) el.value = '';
+        });
+
+        aktuelleZeile = 0;
+        aktuellerModus = 'neu';
+        aktuellerDriveUrl = '';
+
+        const drive = document.getElementById('feldDriveOrdner');
+        if (drive) drive.value = '';
+
+        setText('detailStatus', '');
+
+        if (!opts.ohneAnsichtWechsel) ansichtDetail();
+      }
+
+      function sucheLeeren() {
+        const suche = document.getElementById('mitgliedSuche');
+        if (suche) suche.value = '';
+      }
+
+      function neuesMitgliedVorbereiten() {
+        formularLeeren();
+      }
+
+      function mitgliedAuswaehlen(index) {
+        const m = mitgliederCache[index];
+
+        if (!m) return;
+
+        aktuelleZeile = Number(m._zeile || 0);
+        aktuellerModus = 'bearbeiten';
+        aktuellerDriveUrl = m.DriveOrdnerUrl || '';
+
+        Object.keys(feldMap).forEach(function(key) {
+          const el = document.getElementById(feldMap[key]);
+
+          if (!el) return;
+
+          if (key === 'Vereinsmitglied') {
+            el.value = istVereinsmitgliedJa(m[key]) ? 'x' : '';
+          } else {
+            el.value = m[key] || '';
+          }
+        });
+
+        const drive = document.getElementById('feldDriveOrdner');
+        if (drive) drive.value = aktuellerDriveUrl || '';
+
+        setText('detailStatus', '');
+        ansichtDetail();
+      }
+
+      function zurueckZurMitgliedersuche() {
+        ansichtSuche();
+      }
+
+      function istVereinsmitgliedJa(wert) {
+        const v = String(wert == null ? '' : wert).trim().toLowerCase();
+
+        return v === 'x' || v === 'ja' || v === 'j' || v === 'true' || v === '1';
+      }
+
+      function payloadAusFormular() {
+        const payload = {
+          _zeile: aktuelleZeile,
+          _modus: aktuellerModus
+        };
+
+        Object.keys(feldMap).forEach(function(key) {
+          const el = document.getElementById(feldMap[key]);
+
+          if (!el) {
+            payload[key] = '';
+          } else if (key === 'Vereinsmitglied') {
+            payload[key] = el.value === 'x' ? 'x' : '';
+          } else {
+            payload[key] = el.value.trim();
+          }
+        });
+
+        return payload;
+      }
+
+      function mitgliedSpeichern() {
+        if (!adminPinToken) {
+          setText('detailStatus', 'PIN fehlt.');
+          return;
+        }
+
+        const payload = payloadAusFormular();
+
+        if (!payload.Zuname && !payload.Vorname && !payload.NameAnzeige) {
+          setText('detailStatus', 'Name fehlt.');
+          return;
+        }
+
+        setText('detailStatus', 'Speichern ...');
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (!res || !res.ok) {
+              setText('detailStatus', 'Speichern nicht bestätigt.');
+              return;
+            }
+
+            sucheLeeren();
+
+            mitgliederCache = [];
+            renderMitgliederTreffer();
+
+            formularLeeren({ ohneAnsichtWechsel: true });
+            ansichtSuche();
+
+            setText('listenStatus', '');
+            setText('detailStatus', '');
+          })
+          .withFailureHandler(function(err) {
+            setText('detailStatus', err && err.message ? err.message : String(err));
+          })
+          .adminMitgliedSpeichern(adminPinToken, payload);
+      }
+
+      function driveOrdnerOeffnenOderAnlegen() {
+        if (aktuellerDriveUrl) {
+          window.open(aktuellerDriveUrl, '_blank');
+          return;
+        }
+
+        if (!adminPinToken) {
+          setText('detailStatus', 'PIN fehlt.');
+          return;
+        }
+
+        const payload = payloadAusFormular();
+
+        if (!payload.Zuname && !payload.Vorname && !payload.NameAnzeige) {
+          setText('detailStatus', 'Name fehlt.');
+          return;
+        }
+
+        setText('detailStatus', 'Ordner ...');
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (!res || !res.ok || !res.url) {
+              setText('detailStatus', 'Ordner nicht bestätigt.');
+              return;
+            }
+
+            aktuellerDriveUrl = res.url;
+
+            const drive = document.getElementById('feldDriveOrdner');
+            if (drive) drive.value = res.url;
+
+            window.open(res.url, '_blank');
+            setText('detailStatus', '');
+          })
+          .withFailureHandler(function(err) {
+            setText('detailStatus', err && err.message ? err.message : String(err));
+          })
+          .adminStoffbesitzerOrdnerSicherstellen(adminPinToken, payload);
+      }
+    </script>
+  </body>
+</html>

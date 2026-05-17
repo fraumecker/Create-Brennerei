@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_self">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+      /* GitHub-Wrapper schneidet oben 80px ab, um den Google-Hinweis auszublenden.
+         Dieser Ausgleich macht Überschrift und obere Buttons wieder sichtbar. */
+      .main-frame {
+        margin-top: 80px !important;
+      }
+
+    :root {
+      --pink: #ff007f;
+      --pink-dark: #800040;
+      --neon: #00ff00;
+      --bg-dark: #222222;
+      --card-bg: #2a2a2a;
+      --input-bg: #1a1a1a;
+      --line: #444444;
+      --text-soft: #bbbbbb;
+      --neo-out: 12px 12px 24px #151515, -12px -12px 24px #333333;
+      --neo-in: inset 8px 8px 16px #111111, inset -8px -8px 16px #3a3a3a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: var(--bg-dark);
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      font-weight: 700;
+    }
+
+    body {
+      padding: 8px;
+      overflow-x: hidden;
+    }
+
+    .main-frame {
+      width: 100%;
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--bg-dark);
+      border-radius: 24px;
+      box-shadow: var(--neo-out);
+      padding: 12px;
+      border: 1px solid #333333;
+    }
+
+    .header-top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--bg-dark);
+      padding: 8px 0;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--pink);
+      font-weight: 900;
+      letter-spacing: 1.2px;
+      text-shadow: 0 0 12px rgba(255, 0, 127, 0.6);
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .top-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .back-link,
+    .reload-btn {
+      min-height: 40px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: var(--neo-out);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 12px;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .back-link {
+      background: var(--card-bg);
+      color: var(--neon);
+      text-shadow: 0 0 8px rgba(0, 255, 0, 0.7);
+    }
+
+    .reload-btn {
+      background: linear-gradient(145deg, var(--pink), var(--pink-dark));
+      color: #ffffff;
+    }
+
+    .zoll-title-card,
+    .contact-card,
+    .status-card {
+      background: var(--card-bg);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--neo-out);
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    @keyframes zollPulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 4px rgba(55,142,255,0.18), 0 0 16px rgba(55,142,255,1); }
+      50% { opacity: 0.55; box-shadow: 0 0 0 7px rgba(55,142,255,0.08), 0 0 24px rgba(55,142,255,1); }
+    }
+
+    .zoll-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .zoll-icon {
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 21px;
+      background: #10233f;
+      border: 1px solid rgba(55, 142, 255, 0.55);
+      filter: hue-rotate(175deg) saturate(1.8);
+      animation: zollPulse 1.2s ease-in-out infinite;
+    }
+
+    .zoll-name {
+      font-size: 22px;
+      font-weight: 950;
+      color: #ffffff;
+      line-height: 1.1;
+    }
+
+    .zoll-subtitle,
+    .zoll-meta {
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.35;
+      margin-top: 4px;
+    }
+
+    .contact-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .contact-card {
+      margin-bottom: 0;
+      border-color: rgba(55, 142, 255, 0.42);
+    }
+
+    .contact-name {
+      color: #ffffff;
+      font-size: 19px;
+      font-weight: 950;
+      margin-bottom: 5px;
+    }
+
+    .contact-seat {
+      color: #7eb6ff;
+      font-size: 13px;
+      font-weight: 900;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .contact-line {
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      gap: 8px;
+      padding: 6px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 15px;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .contact-label {
+      color: var(--text-soft);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .contact-value,
+    .contact-value a {
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 900;
+    }
+
+    .status-card {
+      color: var(--text-soft);
+      font-size: 14px;
+    }
+
+    .status-card.error {
+      color: #ffd0d0;
+      border-color: rgba(255, 0, 0, 0.4);
+    }
+
+    @media (max-width: 680px) {
+      body {
+        padding: 4px;
+      }
+
+      .main-frame {
+        border-radius: 18px;
+        padding: 8px;
+      }
+
+      .header-top {
+        grid-template-columns: 1fr;
+      }
+
+      .top-actions {
+        justify-content: stretch;
+      }
+
+      .back-link {
+        flex: 1 1 auto;
+      }
+
+      h1 {
+        font-size: 19px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-frame">
+    <div class="header-top">
+      <h1>OGV BREITFURT – ZOLL-KONTAKTLISTE</h1>
+      <div class="top-actions">
+        <a id="backLink" class="back-link" href="<?= (typeof originModus !== 'undefined' && originModus === 'admin') ? 'https://fraumecker.github.io/brennerei-startogv/admin.html' : 'https://fraumecker.github.io/brennerei-startogv/' ?>" target="_top">Zur Übersicht</a>
+      </div>
+    </div>
+
+    <div class="zoll-title-card">
+      <div class="zoll-heading">
+        <span class="zoll-icon">🚨</span>
+        <div>
+          <div id="zollTitel" class="zoll-name">Zoll-Kontaktliste</div>
+          <div id="zollUntertitel" class="zoll-subtitle">Kontaktliste wird geladen …</div>
+        </div>
+      </div>
+      <div id="zollMeta" class="zoll-meta"></div>
+    </div>
+
+    <div id="statusBox" class="status-card">Kontaktliste wird geladen …</div>
+    <div id="kontaktListe" class="contact-grid"></div>
+  </div>
+
+  <script>
+    function escapeHtml(text) {
+      return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function linkHtml(wert, typ) {
+      var text = String(wert == null ? '' : wert).trim();
+      if (!text) return '-';
+      var href = text;
+      if (typ === 'tel') href = 'tel:' + text.replace(/[^0-9+]/g, '');
+      if (typ === 'mail') href = 'mailto:' + text;
+      return '<a href="' + escapeHtml(href) + '">' + escapeHtml(text) + '</a>';
+    }
+
+    function statusSetzen(text, fehler) {
+      var box = document.getElementById('statusBox');
+      box.textContent = text || '';
+      box.className = fehler ? 'status-card error' : 'status-card';
+      box.style.display = text ? 'block' : 'none';
+    }
+
+    function kontakteLaden() {
+      statusSetzen('Kontaktliste wird geladen …', false);
+      document.getElementById('kontaktListe').innerHTML = '';
+      google.script.run
+        .withSuccessHandler(kontakteAnzeigen)
+        .withFailureHandler(function(err) {
+          statusSetzen('Zoll-Kontaktliste konnte nicht geladen werden: ' + (err && err.message ? err.message : err), true);
+        })
+        .getZollNotfallKontaktliste();
+    }
+
+    function kontakteAnzeigen(payload) {
+      payload = payload || {};
+      var kontakte = Array.isArray(payload.kontakte) ? payload.kontakte : [];
+
+      document.getElementById('zollTitel').textContent = payload.titel || 'Zoll-Kontaktliste';
+      document.getElementById('zollUntertitel').textContent = payload.untertitel || 'Telefonliste Steueraufsicht Abfindungsbrennereien';
+      document.getElementById('zollMeta').innerHTML = ''
+        + '<strong>Stand:</strong> ' + escapeHtml(payload.stand || '-')
+        + ' &nbsp; | &nbsp; <strong>Fax alle Standorte:</strong> ' + escapeHtml(payload.faxAlleStandorte || '-')
+        + ' &nbsp; | &nbsp; <strong>Zentrale E-Mail:</strong> ' + linkHtml(payload.zentraleEmail || '', 'mail');
+
+      if (!kontakte.length) {
+        statusSetzen('Keine Zoll-Kontakte hinterlegt.', false);
+        return;
+      }
+
+      document.getElementById('kontaktListe').innerHTML = kontakte.map(function(k) {
+        return '<div class="contact-card">'
+          + '<div class="contact-name">👤 ' + escapeHtml(k.name || '') + '</div>'
+          + '<div class="contact-seat">🏢 ' + escapeHtml(k.dienstsitz || '-') + '</div>'
+          + '<div class="contact-line"><div class="contact-label">Telefon</div><div class="contact-value">' + linkHtml(k.telefon, 'tel') + '</div></div>'
+          + '<div class="contact-line"><div class="contact-label">Mobil</div><div class="contact-value">' + linkHtml(k.mobil, 'tel') + '</div></div>'
+          + '<div class="contact-line"><div class="contact-label">E-Mail</div><div class="contact-value">' + linkHtml(k.email, 'mail') + '</div></div>'
+          + '</div>';
+      }).join('');
+
+      statusSetzen('', false);
+    }
+
+    document.addEventListener('DOMContentLoaded', kontakteLaden);
+  </script>
+</body>
+</html>

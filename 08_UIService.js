@@ -1,92 +1,181 @@
-
 /**
  * DATEI: 08_UISERVICE.GS
- * UI-FUNKTIONEN FÜR MASKE UND COCKPIT
+ * STATUS: UI OHNE EINGABEMASKE
+ * ZWECK: DIALOGE, AKTIONEN AUF AKTIVE ZEILE, DOSSIER-LINK, COCKPIT-ZUGANG
  */
 
-// FUNKTION: Öffnet die Web-Maske aus der aktiven Tabellenzeile | EINGRIFF: SpreadsheetApp UI / Index.html
-function vorgangOeffnen() {
-  // FUNKTION: Referenziert das aktive Blatt | EINGRIFF: SpreadsheetApp
-  const sh = SpreadsheetApp.getActiveSheet();
-  // CHECK: Existiert ein aktives Blatt? | FOLGE: Abbruch bei fehlendem Kontext
-  if (!sh) return;
-
-  // FUNKTION: Liest das dynamische Mapping des aktiven Blatts | EINGRIFF: 02_BASISHELPER
-  const sMap = spaltenZuordnungHolen_(sh);
-  // FUNKTION: Ermittelt die aktive Zeile | EINGRIFF: SpreadsheetApp
-  const row = sh.getActiveCell().getRow();
-  // FUNKTION: Liest die ID-Spalte aus dem Mapping | EINGRIFF: Mapping
-  const colId = sMap.VORGANGS_ID;
-  // FUNKTION: Initialisiert die Vorgangs-ID | EINGRIFF: Datenstruktur
-  let vId = "";
-
-  // CHECK: Ist eine Datenzeile mit ID-Spalte aktiv? | FOLGE: Lesen der Vorgangs-ID aus der Tabelle
-  if (colId && row > 1) {
-    // FUNKTION: Liest und normalisiert die Vorgangs-ID aus der aktiven Zeile | EINGRIFF: Physikalische Tabelle
-    vId = textNormalisieren_(sh.getRange(row, colId).getValue());
-  }
-
-  // FUNKTION: Erzeugt das HTML-Template der Web-Maske | EINGRIFF: HtmlService
-  const t = HtmlService.createTemplateFromFile("Index");
-  // FUNKTION: Initialisiert den Start-Tab | EINGRIFF: UI-Navigation
-  let startTab = "tab1";
-  // FUNKTION: Initialisiert den Bearbeitungsanker | EINGRIFF: UI-Zustand
-  let editVId = "";
-
-  // CHECK: Liegt eine verwertbare Vorgangs-ID vor? | FOLGE: Vorab-Prüfung gegen echte Datensätze
-  if (vId && vId.length > 1) {
-    // FUNKTION: Prüft serverseitig, ob der Vorgang real in Vorplanung oder Maischeannahme vorhanden ist | EINGRIFF: 09_MASKENSERVICE
-    const daten = holeVorgangsDatenFuerMaske(vId);
-
-    // CHECK: Wurde ein realer Vorgang gefunden? | FOLGE: Öffnen im Bearbeiten-Modus
-    if (daten && daten.vId) {
-      // FUNKTION: Übernimmt die aufgelöste Vorgangs-ID in den Template-Kontext | EINGRIFF: Web-Maske
-      editVId = daten.vId;
-      // FUNKTION: Liest den physischen Namen des aktiven Blatts | EINGRIFF: SpreadsheetApp
-      const sName = sh.getName();
-      // CHECK: Erfolgt der Aufruf aus der Maischeannahme? | FOLGE: Start auf Tab 3, sonst Tab 1
-      startTab = (sName === KONFIGURATION.TABELLEN.MAISCHEANNAHME) ? "tab3" : "tab1";
-    }
-  }
-
-  // FUNKTION: Übergibt die aufgelöste Vorgangs-ID an das HTML-Template | EINGRIFF: Index.html
-  t.editVId = editVId;
-  // FUNKTION: Übergibt den Start-Tab an das HTML-Template | EINGRIFF: Index.html
-  t.startTab = startTab;
-
-  // FUNKTION: Rendert das UI mit definierter Größe | EINGRIFF: HtmlService
-  const ui = t.evaluate().setWidth(1280).setHeight(950);
-  // FUNKTION: Öffnet den Dialog im Spreadsheet | EINGRIFF: SpreadsheetApp UI
-  SpreadsheetApp.getUi().showModalDialog(ui, " ");
-}
-
-// FUNKTION: Zeigt den mobilen Zugang zum Brenner-Cockpit an | EINGRIFF: SpreadsheetApp UI / Web-App
 function cockpitZugangAnzeigen() {
-  // FUNKTION: Liest die veröffentlichte URL der Web-App | EINGRIFF: ScriptApp
   const scriptUrl = ScriptApp.getService().getUrl();
 
-  // CHECK: Ist eine Web-App-URL vorhanden? | FOLGE: Hinweis bei fehlender Veröffentlichung
   if (!scriptUrl) {
-    // FUNKTION: Informiert über die fehlende Veröffentlichung der Web-App | EINGRIFF: SpreadsheetApp UI
-    SpreadsheetApp.getUi().alert("⚠️ Web-App ist noch nicht veröffentlicht.");
+    systemAlert_('FEHLER', 'Die Web-App ist noch nicht deployt.');
     return;
   }
 
-  // FUNKTION: Baut die Cockpit-URL mit dem Modus-Parameter auf | EINGRIFF: URL-Logik
-  const cockpitUrl = scriptUrl + "?mode=cockpit";
-  // FUNKTION: Baut die HTML-Ausgabe für QR-Code und Direktlink auf | EINGRIFF: HtmlService
+  const cockpitUrl = scriptUrl + '?mode=index';
+
   const html = `
-    <div style="font-family:sans-serif; text-align:center; padding:20px; background:#1a1a1a; color:white;">
-      <h2 style="color:#00f2ff;">🏁 BRENNER COCKPIT</h2>
-      <p>Scan den Code für den mobilen Leitstand:</p>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(cockpitUrl)}">
-      <br><br>
-      <input type="text" value="${cockpitUrl}" style="width:100%; background:#333; color:#00f2ff; border:none; padding:5px;" readonly>
-    </div>
+    <html>
+      <head>
+        <base target="_top">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        ${HtmlService.createHtmlOutputFromFile('Styles').getContent()}
+      </head>
+      <body>
+        <div class="container" style="padding:24px; max-width:700px; margin:0 auto;">
+          <div class="card" style="text-align:center;">
+            <h2>Web-App-Zugang</h2>
+            <p>QR-Code für den mobilen Aufruf</p>
+            <img
+              src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(cockpitUrl)}"
+              alt="QR-Code"
+              style="max-width:220px; border-radius:16px;"
+            >
+            <div style="margin-top:16px;">
+              <input
+                type="text"
+                value="${cockpitUrl}"
+                readonly
+                style="width:100%; padding:10px; box-sizing:border-box;"
+              >
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
   `;
 
-  // FUNKTION: Rendert die HTML-Ausgabe als Dialog | EINGRIFF: HtmlService
-  const ui = HtmlService.createHtmlOutput(html).setWidth(400).setHeight(450);
-  // FUNKTION: Öffnet den Dialog im Spreadsheet | EINGRIFF: SpreadsheetApp UI
-  SpreadsheetApp.getUi().showModalDialog(ui, "Cockpit Zugang");
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(520).setHeight(620),
+    'Web-App-Zugang'
+  );
+}
+
+
+function aktivenDossierLinkAktualisieren() {
+  const kontext = aktiveMaischeannahmeZeileHolen_();
+  if (!kontext) return;
+
+  dossierLinkAktualisieren_(kontext.blatt, kontext.zeile, kontext.sMap);
+
+  const vId = kontext.sMap.VORGANGS_ID
+    ? textNormalisieren_(kontext.blatt.getRange(kontext.zeile, kontext.sMap.VORGANGS_ID).getValue())
+    : '';
+
+  systemLogSchreiben_('INFO', 'UIService', 'Dossier-Link manuell aktualisiert', vId, 'Zeile ' + kontext.zeile);
+  systemAlert_('ERFOLG', 'Dossier-Link wurde aktualisiert.');
+}
+/**
+ * DATEI: 08_UISERVICE.GS
+ * STATUS: UI OHNE EINGABEMASKE
+ * ZWECK: DIALOGE, AKTIONEN AUF AKTIVE ZEILE, DOSSIER-LINK, COCKPIT-ZUGANG
+ */
+
+function cockpitZugangAnzeigen() {
+  const scriptUrl = ScriptApp.getService().getUrl();
+
+  if (!scriptUrl) {
+    systemAlert_('FEHLER', 'Die Web-App ist noch nicht deployt.');
+    return;
+  }
+
+  const cockpitUrl = scriptUrl + '?mode=index';
+
+  const html = `
+    <html>
+      <head>
+        <base target="_top">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        ${HtmlService.createHtmlOutputFromFile('Styles').getContent()}
+      </head>
+      <body>
+        <div class="container" style="padding:24px; max-width:700px; margin:0 auto;">
+          <div class="card" style="text-align:center;">
+            <h2>Web-App-Zugang</h2>
+            <p>QR-Code für den mobilen Aufruf</p>
+            <img
+              src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(cockpitUrl)}"
+              alt="QR-Code"
+              style="max-width:220px; border-radius:16px;"
+            >
+            <div style="margin-top:16px;">
+              <input
+                type="text"
+                value="${cockpitUrl}"
+                readonly
+                style="width:100%; padding:10px; box-sizing:border-box;"
+              >
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(520).setHeight(620),
+    'Web-App-Zugang'
+  );
+}
+
+
+function aktivenDossierLinkAktualisieren() {
+  const kontext = aktiveMaischeannahmeZeileHolen_();
+  if (!kontext) return;
+
+  dossierLinkAktualisieren_(kontext.blatt, kontext.zeile, kontext.sMap);
+
+  const vId = kontext.sMap.VORGANGS_ID
+    ? textNormalisieren_(kontext.blatt.getRange(kontext.zeile, kontext.sMap.VORGANGS_ID).getValue())
+    : '';
+
+  systemLogSchreiben_('INFO', 'UIService', 'Dossier-Link manuell aktualisiert', vId, 'Zeile ' + kontext.zeile);
+  systemAlert_('ERFOLG', 'Dossier-Link wurde aktualisiert.');
+}
+
+
+function aktiveMaischeannahmeZeileHolen_() {
+  const blatt = SpreadsheetApp.getActiveSheet();
+
+  if (!blatt || blatt.getName() !== KONFIGURATION.TABELLEN.MAISCHEANNAHME) {
+    systemAlert_('HINWEIS', 'Bitte zuerst eine Zeile in ' + KONFIGURATION.TABELLEN.MAISCHEANNAHME + ' auswählen.');
+    return null;
+  }
+
+  const zeile = blatt.getActiveCell().getRow();
+  if (zeile <= 1) {
+    systemAlert_('HINWEIS', 'Bitte zuerst eine Datenzeile auswählen.');
+    return null;
+  }
+
+  const sMap = spaltenZuordnungHolen_(blatt);
+
+  return {
+    blatt: blatt,
+    zeile: zeile,
+    sMap: sMap
+  };
+}
+
+function aktiveMaischeannahmeZeileHolen_() {
+  const blatt = SpreadsheetApp.getActiveSheet();
+
+  if (!blatt || blatt.getName() !== KONFIGURATION.TABELLEN.MAISCHEANNAHME) {
+    systemAlert_('HINWEIS', 'Bitte zuerst eine Zeile in ' + KONFIGURATION.TABELLEN.MAISCHEANNAHME + ' auswählen.');
+    return null;
+  }
+
+  const zeile = blatt.getActiveCell().getRow();
+  if (zeile <= 1) {
+    systemAlert_('HINWEIS', 'Bitte zuerst eine Datenzeile auswählen.');
+    return null;
+  }
+
+  const sMap = spaltenZuordnungHolen_(blatt);
+
+  return {
+    blatt: blatt,
+    zeile: zeile,
+    sMap: sMap
+  };
 }

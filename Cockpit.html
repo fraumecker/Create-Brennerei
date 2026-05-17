@@ -1,140 +1,131 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <style>
-    :root { --red: #d9534f; --dark-bg: #0d0d0d; --card-bg: #1a1a1a; --cyan: #00f2ff; --neon: #39ff14; }
-    body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--dark-bg); color: #fff; margin: 0; padding: 0; }
-    .header-panel { background: var(--red); padding: 20px 10px; text-align: center; border-bottom: 5px solid #a9322d; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-    .header-panel label { display: block; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
-    .date-display { background: #fff; color: #000; border-radius: 8px; padding: 12px; font-size: 22px; font-weight: 900; width: 85%; margin: auto; border: none; text-align: center; }
-    .container { padding: 15px; padding-bottom: 100px; }
-    .job-card { 
-      background: var(--card-bg); border-radius: 15px; padding: 15px; margin-bottom: 20px; 
-      border-left: 10px solid var(--red); box-shadow: 8px 8px 16px #000; position: relative;
-    }
-    .btn-ordner { 
-      position: absolute; right: 15px; top: 15px; background: var(--cyan); color: #000; 
-      border: none; border-radius: 8px; padding: 10px 15px; font-weight: bold; font-size: 12px;
-    }
-    .brenner-info { color: #f0ad4e; font-weight: bold; font-size: 14px; margin-bottom: 5px; }
-    .owner-name { font-size: 24px; font-weight: 900; color: #fff; text-transform: uppercase; margin: 5px 0; }
-    .sub-info { color: var(--cyan); font-size: 13px; margin-bottom: 15px; font-weight: bold; }
-    .grid-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .cell { background: #222; border-radius: 8px; padding: 8px; text-align: center; border: 1px solid #333; }
-    .cell label { font-size: 9px; color: #888; display: block; margin-bottom: 4px; }
-    .cell span { font-weight: bold; font-size: 15px; color: #fff; }
-    .cell input { 
-      width: 100%; background: transparent; border: none; color: var(--neon); 
-      text-align: center; font-size: 18px; font-weight: bold; outline: none;
-    }
-    .footer-action { 
-      position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.85); 
-      padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; border-top: 1px solid #333;
-    }
-    .btn-large { 
-      padding: 18px; border-radius: 12px; border: none; font-weight: bold; font-size: 16px; 
-      text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-    }
-    .btn-blue { background: var(--cyan); color: #000; }
-    .btn-red { background: var(--red); color: #fff; }
-  </style>
-</head>
-<body>
+  <head>
+    <base target="_self">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= HtmlService.createHtmlOutputFromFile('Styles').getContent(); ?>
+    <style>
+      /* GitHub-Wrapper schneidet oben 80px ab, um den Google-Hinweis auszublenden.
+         Dieser Ausgleich macht Überschrift und obere Buttons wieder sichtbar. */
+      .main-frame {
+        margin-top: 80px !important;
+      }
 
-  <div class="header-panel">
-    <label>Datum des Brandtags:</label>
-    <input type="date" id="tagPicker" class="date-display" onchange="fetchJobs()">
-  </div>
+      .cockpit-stack {
+        display: grid;
+        gap: 14px;
+      }
 
-  <div class="container" id="jobList">
-    <p style="text-align: center; color: #666;">Lade Brände...</p>
-  </div>
+      .cockpit-intro {
+        color: #ffffff;
+        font-weight: 800;
+        line-height: 1.35;
+        margin-bottom: 6px;
+      }
 
-  <div class="footer-action">
-    <button class="btn-large btn-blue" onclick="google.script.run.protokollDrucken()">🖨️ DRUCK-PAKET</button>
-    <button class="btn-large btn-red" onclick="triggerNotfall()">🚨 ZOLL NOTFALL</button>
-  </div>
+      .cockpit-btn {
+        width: 100%;
+        min-height: 68px;
+        font-size: 22px;
+        font-weight: 900;
+        border-radius: 18px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
 
-<script>
-  window.onload = function() {
-    document.getElementById('tagPicker').valueAsDate = new Date();
-    fetchJobs();
-  };
 
-  function fetchJobs() {
-    const datum = document.getElementById('tagPicker').value;
-    google.script.run.withSuccessHandler(drawJobs).getLeitstandData(datum);
-  }
 
-  function drawJobs(res) {
-    const cont = document.getElementById('jobList');
-    cont.innerHTML = "";
+      @keyframes zollPulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 0 4px rgba(55,142,255,0.18), 0 0 16px rgba(55,142,255,1); }
+        50% { opacity: 0.55; box-shadow: 0 0 0 7px rgba(55,142,255,0.08), 0 0 24px rgba(55,142,255,1); }
+      }
 
-    if (!res || !res.jobs || res.jobs.length === 0) {
-      cont.innerHTML = "<p style='text-align:center;'>Keine Brände für diesen Tag.</p>";
-      return;
-    }
+      .zoll-access-btn {
+        position: relative;
+        background: #10233f !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(55, 142, 255, 0.55);
+        box-shadow: 0 0 0 1px rgba(55,142,255,0.16), 12px 12px 24px rgba(0,0,0,0.22);
+        padding-left: 52px;
+      }
 
-    res.jobs.forEach(function(j) {
-      const card = document.createElement('div');
-      card.className = 'job-card';
-      card.innerHTML = `
-        <button class="btn-ordner" onclick="openLinkSafe('${escapeJs_(j.link || "")}')">📂 ORDNER</button>
-        <div class="brenner-info">Brenner: ${escapeHtml_(j.brenner || "Aktiv")}</div>
-        <div class="owner-name">${escapeHtml_(j.owner || "")}</div>
-        <div class="sub-info">${escapeHtml_(j.material || "")} | Reg: ${escapeHtml_(j.regNr || "")}</div>
-        <div class="grid-row">
-          <div class="cell"><label>VON</label><span>${escapeHtml_(j.von || "")}</span></div>
-          <div class="cell"><label>BIS</label><span>${escapeHtml_(j.bis || "")}</span></div>
-          <div class="cell"><label>ALK %</label><input type="number" value="${escapeAttr_(j.alk || "")}" onchange="saveVal(${Number(j.row) || 0}, 'ALKOHOL', this.value)"></div>
-          <div class="cell"><label>LITER</label><input type="number" value="${escapeAttr_(j.ausbeute || "")}" onchange="saveVal(${Number(j.row) || 0}, 'AUSBEUTE', this.value)"></div>
-        </div>
-      `;
-      cont.appendChild(card);
-    });
-  }
+      .zoll-access-btn::before {
+        content: "🚨";
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        line-height: 1;
+        filter: hue-rotate(175deg) saturate(1.8);
+        animation: zollPulse 1.2s ease-in-out infinite;
+      }
 
-  function saveVal(r, f, v) {
-    google.script.run.saveLeitstandField(r, f, v);
-  }
+      .cockpit-info-card {
+        display: grid;
+        gap: 8px;
+      }
 
-  function openLinkSafe(url) {
-    if (!url) return;
-    window.open(url, '_blank');
-  }
+      .cockpit-subline {
+        color: var(--text-soft);
+        font-size: 13px;
+        line-height: 1.35;
+      }
 
-  function triggerNotfall() {
-    if (confirm("ZOLL-NOTFALL wirklich melden?")) {
-      google.script.run.systemLogSchreiben_("EMERGENCY", "Brenner", "ZOLL NOTFALL", "", "Notfall-Knopf gedrückt");
-      alert("Meldung abgesetzt!");
-    }
-  }
+      @media (max-width: 768px) {
+        .cockpit-btn {
+          min-height: 60px;
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-frame">
+      <h1 id="mainTitle">OGV BREITFURT – COCKPIT</h1>
 
-  function escapeHtml_(text) {
-    return String(text == null ? "" : text)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
+      
 
-  function escapeAttr_(text) {
-    return escapeHtml_(text);
-  }
+      <div class="card cockpit-stack">
+        <a class="btn-save cockpit-btn" href="<?= webAppUrl ?>?mode=vorplanung&origin=cockpit" target="_self">
+          Vorplanung
+        </a>
 
-  function escapeJs_(text) {
-    return String(text == null ? "" : text)
-      .replace(/\\/g, "\\\\")
-      .replace(/'/g, "\\'")
-      .replace(/"/g, '\\"')
-      .replace(/\r/g, "\\r")
-      .replace(/\n/g, "\\n")
-      .replace(/</g, "\\x3C")
-      .replace(/>/g, "\\x3E");
-  }
-</script>
-</body>
+        <a class="btn-save cockpit-btn" href="<?= webAppUrl ?>?mode=brandplanung&origin=cockpit" target="_self">
+          Brandplanung
+        </a>
+
+        <a class="btn-save cockpit-btn" href="<?= webAppUrl ?>?mode=maischeannahme&origin=cockpit" target="_self">
+          Maischeannahme
+        </a>
+
+
+        <a class="btn-save cockpit-btn" href="<?= webAppUrl ?>?mode=brennfreigabe&origin=cockpit" target="_self">
+          Brennfreigabe
+        </a>
+
+        <a class="btn-save cockpit-btn" href="<?= webAppUrl ?>?mode=leitstand&origin=cockpit" target="_self">
+          Leitstand
+        </a>
+
+
+        <a class="btn-save cockpit-btn zoll-access-btn" href="<?= webAppUrl ?>?mode=zollkontakte&origin=cockpit" target="_self">
+          Zoll-Kontaktliste
+        </a>
+
+        <a class="btn-save cockpit-btn" href="<?= webAppUrl ?>?mode=admin&origin=cockpit" target="_self">
+          Admin
+        </a>
+      </div>
+    </div>
+  </body>
 </html>
