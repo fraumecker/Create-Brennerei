@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <base target="_self">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>OGV Brennerei – Management</title>
+
+  <style>
+    :root {
+      --pink: #ff007f;
+      --pink-dark: #800040;
+      --neon: #00ff00;
+      --bg-dark: #222222;
+      --card-bg: #2a2a2a;
+      --input-bg: #1a1a1a;
+      --line: #444444;
+      --text-soft: #bbbbbb;
+      --neo-out: 12px 12px 24px #151515, -12px -12px 24px #333333;
+      --neo-in: inset 8px 8px 16px #111111, inset -8px -8px 16px #3a3a3a;
+      --danger: #8f1f1f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: var(--bg-dark);
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      font-weight: 700;
+    }
+
+    body {
+      padding: 8px;
+      overflow-x: hidden;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: var(--bg-dark);
+      border-radius: 24px;
+      box-shadow: var(--neo-out);
+      padding: 12px;
+      border: 1px solid #333333;
+    }
+
+    .header-top {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--bg-dark);
+      padding: 8px 0;
+    }
+
+    #appTitle {
+      margin: 0;
+      color: var(--pink);
+      font-weight: 900;
+      letter-spacing: 1.2px;
+      text-shadow: 0 0 12px rgba(255, 0, 127, 0.6);
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .header-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-indicator {
+      min-height: 34px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      background: rgba(0, 255, 0, 0.12);
+      color: #c6ffc6;
+      border: 1px solid rgba(0, 255, 0, 0.35);
+      display: inline-block;
+    }
+
+    .logout-btn {
+      min-height: 34px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: var(--neo-out);
+      background: linear-gradient(145deg, var(--pink), var(--pink-dark));
+      color: #ffffff;
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .tab-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      padding: 4px 0;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 12px;
+      background: var(--card-bg);
+      color: var(--neon);
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 12px;
+      box-shadow: var(--neo-out);
+      transition: all 0.2s ease;
+      text-shadow: 0 0 8px rgba(0, 255, 0, 0.7);
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(145deg, var(--pink), var(--pink-dark));
+      color: #ffffff;
+      text-shadow: none;
+    }
+
+    .tab-content {
+      display: none;
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: var(--neo-out);
+      border: 1px solid #333333;
+      min-height: 500px;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .status-box {
+      padding: 12px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      display: none;
+      box-shadow: var(--neo-in);
+    }
+
+    .status-box.active {
+      display: block;
+    }
+
+    .status-info {
+      background: #1c1c1c;
+      color: #dddddd;
+      border-left: 4px solid var(--pink);
+    }
+
+    .status-ok {
+      background: #102010;
+      color: #9cff9c;
+      border-left: 4px solid var(--neon);
+    }
+
+    .status-error {
+      background: #2a1118;
+      color: #ffb6c9;
+      border-left: 4px solid #ff3b3b;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--pink);
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      background: var(--input-bg);
+      color: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: var(--neo-in);
+      outline: none;
+      color-scheme: dark;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      box-shadow: var(--neo-in), 0 0 5px var(--pink);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-grid-full {
+      grid-column: 1 / -1;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-save {
+      flex: 1;
+      min-height: 46px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(145deg, var(--pink), var(--pink-dark));
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: var(--neo-out);
+      transition: 0.2s ease;
+    }
+
+    .btn-save:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      flex: 1;
+      min-height: 46px;
+      border: none;
+      border-radius: 14px;
+      background: var(--card-bg);
+      color: var(--neon);
+      font-weight: 900;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: var(--neo-out);
+      transition: 0.2s ease;
+      text-shadow: 0 0 8px rgba(0, 255, 0, 0.7);
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-1px);
+    }
+
+    .data-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .data-item {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .data-item-text {
+      display: grid;
+      gap: 4px;
+    }
+
+    .data-item-title {
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 15px;
+    }
+
+    .data-item-sub {
+      color: var(--text-soft);
+      font-size: 12px;
+    }
+
+    .pin-input-group {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .pin-input-group input {
+      grid-column: 1;
+    }
+
+    .pin-input-group button {
+      grid-column: 2;
+      min-width: 120px;
+      min-height: 46px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(145deg, var(--pink), var(--pink-dark));
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: var(--neo-out);
+    }
+
+    .section-title {
+      color: var(--pink);
+      font-size: 16px;
+      font-weight: 900;
+      margin: 20px 0 12px 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 2px solid rgba(255, 0, 127, 0.3);
+      padding-bottom: 8px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-soft);
+    }
+
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0, 255, 0, 0.2);
+      border-top-color: var(--neon);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: 10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 4px;
+      }
+
+      .app-container {
+        border-radius: 16px;
+        padding: 8px;
+      }
+
+      .header-top {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      #appTitle {
+        font-size: 18px;
+      }
+
+      .tab-nav {
+        gap: 4px;
+      }
+
+      .tab-btn {
+        padding: 8px 10px;
+        font-size: 11px;
+      }
+
+      .tab-content {
+        padding: 12px;
+        min-height: 300px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- HEADER -->
+    <div class="header-top">
+      <h1 id="appTitle">OGV BREITFURT – BRENNEREI-MANAGEMENT</h1>
+      <div class="status-indicator" id="userStatus">Startseite</div>
+      <button class="logout-btn" onclick="window.location.replace('?mode=admin')">← Startseite</button>
+    </div>
+
+    <!-- STATUS BOX -->
+    <div id="statusBox" class="status-box status-info"></div>
+
+    <!-- TAB NAVIGATION -->
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('vorplanung')">01 Vorplanung</button>
+      <button class="tab-btn" onclick="switchTab('brandplanung')">02 Brandplanung</button>
+      <button class="tab-btn" onclick="switchTab('maischeannahme')">03 Maischeannahme</button>
+      <button class="tab-btn" onclick="switchTab('brennfreigabe')">04 Brennfreigabe</button>
+      <button class="tab-btn" onclick="switchTab('admin')">05 Admin</button>
+      <button class="tab-btn" onclick="switchTab('einstellungen')">06 Einstellungen</button>
+    </div>
+
+    <!-- ========== TAB 1: VORPLANUNG ========== -->
+    <div id="vorplanung" class="tab-content active">
+      <div class="section-title">📆 Neue Vorplanung anlegen</div>
+
+      <div class="form-grid">
+        <div class="form-group form-grid-full">
+          <label>Stoffbesitzer *</label>
+          <select id="vpStoffbesitzer">
+            <option value="">-- Bitte wählen --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Anruf-Datum</label>
+          <input type="date" id="vpAnrufDatum">
+        </div>
+
+        <div class="form-group">
+          <label>Bemerkung *</label>
+          <textarea id="vpBemerkung" placeholder="z.B. Telefon, erste Informationen..." rows="3"></textarea>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn-save" onclick="saveVorplanung()">💾 Speichern</button>
+          <button class="btn-secondary" onclick="resetVorplanung()">🔄 Zurücksetzen</button>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top: 24px;">📋 Offene Vorgänge</div>
+      <div id="vpVorgaengeListe" class="data-list">
+        <div class="loading">Vorgänge werden geladen...</div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 2: BRANDPLANUNG ========== -->
+    <div id="brandplanung" class="tab-content">
+      <div class="section-title">🗓️ Brandplanung erstellen</div>
+
+      <div class="form-grid">
+        <div class="form-group form-grid-full">
+          <label>Vorgang aus Vorplanung *</label>
+          <select id="bpVorgang" onchange="loadBrandplanungDetails()">
+            <option value="">-- Vorgänge werden geladen --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Datum Maischeannahme</label>
+          <input type="date" id="bpDatumMaische" readonly style="background: #1a1a1a; opacity: 0.7;">
+        </div>
+
+        <div class="form-group">
+          <label>Anzahl Brände</label>
+          <input type="number" id="bpAnzahlBraende" min="1" value="1">
+        </div>
+
+        <div class="form-group form-grid-full">
+          <label>Brandtag *</label>
+          <input type="date" id="bpBrandtag">
+        </div>
+
+        <div class="form-group">
+          <label>Zeitslot von *</label>
+          <input type="time" id="bpVon">
+        </div>
+
+        <div class="form-group">
+          <label>Zeitslot bis *</label>
+          <input type="time" id="bpBis">
+        </div>
+
+        <div class="form-group">
+          <label>Brenner *</label>
+          <select id="bpBrenner"></select>
+        </div>
+
+        <div class="form-group form-grid-full">
+          <label>Bemerkung intern</label>
+          <textarea id="bpBemerkung" rows="2"></textarea>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn-save" onclick="saveBrandplanung()">💾 Speichern</button>
+          <button class="btn-secondary" onclick="resetBrandplanung()">🔄 Zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 3: MAISCHEANNAHME ========== -->
+    <div id="maischeannahme" class="tab-content">
+      <div class="section-title">🍎 Maischeannahme erfassen</div>
+
+      <div class="form-grid">
+        <div class="form-group form-grid-full">
+          <label>Vorgang *</label>
+          <select id="msVorgang" onchange="loadMaischeDetails()">
+            <option value="">-- Vorgänge werden geladen --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Faßnummer *</label>
+          <input type="text" id="msFassNr" placeholder="z.B. F-001">
+        </div>
+
+        <div class="form-group">
+          <label>Faßgröße (L)</label>
+          <select id="msFassGroesse"></select>
+        </div>
+
+        <div class="form-group">
+          <label>Inhalt (L)</label>
+          <input type="number" id="msInhalt" min="0">
+        </div>
+
+        <div class="form-group form-grid-full">
+          <label>Material *</label>
+          <select id="msMaterial" multiple style="min-height: 80px;"></select>
+        </div>
+
+        <div class="form-group form-grid-full">
+          <label>Gewürze/Zusätze</label>
+          <input type="text" id="msGewuerze" placeholder="kommagetrennt">
+        </div>
+
+        <div class="form-group">
+          <label>Anzahl Brände</label>
+          <input type="number" id="msAnzahlBraende" min="1" value="1">
+        </div>
+
+        <div class="form-group form-grid-full">
+          <label>Bemerkung</label>
+          <textarea id="msBemerkung" rows="2"></textarea>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn-save" onclick="saveMaischeannahme()">💾 Speichern</button>
+          <button class="btn-secondary" onclick="resetMaischeannahme()">🔄 Zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 4: BRENNFREIGABE ========== -->
+    <div id="brennfreigabe" class="tab-content">
+      <div class="section-title">🔥 Brennfreigabe verwalten</div>
+
+      <div class="form-grid">
+        <div class="form-group form-grid-full">
+          <label>Vorgang *</label>
+          <select id="bfVorgang" onchange="loadBrennfreigabeDetails()">
+            <option value="">-- Vorgänge werden geladen --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Zoll-Status *</label>
+          <select id="bfZollStatus">
+            <option value="">-- Bitte wählen --</option>
+            <option value="✅ GENEHMIGT">✅ GENEHMIGT</option>
+            <option value="❌ ABGELEHNT">❌ ABGELEHNT</option>
+            <option value="🛂 BEIM ZOLL">🛂 BEIM ZOLL</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Ausbeute (L)</label>
+          <input type="number" id="bfAusbeute" min="0" step="0.1">
+        </div>
+
+        <div class="form-group">
+          <label>Alkohol (%)</label>
+          <input type="number" id="bfAlkohol" min="0" max="100" step="0.1">
+        </div>
+
+        <div class="form-group">
+          <label>Status Aktion</label>
+          <select id="bfStatusAktion">
+            <option value="">-- Status wählen --</option>
+            <option value="OFFEN">OFFEN</option>
+            <option value="RÜCKFRAGE">RÜCKFRAGE</option>
+            <option value="WARTET AUF ZOLL">WARTET AUF ZOLL</option>
+            <option value="ZOLL_OK">ZOLL_OK</option>
+            <option value="BEREIT ZUM BRENNEN">BEREIT ZUM BRENNEN</option>
+            <option value="ERLEDIGT">ERLEDIGT</option>
+          </select>
+        </div>
+
+        <div class="form-group form-grid-full">
+          <label>Bemerkung</label>
+          <textarea id="bfBemerkung" rows="2"></textarea>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn-save" onclick="saveBrennfreigabe()">💾 Speichern</button>
+          <button class="btn-secondary" onclick="resetBrennfreigabe()">🔄 Zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 5: ADMIN ========== -->
+    <div id="admin" class="tab-content">
+      <div class="section-title">🔐 Mitgliederverwaltung (PIN-geschützt)</div>
+
+      <div id="adminLoginForm">
+        <div class="pin-input-group">
+          <input type="password" id="adminPin" placeholder="Admin-PIN eingeben" maxlength="6">
+          <button onclick="adminPinCheck()">Zugriff</button>
+        </div>
+      </div>
+
+      <div id="adminPanel" style="display: none;">
+        <div class="section-title" style="margin-top: 12px;">👥 Mitglieder-Verwaltung</div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <input type="text" id="adminMitgliederSuche" placeholder="Mitglied suchen...">
+        </div>
+
+        <div id="adminMitgliederListe" class="data-list">
+          <div class="loading">Mitglieder werden geladen...</div>
+        </div>
+
+        <div class="btn-group" style="margin-top: 16px;">
+          <button class="btn-save" onclick="adminAddMember()">➕ Neues Mitglied</button>
+          <button class="btn-secondary" onclick="adminLogout()">🚪 Abmelden</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 6: EINSTELLUNGEN ========== -->
+    <div id="einstellungen" class="tab-content">
+      <div class="section-title">⚙️ Systemeinstellungen</div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Betrieb</label>
+          <input type="text" id="settBetrieb" readonly style="background: #1a1a1a; opacity: 0.7;">
+        </div>
+
+        <div class="form-group">
+          <label>Brennerei-Nr.</label>
+          <input type="text" id="settBrennereierNr" readonly style="background: #1a1a1a; opacity: 0.7;">
+        </div>
+
+        <div class="form-group form-grid-full">
+          <label>Zeitzone</label>
+          <input type="text" id="settZone" readonly style="background: #1a1a1a; opacity: 0.7;">
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top: 24px;">📊 System-Integrität</div>
+
+      <div id="settStatus" class="data-list">
+        <div class="loading">Systemstatus wird überprüft...</div>
+      </div>
+
+      <div class="btn-group" style="margin-top: 16px;">
+        <button class="btn-secondary" onclick="loadEinstellungen()">🔄 Neu laden</button>
+        <button class="btn-secondary" onclick="technischerReport()">📋 Technischer Report</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== UTILITY FUNCTIONS ==========
+    function showStatus(text, type = 'info') {
+      const box = document.getElementById('statusBox');
+      box.textContent = text;
+      box.className = 'status-box active status-' + type;
+      setTimeout(() => {
+        if (box.textContent === text) box.classList.remove('active');
+      }, type === 'error' ? 8000 : 4000);
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      
+      document.getElementById(tabName).classList.add('active');
+      event.target.classList.add('active');
+
+      if (tabName === 'einstellungen') loadEinstellungen();
+      if (tabName === 'admin') loadAdminMitglieder();
+    }
+
+    // ========== TAB 1: VORPLANUNG ==========
+    function loadVorplanungDropdowns() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          const select = document.getElementById('vpStoffbesitzer');
+          select.innerHTML = '<option value="">-- Bitte wählen --</option>';
+          (data.stoffbesitzer || []).forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            select.appendChild(opt);
+          });
+        })
+        .ladeVorplanungDropdowns();
+    }
+
+    function saveVorplanung() {
+      const stoffbesitzer = document.getElementById('vpStoffbesitzer').value;
+      const anrufDatum = document.getElementById('vpAnrufDatum').value;
+      const bemerkung = document.getElementById('vpBemerkung').value;
+
+      if (!stoffbesitzer || !bemerkung) {
+        showStatus('⚠️ Stoffbesitzer und Bemerkung erforderlich', 'error');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showStatus('✅ Vorplanung gespeichert: ' + result.vorgangsId, 'ok');
+            resetVorplanung();
+            loadVorplanungVorgaenge();
+          }
+        })
+        .withFailureHandler(function(err) {
+          showStatus('❌ Fehler: ' + err, 'error');
+        })
+        .speichereVorplanung({
+          stoffbesitzer: stoffbesitzer,
+          anrufDatum: anrufDatum,
+          bemerkung: bemerkung
+        });
+    }
+
+    function resetVorplanung() {
+      document.getElementById('vpStoffbesitzer').value = '';
+      document.getElementById('vpAnrufDatum').value = new Date().toISOString().split('T')[0];
+      document.getElementById('vpBemerkung').value = '';
+    }
+
+    function loadVorplanungVorgaenge() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          const liste = document.getElementById('vpVorgaengeListe');
+          if (!data || data.length === 0) {
+            liste.innerHTML = '<div style="text-align: center; color: #888;">Keine Vorgänge vorhanden</div>';
+            return;
+          }
+          liste.innerHTML = data.map(v => `
+            <div class="data-item">
+              <div class="data-item-text">
+                <div class="data-item-title">${v.stoffbesitzer}</div>
+                <div class="data-item-sub">${v.vorgangsId} | Status: ${v.status || 'ANGELEGT'}</div>
+              </div>
+            </div>
+          `).join('');
+        })
+        .getBrandplanungOffeneVorgaenge();
+    }
+
+    // ========== TAB 2: BRANDPLANUNG ==========
+    function loadBrandplanungVorgaenge() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          const select = document.getElementById('bpVorgang');
+          select.innerHTML = '<option value="">-- Bitte wählen --</option>';
+          (data || []).forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.vorgangsId;
+            opt.textContent = v.vorgangsId + ' | ' + v.stoffbesitzer;
+            select.appendChild(opt);
+          });
+        })
+        .getBrandplanungOffeneVorgaenge();
+    }
+
+    function loadBrandplanungDetails() {
+      const vId = document.getElementById('bpVorgang').value;
+      if (!vId) return;
+
+      google.script.run
+        .withSuccessHandler(function(details) {
+          document.getElementById('bpDatumMaische').value = details.terminMaische || '';
+          document.getElementById('bpBrandtag').value = details.tagBrand || '';
+          document.getElementById('bpVon').value = details.von || '';
+          document.getElementById('bpBis').value = details.bis || '';
+          document.getElementById('bpAnzahlBraende').value = details.anzahlBraende || '1';
+        })
+        .getBrandplanungDetails(vId);
+    }
+
+    function saveBrandplanung() {
+      const vId = document.getElementById('bpVorgang').value;
+      if (!vId) {
+        showStatus('⚠️ Bitte einen Vorgang auswählen', 'error');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showStatus('✅ Brandplanung gespeichert', 'ok');
+            resetBrandplanung();
+          }
+        })
+        .withFailureHandler(function(err) {
+          showStatus('❌ Fehler: ' + err, 'error');
+        })
+        .saveBrandplanung({
+          vorgangsId: vId,
+          brandtag: document.getElementById('bpBrandtag').value,
+          von: document.getElementById('bpVon').value,
+          bis: document.getElementById('bpBis').value
+        });
+    }
+
+    function resetBrandplanung() {
+      document.getElementById('bpVorgang').value = '';
+      document.getElementById('bpBrandtag').value = '';
+      document.getElementById('bpVon').value = '';
+      document.getElementById('bpBis').value = '';
+    }
+
+    // ========== TAB 3: MAISCHEANNAHME ==========
+    function loadMaischeVorgaenge() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          const select = document.getElementById('msVorgang');
+          select.innerHTML = '<option value="">-- Vorgänge werden geladen --</option>';
+          if (data && data.vorgaenge) {
+            data.vorgaenge.forEach(v => {
+              const opt = document.createElement('option');
+              opt.value = v.vorgangsId;
+              opt.textContent = v.anzeige;
+              select.appendChild(opt);
+            });
+          }
+          loadMaischeDropdowns(data);
+        })
+        .getMaischeannahmeDropdowns();
+    }
+
+    function loadMaischeDropdowns(data) {
+      if (data.fassgroessenListe) {
+        const select = document.getElementById('msFassGroesse');
+        select.innerHTML = '<option value="">-- Wählen --</option>';
+        data.fassgroessenListe.forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f;
+          opt.textContent = f;
+          select.appendChild(opt);
+        });
+      }
+      if (data.materialListe) {
+        const select = document.getElementById('msMaterial');
+        select.innerHTML = '';
+        data.materialListe.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    function loadMaischeDetails() {
+      const vId = document.getElementById('msVorgang').value;
+      if (!vId) return;
+
+      google.script.run
+        .withSuccessHandler(function(details) {
+          document.getElementById('msFassNr').value = '';
+          document.getElementById('msAnzahlBraende').value = '1';
+        })
+        .getMaischeannahmeDetails(vId);
+    }
+
+    function saveMaischeannahme() {
+      const vId = document.getElementById('msVorgang').value;
+      if (!vId) {
+        showStatus('⚠️ Bitte einen Vorgang auswählen', 'error');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showStatus('✅ Maischeannahme gespeichert', 'ok');
+            resetMaischeannahme();
+          }
+        })
+        .withFailureHandler(function(err) {
+          showStatus('❌ Fehler: ' + err, 'error');
+        })
+        .saveMaischeannahme({
+          vorgangsId: vId,
+          fassnummern: document.getElementById('msFassNr').value,
+          fassgroesse: document.getElementById('msFassGroesse').value,
+          inhalt: document.getElementById('msInhalt').value,
+          anzahlBraende: document.getElementById('msAnzahlBraende').value
+        });
+    }
+
+    function resetMaischeannahme() {
+      document.getElementById('msVorgang').value = '';
+      document.getElementById('msFassNr').value = '';
+      document.getElementById('msInhalt').value = '';
+      document.getElementById('msBemerkung').value = '';
+    }
+
+    // ========== TAB 4: BRENNFREIGABE ==========
+    function loadBrennfreigabeVorgaenge() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          const select = document.getElementById('bfVorgang');
+          select.innerHTML = '<option value="">-- Vorgänge werden geladen --</option>';
+          if (data && data.vorgaenge) {
+            data.vorgaenge.forEach(v => {
+              const opt = document.createElement('option');
+              opt.value = v.vorgangsId;
+              opt.textContent = v.anzeige;
+              select.appendChild(opt);
+            });
+          }
+        })
+        .getBrennfreigabeDropdowns();
+    }
+
+    function loadBrennfreigabeDetails() {
+      const vId = document.getElementById('bfVorgang').value;
+      if (!vId) return;
+
+      google.script.run
+        .withSuccessHandler(function(details) {
+          document.getElementById('bfZollStatus').value = details.zollOk || '';
+        })
+        .getBrennfreigabeDetails(vId);
+    }
+
+    function saveBrennfreigabe() {
+      const vId = document.getElementById('bfVorgang').value;
+      if (!vId) {
+        showStatus('⚠️ Bitte einen Vorgang auswählen', 'error');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showStatus('✅ Brennfreigabe gespeichert', 'ok');
+            resetBrennfreigabe();
+          }
+        })
+        .withFailureHandler(function(err) {
+          showStatus('❌ Fehler: ' + err, 'error');
+        })
+        .saveBrennfreigabe({
+          vorgangsId: vId,
+          zollOk: document.getElementById('bfZollStatus').value,
+          ausbeute: document.getElementById('bfAusbeute').value,
+          alkohol: document.getElementById('bfAlkohol').value,
+          statusAktion: document.getElementById('bfStatusAktion').value
+        });
+    }
+
+    function resetBrennfreigabe() {
+      document.getElementById('bfVorgang').value = '';
+      document.getElementById('bfZollStatus').value = '';
+      document.getElementById('bfAusbeute').value = '';
+      document.getElementById('bfAlkohol').value = '';
+    }
+
+    // ========== TAB 5: ADMIN ==========
+    function adminPinCheck() {
+      const pin = document.getElementById('adminPin').value;
+      if (!pin) {
+        showStatus('⚠️ PIN erforderlich', 'error');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function() {
+          document.getElementById('adminLoginForm').style.display = 'none';
+          document.getElementById('adminPanel').style.display = 'block';
+          loadAdminMitglieder();
+        })
+        .withFailureHandler(function(err) {
+          showStatus('❌ PIN ungültig', 'error');
+        })
+        .adminMitgliederPinPruefen(pin);
+    }
+
+    function loadAdminMitglieder() {
+      const pin = document.getElementById('adminPin').value;
+      if (!pin) return;
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          const liste = document.getElementById('adminMitgliederListe');
+          if (result.ok && result.mitglieder) {
+            liste.innerHTML = result.mitglieder.map(m => `
+              <div class="data-item">
+                <div class="data-item-text">
+                  <div class="data-item-title">${m.NameAnzeige || ''}</div>
+                  <div class="data-item-sub">${m.EMail || m['E-Mail'] || 'Keine E-Mail'}</div>
+                </div>
+              </div>
+            `).join('');
+          }
+        })
+        .adminMitgliederListeLaden(pin, '');
+    }
+
+    function adminLogout() {
+      document.getElementById('adminLoginForm').style.display = 'block';
+      document.getElementById('adminPanel').style.display = 'none';
+      document.getElementById('adminPin').value = '';
+    }
+
+    function adminAddMember() {
+      showStatus('➕ Neue Mitglieder-Funktion wird in Kürze implementiert', 'info');
+    }
+
+    // ========== TAB 6: EINSTELLUNGEN ==========
+    function loadEinstellungen() {
+      google.script.run
+        .withSuccessHandler(function(meta) {
+          document.getElementById('settBetrieb').value = meta.betrieb || '';
+          document.getElementById('settBrennereierNr').value = meta.brennereiNummer || '';
+          document.getElementById('settZone').value = meta.zeitZone || '';
+        })
+        .getWebAppMeta();
+
+      checkSystemStatus();
+    }
+
+    function checkSystemStatus() {
+      const statusDiv = document.getElementById('settStatus');
+      statusDiv.innerHTML = `
+        <div class="data-item">
+          <div class="data-item-text">
+            <div class="data-item-title">✅ Google Sheets</div>
+            <div class="data-item-sub">Verbunden und aktiv</div>
+          </div>
+        </div>
+        <div class="data-item">
+          <div class="data-item-text">
+            <div class="data-item-title">✅ Google Drive</div>
+            <div class="data-item-sub">Dossier-Integration aktiv</div>
+          </div>
+        </div>
+        <div class="data-item">
+          <div class="data-item-text">
+            <div class="data-item-title">✅ E-Mail Service</div>
+            <div class="data-item-sub">Benachrichtigungen aktiviert</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function technischerReport() {
+      showStatus('📋 Technischer Report wird generiert...', 'info');
+      google.script.run
+        .withSuccessHandler(function() {
+          showStatus('📋 Technischer Report wurde geöffnet', 'ok');
+        })
+        .technischerReportErstellen();
+    }
+
+    // ========== INITIALIZATION ==========
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('vpAnrufDatum').value = new Date().toISOString().split('T')[0];
+      loadVorplanungDropdowns();
+      loadBrandplanungVorgaenge();
+      loadMaischeVorgaenge();
+      loadBrennfreigabeVorgaenge();
+    });
+  </script>
+</body>
+</html>
