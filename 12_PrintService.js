@@ -8,7 +8,8 @@ function protokollDrucken() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getActiveSheet();
   const map = spaltenZuordnungHolen_(sh);
-  const zeilen = protokollZeilenAuswahlHolen_(sh);
+  let zeilen = protokollZeilenAuswahlHolen_(sh);
+  zeilen = protokollZeilenNachUhrzeitSortieren_(sh, map, zeilen);
 
   if (zeilen.length === 0) {
     SpreadsheetApp.getUi().alert("Bitte markieren Sie zuerst mindestens eine Datenzeile.");
@@ -281,9 +282,9 @@ function protokollDrucken() {
     const vorgangsId = protokollWertAusZeile_(displayRow, map, "VORGANGS_ID");
     const registernummer = protokollWertAusZeile_(displayRow, map, "REGISTERNUMMER");
     const material = protokollWertAusZeile_(displayRow, map, "MATERIAL");
-    const fassNr = protokollWertAusZeile_(displayRow, map, "FASS_NR") || protokollWertAusZeile_(displayRow, map, "FASS_VP");
-    const fassVolumen = protokollWertAusZeile_(displayRow, map, "FASSVOLUMEN") || protokollWertAusZeile_(displayRow, map, "FASS_VOLUMEN");
-    const inhalt = protokollWertAusZeile_(displayRow, map, "INHALT");
+    const fassNr = protokollWertAusZeile_(displayRow, map, "FASS_NR");
+    const fassVolumen = protokollWertAusZeile_(displayRow, map, "FASS_VP") || protokollWertAusZeile_(displayRow, map, "FASSVOLUMEN") || protokollWertAusZeile_(displayRow, map, "FASS_VOLUMEN");
+    const inhalt = protokollWertAusZeile_(displayRow, map, "INH_VP") || protokollWertAusZeile_(displayRow, map, "INHALT");
     const alkohol = protokollWertAusZeile_(displayRow, map, "ALKOHOL");
     const ausbeute = protokollWertAusZeile_(displayRow, map, "AUSBEUTE");
     const wasser = protokollWertAusZeile_(displayRow, map, "WASSER");
@@ -371,9 +372,24 @@ function protokollDatumDeutschAusZeile_(valueRow, displayRow, map, key) {
 
 // FUNKTION: Liest und formatiert ein Uhrzeitfeld für das Brennprotokoll stabil als HH:mm | EINGRIFF: Druckdarstellung
 function protokollZeitAusZeile_(valueRow, displayRow, map, key) {
+  const display = protokollWertAusZeile_(displayRow, map, key);
+  const displayText = textNormalisieren_(display);
+
+  const displayZeit = protokollZeitTextBereinigen_(displayText);
+  if (displayZeit) return displayZeit;
+
   const raw = protokollWertAusZeile_(valueRow, map, key);
 
   if (raw instanceof Date && !isNaN(raw.getTime())) {
+    const jahr = raw.getFullYear();
+
+    // Reine Uhrzeiten in Google Sheets liegen oft auf 1899/1900.
+    // Diese dürfen nicht mit Utilities.formatDate formatiert werden, weil dadurch
+    // historische Zeitzonenversätze entstehen können.
+    if (jahr < 1901) {
+      return ("0" + raw.getHours()).slice(-2) + ":" + ("0" + raw.getMinutes()).slice(-2);
+    }
+
     return Utilities.formatDate(
       raw,
       KONFIGURATION.ZOLL_PARAMETER.ZEIT_PARAMETER.ZEITZONE,
@@ -381,20 +397,28 @@ function protokollZeitAusZeile_(valueRow, displayRow, map, key) {
     );
   }
 
-  const display = protokollWertAusZeile_(displayRow, map, key);
-  const text = textNormalisieren_(display || raw);
-  if (!text) return "";
+  const rawText = textNormalisieren_(raw);
+  const rawZeit = protokollZeitTextBereinigen_(rawText);
+  if (rawZeit) return rawZeit;
 
-  const kurz = text.match(/^(\d{1,2}):(\d{2})$/);
+  return rawText;
+}
+
+// FUNKTION: Extrahiert HH:mm aus Texten wie HH:mm, HH:mm:ss oder Datum+Uhrzeit | EINGRIFF: Druckdarstellung
+function protokollZeitTextBereinigen_(text) {
+  const t = textNormalisieren_(text);
+  if (!t) return "";
+
+  const kurz = t.match(/^(\d{1,2}):(\d{2})$/);
   if (kurz) return ("0" + kurz[1]).slice(-2) + ":" + kurz[2];
 
-  const lang = text.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+  const lang = t.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
   if (lang) return ("0" + lang[1]).slice(-2) + ":" + lang[2];
 
-  const datumMitZeit = text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
+  const datumMitZeit = t.match(/(?:^|\s|T)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
   if (datumMitZeit) return ("0" + datumMitZeit[1]).slice(-2) + ":" + datumMitZeit[2];
 
-  return text;
+  return "";
 }
 
 // FUNKTION: Ermittelt alle ausgewählten Datenzeilen | EINGRIFF: UI-Selektion
@@ -419,6 +443,64 @@ function protokollZeilenAuswahlHolen_(blatt) {
   });
 }
 
+
+// FUNKTION: Sortiert Brennprotokoll-Zeilen fachlich nach Beginn-Uhrzeit, dann Ende-Uhrzeit, dann Zeilennummer | EINGRIFF: Druckreihenfolge
+function protokollZeilenNachUhrzeitSortieren_(sh, map, zeilen) {
+  if (!sh || !map || !Array.isArray(zeilen) || zeilen.length < 2) return zeilen || [];
+
+  return zeilen.slice().sort(function(a, b) {
+    const ka = protokollSortKeyFuerZeile_(sh, map, a);
+    const kb = protokollSortKeyFuerZeile_(sh, map, b);
+
+    if (ka.von !== kb.von) return ka.von - kb.von;
+    if (ka.bis !== kb.bis) return ka.bis - kb.bis;
+    return a - b;
+  });
+}
+
+// FUNKTION: Erstellt einen stabilen Sortierschlüssel aus VON/BIS einer Tabellenzeile | EINGRIFF: Druckreihenfolge
+function protokollSortKeyFuerZeile_(sh, map, zeile) {
+  const valueRow = sh.getRange(zeile, 1, 1, sh.getLastColumn()).getValues()[0];
+  const displayRow = sh.getRange(zeile, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+
+  const vonText = protokollZeitAusZeile_(valueRow, displayRow, map, "VON");
+  const bisText = protokollZeitAusZeile_(valueRow, displayRow, map, "BIS");
+
+  return {
+    von: protokollZeitSortwert_(vonText),
+    bis: protokollZeitSortwert_(bisText)
+  };
+}
+
+// FUNKTION: Wandelt Uhrzeit in Minuten seit 00:00 um; leere/unlesbare Zeiten kommen ans Ende | EINGRIFF: Druckreihenfolge
+function protokollZeitSortwert_(zeitText) {
+  const text = String(zeitText || '').trim();
+  if (!text) return 999999;
+
+  const hhmm = text.match(/^(\d{1,2}):(\d{2})$/);
+  if (hhmm) {
+    const h = Number(hhmm[1]);
+    const m = Number(hhmm[2]);
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) return h * 60 + m;
+  }
+
+  const kompakt = text.match(/^(\d{1,2})(\d{2})$/);
+  if (kompakt) {
+    const h = Number(kompakt[1]);
+    const m = Number(kompakt[2]);
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) return h * 60 + m;
+  }
+
+  const irgendwo = text.match(/(\d{1,2}):(\d{2})/);
+  if (irgendwo) {
+    const h = Number(irgendwo[1]);
+    const m = Number(irgendwo[2]);
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) return h * 60 + m;
+  }
+
+  return 999999;
+}
+
 // FUNKTION: Escaped HTML-sichere Ausgabe | EINGRIFF: Druckdarstellung
 function printEscapeHtml_(text) {
   if (text == null) return "";
@@ -436,19 +518,29 @@ function printEscapeHtml_(text) {
 
 // FUNKTION: Erzeugt das Druck-HTML für einen kompletten Brandtag | EINGRIFF: WEBAPP / DRIVE / URLFETCH
 function getProtokollHtmlFuerBrandtag(dateStr) {
-  const sh = tabelleHolen_("BRANDTAG_UEBERSICHT");
-  if (!sh) {
-    return protokollLeerHtmlErstellen_('Blatt ' + KONFIGURATION.TABELLEN.BRANDTAG_UEBERSICHT + ' nicht gefunden.');
+  const shBrandtag = tabelleHolen_("BRANDTAG_UEBERSICHT");
+  if (shBrandtag) {
+    const mapBrandtag = spaltenZuordnungHolen_(shBrandtag);
+    const zeilenBrandtag = protokollZeilenFuerBrandtagHolen_(shBrandtag, mapBrandtag, dateStr);
+    if (zeilenBrandtag.length > 0) {
+      return protokollHtmlAusZeilenErstellen_(shBrandtag, mapBrandtag, zeilenBrandtag);
+    }
   }
 
-  const map = spaltenZuordnungHolen_(sh);
-  const zeilen = protokollZeilenFuerBrandtagHolen_(sh, map, dateStr);
-
-  if (zeilen.length === 0) {
-    return protokollLeerHtmlErstellen_('Keine Brände für den ausgewählten Brandtag.');
+  const shArchiv = tabelleHolen_("JAHRESARCHIV");
+  if (shArchiv) {
+    const mapArchiv = spaltenZuordnungHolen_(shArchiv);
+    const zeilenArchiv = protokollZeilenFuerBrandtagHolen_(shArchiv, mapArchiv, dateStr);
+    if (zeilenArchiv.length > 0) {
+      return protokollHtmlAusZeilenErstellen_(shArchiv, mapArchiv, zeilenArchiv);
+    }
   }
 
-  return protokollHtmlAusZeilenErstellen_(sh, map, zeilen);
+  if (!shBrandtag && !shArchiv) {
+    return protokollLeerHtmlErstellen_('Blätter BRANDTAG_UEBERSICHT und JAHRESARCHIV wurden nicht gefunden.');
+  }
+
+  return protokollLeerHtmlErstellen_('Keine Brände für den ausgewählten Brandtag.');
 }
 
 // FUNKTION: Ermittelt alle Datenzeilen eines Brandtags | EINGRIFF: Tabellenlesezugriff
@@ -465,7 +557,10 @@ function protokollZeilenFuerBrandtagHolen_(blatt, map, dateStr) {
     const row = daten[i];
     const tagBrand = protokollDatumAlsIsoString_(row[map.TAG_BRAND - 1]);
     const zollOk = protokollWertAusZeile_(row, map, "ZOLL_OK");
-    if (tagBrand === gesucht && zollOk === "✅ GENEHMIGT") {
+    const status = protokollWertAusZeile_(row, map, "STATUS");
+    const statusAktion = protokollWertAusZeile_(row, map, "STATUS_AKTION");
+
+    if (tagBrand === gesucht && protokollIstZollGenehmigt_(zollOk, status, statusAktion)) {
       zeilen.push(i + 1);
     }
   }
@@ -473,8 +568,46 @@ function protokollZeilenFuerBrandtagHolen_(blatt, map, dateStr) {
   return zeilen;
 }
 
+// FUNKTION: Bewertet Zollfreigabe robust für Brennprotokoll | EINGRIFF: Leitstand/WebApp-Druck
+function protokollIstZollGenehmigt_(zollOk, status, statusAktion) {
+  const werte = [zollOk, status, statusAktion];
+
+  for (let i = 0; i < werte.length; i++) {
+    const raw = werte[i];
+
+    if (raw === true) return true;
+
+    const text = String(raw == null ? '' : raw).trim().toUpperCase();
+    if (!text) continue;
+
+    // Brennprotokoll muss bereits druckbar sein, sobald der Vorgang beim Zoll ist.
+    // Deshalb zählen neben der finalen Genehmigung auch "BEIM ZOLL" und "AN ZOLL GESENDET".
+    if (
+      text === 'TRUE' ||
+      text === 'WAHR' ||
+      text === 'JA' ||
+      text === 'OK' ||
+      text === 'ZOLL_OK' ||
+      text === '🛂 BEIM ZOLL' ||
+      text === 'BEIM ZOLL' ||
+      text === 'AN ZOLL GESENDET' ||
+      text.indexOf('BEIM ZOLL') !== -1 ||
+      text.indexOf('AN ZOLL') !== -1 ||
+      text.indexOf('ZOLL GESENDET') !== -1 ||
+      text.indexOf('GENEHMIGT') !== -1 ||
+      text.indexOf('FREIGEGEBEN') !== -1 ||
+      text.indexOf('FREIGABE') !== -1
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // FUNKTION: Erstellt das vollständige Druck-HTML aus Datenzeilen | EINGRIFF: HTML-Aufbau / DRIVE / URLFETCH
 function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
+  zeilen = protokollZeilenNachUhrzeitSortieren_(sh, map, zeilen);
   let logoBase64 = "";
   try {
     const files = DriveApp.getFolderById(KONFIGURATION.DRIVE_ORDNER.LOGO_ORDNER_ID).getFiles();
@@ -583,9 +716,9 @@ function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
     const vorgangsId = protokollWertAusZeile_(displayRow, map, "VORGANGS_ID");
     const registernummer = protokollWertAusZeile_(displayRow, map, "REGISTERNUMMER");
     const material = protokollWertAusZeile_(displayRow, map, "MATERIAL");
-    const fassNr = protokollWertAusZeile_(displayRow, map, "FASS_NR") || protokollWertAusZeile_(displayRow, map, "FASS_VP");
-    const fassVolumen = protokollWertAusZeile_(displayRow, map, "FASSVOLUMEN") || protokollWertAusZeile_(displayRow, map, "FASS_VOLUMEN");
-    const inhalt = protokollWertAusZeile_(displayRow, map, "INHALT");
+    const fassNr = protokollWertAusZeile_(displayRow, map, "FASS_NR");
+    const fassVolumen = protokollWertAusZeile_(displayRow, map, "FASS_VP") || protokollWertAusZeile_(displayRow, map, "FASSVOLUMEN") || protokollWertAusZeile_(displayRow, map, "FASS_VOLUMEN");
+    const inhalt = protokollWertAusZeile_(displayRow, map, "INH_VP") || protokollWertAusZeile_(displayRow, map, "INHALT");
     const alkohol = protokollWertAusZeile_(displayRow, map, "ALKOHOL");
     const ausbeute = protokollWertAusZeile_(displayRow, map, "AUSBEUTE");
     const wasser = protokollWertAusZeile_(displayRow, map, "WASSER");

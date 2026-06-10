@@ -233,7 +233,7 @@ var KONFIGURATION = {
   },
 
   BENACHRICHTIGUNG: {
-    NEUER_VORGANG_EMPFAENGER: "fraumecker@gmail.com",
+    NEUER_VORGANG_EMPFAENGER: "obstundgartenbreitfurt@gmail.com",
     HINWEIS_KEINE_EMAIL_CHECKLISTE: "Keine E-Mail-Adresse hinterlegt. Checkliste per Post versenden."
   },
 

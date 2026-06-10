@@ -28,7 +28,7 @@ function onOpen(e) {
     .addItem('📲 Web-App-Zugang anzeigen', 'cockpitZugangAnzeigen')
     .addItem('🔗 Leitstand-Zugang anzeigen', 'leitstandZugangAnzeigen')
     .addItem('🗓️ Brandplanung-Zugang anzeigen', 'brandplanungZugangAnzeigen')
-    .addItem('🔥 Brennfreigabe-Zugang anzeigen', 'brennfreigabeZugangAnzeigen')
+    .addItem('📝 Vorgangsbearbeitung-Zugang anzeigen', 'brennfreigabeZugangAnzeigen')
     .addToUi();
 
   ui.createMenu('⚙️ SYSTEM')
@@ -86,16 +86,30 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
-  if (mode === 'maischeannahme') {
+  if (mode === 'vorplanung_admin') {
     const template = HtmlService.createTemplateFromFile('Index');
-    template.startModus = 'maischeannahme';
+    template.startModus = 'vorplanung';
+    template.webAppUrl = webAppUrl;
+    template.returnModus = 'admin';
+    template.originModus = 'admin';
+    template.istAdminRuecksprung = true;
+    return template
+      .evaluate()
+      .setTitle('OGV BREITFURT - VORPLANUNG')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  if (mode === 'maischeannahme' || mode === 'vorgang') {
+    const template = HtmlService.createTemplateFromFile('Index');
+    template.startModus = 'vorgang';
     template.webAppUrl = webAppUrl;
     template.returnModus = returnModus;
     template.originModus = originModus;
     template.istAdminRuecksprung = istAdminRuecksprung;
     return template
       .evaluate()
-      .setTitle('OGV BREITFURT - MAISCHEANNAHME')
+      .setTitle('OGV BREITFURT - VORGANGSBEARBEITUNG')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -128,15 +142,65 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
-  if (mode === 'leitstand') {
+  if (mode === 'leitstand_admin') {
     const template = HtmlService.createTemplateFromFile('Leitstand');
     template.webAppUrl = webAppUrl;
-    template.returnModus = returnModus;
-    template.originModus = originModus;
-    template.istAdminRuecksprung = istAdminRuecksprung;
+    template.zollKontaktlisteJson = zollKontaktlisteJsonSicher_();
+    template.returnModus = 'admin';
+    template.originModus = 'admin';
+    template.istAdminRuecksprung = true;
     return template
       .evaluate()
       .setTitle('OGV BREITFURT - ÜBERSICHT BRANDTAG')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  if (mode === 'leitstand') {
+    const template = HtmlService.createTemplateFromFile('Leitstand');
+    template.webAppUrl = webAppUrl;
+    template.zollKontaktlisteJson = zollKontaktlisteJsonSicher_();
+    template.returnModus = '';
+    template.originModus = 'index';
+    template.istAdminRuecksprung = false;
+    return template
+      .evaluate()
+      .setTitle('OGV BREITFURT - ÜBERSICHT BRANDTAG')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  if (mode === 'jahresarchiv') {
+    const template = HtmlService.createTemplateFromFile('Jahresarchiv_Uebersicht');
+    template.webAppUrl = webAppUrl;
+    template.returnModus = returnModus;
+    template.originModus = originModus || 'index';
+    template.istAdminRuecksprung = istAdminRuecksprung;
+    return template
+      .evaluate()
+      .setTitle('OGV BREITFURT - JAHRESARCHIV-ÜBERSICHT')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  if (mode === 'jahresarchiv_admin') {
+    const template = HtmlService.createTemplateFromFile('Jahresarchiv_Uebersicht');
+    template.webAppUrl = webAppUrl;
+    return template
+      .evaluate()
+      .setTitle('OGV BREITFURT - JAHRESARCHIV-ÜBERSICHT')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  if (mode === 'zollkontakte_admin') {
+    const template = HtmlService.createTemplateFromFile('Zollkontakte');
+    template.webAppUrl = webAppUrl;
+    template.originModus = 'admin';
+    template.istAdminRuecksprung = true;
+    return template
+      .evaluate()
+      .setTitle('OGV BREITFURT - ZOLL-KONTAKTLISTE')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -154,15 +218,14 @@ function doGet(e) {
   }
 
   if (mode === 'cockpit') {
-    const template = HtmlService.createTemplateFromFile('Index');
-    template.startModus = '';
+    const template = HtmlService.createTemplateFromFile('Cockpit');
     template.webAppUrl = webAppUrl;
     template.returnModus = returnModus;
-    template.originModus = 'index';
-    template.istAdminRuecksprung = false;
+    template.originModus = originModus || 'cockpit';
+    template.istAdminRuecksprung = istAdminRuecksprung;
     return template
       .evaluate()
-      .setTitle('OGV BREITFURT - WEB APP')
+      .setTitle('OGV BREITFURT - COCKPIT')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -178,6 +241,23 @@ function doGet(e) {
     .setTitle('OGV BREITFURT - Vorgangserfassung')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+
+function zollKontaktlisteJsonSicher_() {
+  try {
+    return JSON.stringify(getZollNotfallKontaktliste());
+  } catch (err) {
+    return JSON.stringify({
+      titel: "Zoll-Kontaktliste",
+      untertitel: "Kontaktliste konnte beim Seitenaufbau nicht geladen werden.",
+      stand: "",
+      faxAlleStandorte: "",
+      zentraleEmail: "",
+      kontakte: [],
+      fehler: err && err.message ? err.message : String(err || "Unbekannter Fehler")
+    });
+  }
 }
 
 function include(filename) {
@@ -462,11 +542,181 @@ function brennfreigabeZugangAnzeigen() {
     return;
   }
 
-  const link = url + '?mode=brennfreigabe';
+  const link = url + '?mode=vorgang';
 
   SpreadsheetApp.getUi().alert(
-    'Brennfreigabe-Zugang',
-    'Interner Link zur Brennfreigabe:\n\n' + link,
+    'Vorgangsbearbeitung-Zugang',
+    'Interner Link zur Vorgangsbearbeitung:\n\n' + link,
     SpreadsheetApp.getUi().ButtonSet.OK
   );
+}
+
+/**
+ * ADMIN: JAHRESARCHIV-ÜBERSICHT
+ * Reine Lesefunktionen. Keine Statusänderung, keine Archivierung, kein Schreibzugriff.
+ */
+function jahresarchivUebersichtInitialdatenLaden() {
+  return jahresarchivUebersichtDatenLaden({ stoffbesitzer: '', jahr: '' });
+}
+
+function jahresarchivUebersichtDatenLaden(filter) {
+  const suchfilter = filter || {};
+  const stoffFilter = jahresarchivUebersichtNorm_(suchfilter.stoffbesitzer || '');
+  const jahrFilter = jahresarchivUebersichtNorm_(suchfilter.jahr || '');
+  const hatStoffFilter = !!stoffFilter;
+  const archivBlaetter = jahresarchivUebersichtArchivBlaetterHolen_();
+  const stoffbesitzerMap = {};
+  const jahreMap = {};
+  const zeilen = [];
+  let exakterStoffbesitzer = '';
+
+  archivBlaetter.forEach(function(sh) {
+    const lastRow = sh.getLastRow();
+    const lastCol = sh.getLastColumn();
+    if (lastRow < 2 || lastCol < 1) return;
+
+    const header = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+    const display = sh.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
+    const c = jahresarchivUebersichtSpaltenFinden_(header);
+    const jahrAusBlatt = jahresarchivUebersichtJahrAusBlattname_(sh.getName());
+    if (jahrAusBlatt) jahreMap[jahrAusBlatt] = true;
+
+    display.forEach(function(row) {
+      const stoffbesitzer = jahresarchivUebersichtWert_(row, c.stoffbesitzer);
+      if (!stoffbesitzer) return;
+
+      stoffbesitzerMap[stoffbesitzer] = true;
+      if (hatStoffFilter && !exakterStoffbesitzer && jahresarchivUebersichtNorm_(stoffbesitzer) === stoffFilter) {
+        exakterStoffbesitzer = stoffbesitzer;
+      }
+
+      const brandtag = jahresarchivUebersichtWert_(row, c.brandtag);
+      const jahrAusBrandtag = jahresarchivUebersichtJahrAusText_(brandtag);
+      const jahr = jahrAusBrandtag || jahrAusBlatt || '';
+      if (jahr) jahreMap[jahr] = true;
+
+      if (!hatStoffFilter) return;
+      if (jahresarchivUebersichtNorm_(stoffbesitzer).indexOf(stoffFilter) === -1) return;
+      if (jahrFilter && jahresarchivUebersichtNorm_(jahr) !== jahrFilter) return;
+
+      zeilen.push({
+        stoffbesitzer: stoffbesitzer,
+        registernummer: jahresarchivUebersichtWert_(row, c.registernummer),
+        brandtag: brandtag,
+        material: jahresarchivUebersichtWert_(row, c.material),
+        ausbeute: jahresarchivUebersichtWert_(row, c.ausbeute),
+        jahr: jahr,
+        archivblatt: sh.getName()
+      });
+    });
+  });
+
+  zeilen.sort(function(a, b) {
+    const aj = jahresarchivUebersichtNorm_(a.jahr);
+    const bj = jahresarchivUebersichtNorm_(b.jahr);
+    if (aj !== bj) return bj.localeCompare(aj);
+    return jahresarchivUebersichtNorm_(b.brandtag).localeCompare(jahresarchivUebersichtNorm_(a.brandtag));
+  });
+
+  const stoffbesitzerListe = Object.keys(stoffbesitzerMap).sort(function(a, b) { return a.localeCompare(b, 'de'); });
+  const driveStoffbesitzer = exakterStoffbesitzer || textNormalisieren_(suchfilter.stoffbesitzer || '');
+  const driveOrdnerUrl = hatStoffFilter ? jahresarchivUebersichtStoffbesitzerOrdnerUrlHolen_(driveStoffbesitzer) : '';
+
+  return {
+    ok: true,
+    archivblaetter: archivBlaetter.map(function(sh) { return sh.getName(); }),
+    stoffbesitzerListe: stoffbesitzerListe,
+    jahre: Object.keys(jahreMap).sort(function(a, b) { return String(b).localeCompare(String(a)); }),
+    zeilen: zeilen,
+    anzahl: zeilen.length,
+    stoffbesitzerAuswahlErforderlich: !hatStoffFilter,
+    driveOrdnerUrl: driveOrdnerUrl,
+    driveStoffbesitzer: driveStoffbesitzer
+  };
+}
+
+function jahresarchivUebersichtStoffbesitzerOrdnerUrlHolen_(stoffbesitzer) {
+  const stoff = textNormalisieren_(stoffbesitzer);
+  if (!stoff) return '';
+
+  try {
+    let root = null;
+    if (typeof driveWurzelOrdnerHolen_ === 'function') {
+      root = driveWurzelOrdnerHolen_();
+    } else {
+      const rootId = (typeof KONFIGURATION !== 'undefined' && KONFIGURATION.DRIVE_ORDNER && KONFIGURATION.DRIVE_ORDNER.WURZEL_ORDNER_ID)
+        ? String(KONFIGURATION.DRIVE_ORDNER.WURZEL_ORDNER_ID)
+        : '';
+      if (!rootId) return '';
+      root = DriveApp.getFolderById(rootId);
+    }
+
+    const ordnerName = (typeof stoffbesitzerOrdnerNameBauen_ === 'function')
+      ? stoffbesitzerOrdnerNameBauen_(stoff)
+      : stoff;
+    const iter = root.getFoldersByName(ordnerName);
+    return iter.hasNext() ? iter.next().getUrl() : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function jahresarchivUebersichtArchivBlaetterHolen_() {
+  const ss = SpreadsheetApp.getActive();
+  const konfigName = (typeof KONFIGURATION !== 'undefined' && KONFIGURATION.TABELLEN && KONFIGURATION.TABELLEN.JAHRESARCHIV)
+    ? String(KONFIGURATION.TABELLEN.JAHRESARCHIV)
+    : '';
+
+  const blattMap = {};
+  ss.getSheets().forEach(function(sh) {
+    const name = sh.getName();
+    const norm = jahresarchivUebersichtNorm_(name);
+    if (konfigName && name === konfigName) blattMap[name] = sh;
+    if (norm.indexOf('jahresarchiv') !== -1) blattMap[name] = sh;
+  });
+
+  return Object.keys(blattMap)
+    .sort(function(a, b) { return b.localeCompare(a); })
+    .map(function(name) { return blattMap[name]; });
+}
+
+function jahresarchivUebersichtSpaltenFinden_(header) {
+  return {
+    stoffbesitzer: jahresarchivUebersichtSpalteNachAlias_(header, ['Stoffbesitzer', 'STOFFBESITZER']),
+    registernummer: jahresarchivUebersichtSpalteNachAlias_(header, ['Registernummer', 'Registriernummer', 'Reg.Nr.', 'Reg Nr', 'REGISTERNUMMER']),
+    brandtag: jahresarchivUebersichtSpalteNachAlias_(header, ['Tag_Brand', 'Brandtag', 'Brand_Tag', 'Brenndatum', 'Datum_Brand', 'TAG_BRAND']),
+    material: jahresarchivUebersichtSpalteNachAlias_(header, ['Material', 'MATERIAL']),
+    ausbeute: jahresarchivUebersichtSpalteNachAlias_(header, ['Ausbeute', 'AUSBEUTE'])
+  };
+}
+
+function jahresarchivUebersichtSpalteNachAlias_(header, aliases) {
+  const normAliases = aliases.map(jahresarchivUebersichtNorm_);
+  for (let i = 0; i < header.length; i++) {
+    const h = jahresarchivUebersichtNorm_(header[i]);
+    if (normAliases.indexOf(h) !== -1) return i;
+  }
+  return -1;
+}
+
+function jahresarchivUebersichtWert_(row, index) {
+  if (index == null || index < 0 || index >= row.length) return '';
+  return textNormalisieren_(row[index]);
+}
+
+function jahresarchivUebersichtNorm_(wert) {
+  let text = textNormalisieren_(wert).toLowerCase();
+  text = text.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+  text = text.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return text;
+}
+
+function jahresarchivUebersichtJahrAusBlattname_(name) {
+  const m = String(name || '').match(/(20\d{2}|19\d{2})/);
+  return m ? m[1] : '';
+}
+
+function jahresarchivUebersichtJahrAusText_(text) {
+  const m = String(text || '').match(/(20\d{2}|19\d{2})/);
+  return m ? m[1] : '';
 }

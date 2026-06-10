@@ -13,70 +13,74 @@
  * RÜCKGABE: jobs[] + stats{}
  */
 function getLeitstandData(dateStr) {
-  const shBrandtag = tabelleHolen_("BRANDTAG_UEBERSICHT");
-  if (!shBrandtag) {
-    return {
-      jobs: [],
-      stats: {
-        total: 0,
-        date: dateStr || "",
-        gefunden: 0
-      }
-    };
-  }
-
-  const sMap = spaltenZuordnungHolen_(shBrandtag);
-  const range = shBrandtag.getDataRange();
-  const daten = range.getValues();
-  const displayDaten = range.getDisplayValues();
+  const datumGesucht = textNormalisieren_(dateStr);
   const jobs = [];
+  const bereitsGeladen = {};
   let totalBraende = 0;
 
-  for (let i = 1; i < daten.length; i++) {
-    const row = daten[i];
-    const displayRow = displayDaten[i] || [];
-    const brandTagRaw = sMap.TAG_BRAND ? row[sMap.TAG_BRAND - 1] : "";
-    const rowDate = datumAlsIsoString_(brandTagRaw);
+  function leitstandEintraegeAusBlattSammeln_(tabellenKey, archivQuelle) {
+    const sh = tabelleHolen_(tabellenKey);
+    if (!sh || sh.getLastRow() < 2) return;
 
-    if (rowDate !== textNormalisieren_(dateStr)) continue;
+    const sMap = spaltenZuordnungHolen_(sh);
+    if (!sMap.TAG_BRAND) return;
 
-    const statusAktionRoh = sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : "";
-    const statusAktion = textNormalisieren_(statusAktionRoh);
-    const statusAktionUpper = statusAktion.toUpperCase();
-    const istErledigt = statusAktionUpper.indexOf(KONFIGURATION.STATUSWERTE.ERLEDIGT) === 0;
-    const istMinderausbeute = statusAktionUpper.indexOf('MINDERAUSBEUTE BRAND ZOLL INFORMIERT') !== -1;
+    const range = sh.getDataRange();
+    const daten = range.getValues();
+    const displayDaten = range.getDisplayValues();
 
-    const anzahlBraendeRoh = sMap.ANZAHL_BRAENDE ? row[sMap.ANZAHL_BRAENDE - 1] : "";
-    const anzahlBraende = parseInt(textNormalisieren_(anzahlBraendeRoh), 10);
-    totalBraende += isNaN(anzahlBraende) || anzahlBraende < 1 ? 1 : anzahlBraende;
+    for (let i = 1; i < daten.length; i++) {
+      const row = daten[i];
+      const displayRow = displayDaten[i] || [];
+      const brandTagRaw = row[sMap.TAG_BRAND - 1];
+      const rowDate = datumAlsIsoString_(brandTagRaw);
+      if (rowDate !== datumGesucht) continue;
 
-    jobs.push({
-      row: i + 1,
-      vId: sMap.VORGANGS_ID ? row[sMap.VORGANGS_ID - 1] : "",
-      owner: sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : "",
-      brenner: sMap.BRENNER ? row[sMap.BRENNER - 1] : "",
-      material: sMap.MATERIAL ? row[sMap.MATERIAL - 1] : "",
-      gewuerze: sMap.GEWUERZE ? row[sMap.GEWUERZE - 1] : "",
-      fassNr: sMap.FASS_NR ? row[sMap.FASS_NR - 1] : "",
-      fassgroesse: sMap.FASS_VP ? row[sMap.FASS_VP - 1] : "",
-      inhalt: sMap.INH_VP ? row[sMap.INH_VP - 1] : "",
-      regNr: sMap.REGISTERNUMMER ? row[sMap.REGISTERNUMMER - 1] : "",
-      von: wertAlsZeitText_(sMap.VON ? row[sMap.VON - 1] : "", sMap.VON ? displayRow[sMap.VON - 1] : ""),
-      bis: wertAlsZeitText_(sMap.BIS ? row[sMap.BIS - 1] : "", sMap.BIS ? displayRow[sMap.BIS - 1] : ""),
-      alk: sMap.ALKOHOL ? row[sMap.ALKOHOL - 1] : "",
-      ausbeute: sMap.AUSBEUTE ? row[sMap.AUSBEUTE - 1] : "",
-      anzahlBraende: sMap.ANZAHL_BRAENDE ? row[sMap.ANZAHL_BRAENDE - 1] : "",
-      zollOk: sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : "",
-      status: sMap.STATUS ? row[sMap.STATUS - 1] : "",
-      statusAktion: statusAktion,
-      istErledigt: istErledigt,
-      istMinderausbeute: istMinderausbeute,
-      infoSystem: sMap.INFO_SYSTEM ? row[sMap.INFO_SYSTEM - 1] : "",
-      link: sMap.DOSSIER_LINK ? row[sMap.DOSSIER_LINK - 1] : ""
-    });
+      const statusAktionRoh = sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : "";
+      const statusAktion = textNormalisieren_(statusAktionRoh);
+      const statusAktionUpper = statusAktion.toUpperCase();
+      const statusRoh = sMap.STATUS ? row[sMap.STATUS - 1] : "";
+      const statusNorm = textNormalisieren_(statusRoh).toUpperCase();
+      const zollOkNorm = textNormalisieren_(sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : '').toUpperCase();
+
+      const istAbgelehnt = istZollstatusAbgelehnt_(zollOkNorm) || istZollstatusAbgelehnt_(statusAktionUpper) || istZollstatusAbgelehnt_(statusNorm);
+      if (istAbgelehnt) continue;
+
+      const istErledigt = statusAktionUpper.indexOf(KONFIGURATION.STATUSWERTE.ERLEDIGT) === 0
+        || statusNorm === KONFIGURATION.STATUSWERTE.GEBRANNT
+        || statusNorm === KONFIGURATION.STATUSWERTE.ARCHIVIERT
+        || archivQuelle === true;
+      const istMinderausbeute = statusAktionUpper.indexOf('MINDERAUSBEUTE BRAND ZOLL INFORMIERT') !== -1;
+
+      const vId = textNormalisieren_(sMap.VORGANGS_ID ? row[sMap.VORGANGS_ID - 1] : '');
+      const von = wertAlsZeitText_(sMap.VON ? row[sMap.VON - 1] : "", sMap.VON ? displayRow[sMap.VON - 1] : "");
+      const bis = wertAlsZeitText_(sMap.BIS ? row[sMap.BIS - 1] : "", sMap.BIS ? displayRow[sMap.BIS - 1] : "");
+      const fassNr = textNormalisieren_(sMap.FASS_NR ? row[sMap.FASS_NR - 1] : "");
+      const dupeKey = [tabellenKey, vId, von, bis, fassNr].join('|');
+      if (bereitsGeladen[dupeKey]) continue;
+      bereitsGeladen[dupeKey] = true;
+
+      const anzahlBraendeRoh = sMap.ANZAHL_BRAENDE ? row[sMap.ANZAHL_BRAENDE - 1] : "";
+      const anzahlBraende = parseInt(textNormalisieren_(anzahlBraendeRoh), 10);
+      totalBraende += isNaN(anzahlBraende) || anzahlBraende < 1 ? 1 : anzahlBraende;
+
+      const eintrag = leitstandZeileZuAnzeigeObjekt_(sh, sMap, row, displayRow, i + 1, archivQuelle === true || istErledigt);
+      eintrag.istErledigt = istErledigt;
+      eintrag.istMinderausbeute = istMinderausbeute;
+      if (archivQuelle === true || istErledigt) {
+        eintrag.archivInfo = true;
+        eintrag.readonly = true;
+      }
+      jobs.push(eintrag);
+    }
   }
 
+  leitstandEintraegeAusBlattSammeln_("BRANDTAG_UEBERSICHT", false);
+  leitstandEintraegeAusBlattSammeln_("JAHRESARCHIV", true);
+
   jobs.sort(function(a, b) {
+    const archivSort = (a.archivInfo === true ? 1 : 0) - (b.archivInfo === true ? 1 : 0);
+    if (archivSort !== 0) return archivSort;
     return String(a.von || "").localeCompare(String(b.von || ""));
   });
 
@@ -84,38 +88,190 @@ function getLeitstandData(dateStr) {
     jobs: jobs,
     stats: {
       total: totalBraende,
-      date: textNormalisieren_(dateStr),
+      date: datumGesucht,
       gefunden: jobs.length
     }
   };
 }
 
+function leitstandZeileZuAnzeigeObjekt_(blatt, sMap, row, displayRow, zeile, archivInfo) {
+  return {
+    row: zeile,
+    vId: sMap.VORGANGS_ID ? row[sMap.VORGANGS_ID - 1] : "",
+    owner: sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : "",
+    brenner: sMap.BRENNER ? row[sMap.BRENNER - 1] : "",
+    material: sMap.MATERIAL ? row[sMap.MATERIAL - 1] : "",
+    gewuerze: sMap.GEWUERZE ? row[sMap.GEWUERZE - 1] : "",
+    fassNr: sMap.FASS_NR ? row[sMap.FASS_NR - 1] : "",
+    fassgroesse: sMap.FASS_VP ? row[sMap.FASS_VP - 1] : "",
+    inhalt: sMap.INH_VP ? row[sMap.INH_VP - 1] : "",
+    regNr: sMap.REGISTERNUMMER ? row[sMap.REGISTERNUMMER - 1] : "",
+    von: wertAlsZeitText_(sMap.VON ? row[sMap.VON - 1] : "", sMap.VON ? displayRow[sMap.VON - 1] : ""),
+    bis: wertAlsZeitText_(sMap.BIS ? row[sMap.BIS - 1] : "", sMap.BIS ? displayRow[sMap.BIS - 1] : ""),
+    alk: sMap.ALKOHOL ? row[sMap.ALKOHOL - 1] : "",
+    ausbeute: sMap.AUSBEUTE ? row[sMap.AUSBEUTE - 1] : "",
+    anzahlBraende: sMap.ANZAHL_BRAENDE ? row[sMap.ANZAHL_BRAENDE - 1] : "",
+    zollOk: sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : "",
+    zollAbgelehnt: istZollstatusAbgelehnt_(sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : "") || istZollstatusAbgelehnt_(sMap.STATUS ? row[sMap.STATUS - 1] : "") || istZollstatusAbgelehnt_(sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : ""),
+    status: sMap.STATUS ? row[sMap.STATUS - 1] : "",
+    statusAktion: textNormalisieren_(sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : ""),
+    infoSystem: sMap.INFO_SYSTEM ? row[sMap.INFO_SYSTEM - 1] : "",
+    link: sMap.DOSSIER_LINK ? row[sMap.DOSSIER_LINK - 1] : "",
+    archivInfo: archivInfo === true,
+    readonly: archivInfo === true
+  };
+}
 
 /**
  * FUNKTION: Liefert alle geplanten Brandtage für die Leitstand-Kalender-Markierung.
  * RÜCKGABE: Array mit ISO-Datum yyyy-MM-dd
  */
 function getLeitstandGeplanteBrandtage() {
-  const shBrandtag = tabelleHolen_("BRANDTAG_UEBERSICHT");
-  if (!shBrandtag) return [];
+  const tage = {};
 
-  const sMap = spaltenZuordnungHolen_(shBrandtag);
-  if (!sMap.TAG_BRAND) return [];
+  leitstandBrandtageAusBlattSammeln_("BRANDTAG_UEBERSICHT", tage, false);
+  leitstandBrandtageAusBlattSammeln_("JAHRESARCHIV", tage, true);
 
-  const letzteZeile = shBrandtag.getLastRow();
-  if (letzteZeile <= 1) return [];
-
-  const werte = shBrandtag.getRange(2, sMap.TAG_BRAND, letzteZeile - 1, 1).getValues();
-  const gesehen = {};
-
-  werte.forEach(function(row) {
-    const iso = datumAlsIsoString_(row[0]);
-    if (iso) gesehen[iso] = true;
-  });
-
-  return Object.keys(gesehen).sort();
+  const sortierteTage = Object.keys(tage).sort();
+  return {
+    tage: sortierteTage,
+    offen: sortierteTage.filter(function(iso) {
+      return tage[iso] && tage[iso].offen === true && tage[iso].abgelehnt !== true;
+    }),
+    fertig: sortierteTage.filter(function(iso) {
+      return tage[iso] && tage[iso].fertig === true && tage[iso].offen !== true && tage[iso].abgelehnt !== true;
+    }),
+    abgelehnt: []
+  };
 }
 
+function leitstandBrandtageAusBlattSammeln_(tabellenKey, ziel, archivQuelle) {
+  const sh = tabelleHolen_(tabellenKey);
+  if (!sh || sh.getLastRow() <= 1) return;
+
+  const sMap = spaltenZuordnungHolen_(sh);
+  if (!sMap.TAG_BRAND) return;
+
+  const daten = sh.getDataRange().getValues();
+
+  for (let i = 1; i < daten.length; i++) {
+    const row = daten[i];
+    const statusAktion = textNormalisieren_(sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : '').toUpperCase();
+    const status = textNormalisieren_(sMap.STATUS ? row[sMap.STATUS - 1] : '').toUpperCase();
+    const zollOk = textNormalisieren_(sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : '').toUpperCase();
+    const istAbgelehnt = istZollstatusAbgelehnt_(zollOk) || istZollstatusAbgelehnt_(statusAktion) || istZollstatusAbgelehnt_(status);
+    const istFertig = !istAbgelehnt && (statusAktion.indexOf(KONFIGURATION.STATUSWERTE.ERLEDIGT) === 0 || status === KONFIGURATION.STATUSWERTE.GEBRANNT || status === KONFIGURATION.STATUSWERTE.ARCHIVIERT || archivQuelle === true);
+    const istOffen = !istAbgelehnt && !istFertig;
+
+    const iso = datumAlsIsoString_(row[sMap.TAG_BRAND - 1]);
+    if (!iso) continue;
+
+    if (istAbgelehnt) continue;
+
+    if (!ziel[iso]) ziel[iso] = { geplant: false, offen: false, fertig: false, abgelehnt: false };
+    ziel[iso].geplant = true;
+    if (istOffen) ziel[iso].offen = true;
+    if (istFertig) ziel[iso].fertig = true;
+  }
+}
+
+function leitstandAbgelehnteNummernMarkieren_(blatt, sMap, zeilen) {
+  if (!blatt || !zeilen || !zeilen.length) {
+    return 0;
+  }
+
+  const letzteSpalte = blatt.getLastColumn();
+  if (!letzteSpalte || letzteSpalte < 1) {
+    return 0;
+  }
+
+  let markiert = 0;
+  zeilen.forEach(function(zeile) {
+    const z = Number(zeile);
+    if (!z || z <= 1) return;
+
+    blatt.getRange(z, 1, 1, letzteSpalte)
+      .setBackground('#f4cccc')
+      .setFontColor('#990000');
+
+    if (sMap && sMap.VORGANGS_ID) {
+      blatt.getRange(z, sMap.VORGANGS_ID).setFontWeight('bold');
+    }
+
+    markiert++;
+  });
+  return markiert;
+}
+
+function leitstandMinderausbeuteNummernMarkieren_(blatt, sMap, zeilen) {
+  if (!blatt || !zeilen || !zeilen.length) return 0;
+
+  const letzteSpalte = blatt.getLastColumn();
+  if (!letzteSpalte || letzteSpalte < 1) return 0;
+
+  let markiert = 0;
+  zeilen.forEach(function(zeile) {
+    const z = Number(zeile);
+    if (!z || z <= 1) return;
+
+    blatt.getRange(z, 1, 1, letzteSpalte)
+      .setBackground('#f4cccc')
+      .setFontColor('#990000');
+
+    if (sMap && sMap.VORGANGS_ID) {
+      blatt.getRange(z, sMap.VORGANGS_ID).setFontWeight('bold');
+    }
+
+    markiert++;
+  });
+  return markiert;
+}
+
+function leitstandAbgelehnteNummernInBlattNachziehen_(tabellenKey) {
+  const sh = tabelleHolen_(tabellenKey);
+  if (!sh || sh.getLastRow() <= 1) {
+    return { ok: true, blatt: tabellenKey, markiert: 0 };
+  }
+
+  const sMap = spaltenZuordnungHolen_(sh);
+  if (!sMap.VORGANGS_ID) {
+    return { ok: false, blatt: tabellenKey, markiert: 0, fehler: 'Spalte VORGANGS_ID fehlt.' };
+  }
+
+  const daten = sh.getDataRange().getValues();
+  const zeilen = [];
+
+  for (let i = 1; i < daten.length; i++) {
+    const row = daten[i];
+    const zollOk = textNormalisieren_(sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : '');
+    const statusAktion = textNormalisieren_(sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : '');
+    const status = textNormalisieren_(sMap.STATUS ? row[sMap.STATUS - 1] : '');
+    if (istZollstatusAbgelehnt_(zollOk) || istZollstatusAbgelehnt_(statusAktion) || istZollstatusAbgelehnt_(status)) {
+      zeilen.push(i + 1);
+    }
+  }
+
+  return {
+    ok: true,
+    blatt: tabellenKey,
+    markiert: leitstandAbgelehnteNummernMarkieren_(sh, sMap, zeilen)
+  };
+}
+
+function leitstandBestandsdatenOptikNachziehen() {
+  return mitSperreAusfuehren_(function() {
+    const brandtag = leitstandAbgelehnteNummernInBlattNachziehen_('BRANDTAG_UEBERSICHT');
+    const archiv = leitstandAbgelehnteNummernInBlattNachziehen_('JAHRESARCHIV');
+    SpreadsheetApp.flush();
+    systemLogSchreiben_('INFO', 'WebApp', 'Leitstand-Bestandsdaten-Optik nachgezogen', '', 'BRANDTAG: ' + brandtag.markiert + ' | JAHRESARCHIV: ' + archiv.markiert);
+    return {
+      ok: true,
+      brandtag: brandtag,
+      jahresarchiv: archiv,
+      gesamtMarkiert: (Number(brandtag.markiert) || 0) + (Number(archiv.markiert) || 0)
+    };
+  }, 'leitstandBestandsdatenOptikNachziehen');
+}
 
 /**
  * FUNKTION: Speichert ein einzelnes Feld aus dem Cockpit in 🔥_BRENNFREIGABE.
@@ -198,86 +354,280 @@ function markLeitstandVorgangErledigt(vorgangsId) {
 
     SpreadsheetApp.flush();
 
+    const archiv = leitstandEintragInsJahresarchivVerschiebenOhneSperre_(vId, KONFIGURATION.STATUSWERTE.ERLEDIGT);
+
     systemLogSchreiben_(
       'INFO',
       'WebApp',
-      'Leitstand-Vorgang als erledigt vorgemerkt',
+      'Leitstand-Vorgang erledigt und sofort archiviert',
       vId,
-      'Archivierung erfolgt über Mitternachtslauf.'
+      'Archivierung direkt beim Speichern.'
     );
 
     return {
       ok: true,
       erledigt: true,
-      archiviert: false,
-      verschoben: false,
-      archivierung: 'MITTERNACHTSLAUF'
+      archiviert: archiv && archiv.archiviert === true,
+      verschoben: archiv && archiv.verschoben === true,
+      archivierung: 'SOFORT'
     };
   }, 'markLeitstandVorgangErledigt');
 }
 
+function leitstandVorgangBereitFuerArchivierung_(blatt, sMap, vId) {
+  const zeilen = alleZeilenMitVorgangsIdHolen_(blatt, vId);
+  if (!zeilen.length) return false;
+
+  for (let i = 0; i < zeilen.length; i++) {
+    const zeile = zeilen[i];
+    const row = blatt.getRange(zeile, 1, 1, blatt.getLastColumn()).getValues()[0];
+    const statusAktion = textNormalisieren_(sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : '').toUpperCase();
+    const status = textNormalisieren_(sMap.STATUS ? row[sMap.STATUS - 1] : '').toUpperCase();
+
+    const istErledigt = statusAktion.indexOf(KONFIGURATION.STATUSWERTE.ERLEDIGT) === 0 || status === KONFIGURATION.STATUSWERTE.GEBRANNT;
+    if (!istErledigt) return false;
+
+    if (sMap.ALKOHOL && !textNormalisieren_(row[sMap.ALKOHOL - 1])) return false;
+    if (sMap.AUSBEUTE && !textNormalisieren_(row[sMap.AUSBEUTE - 1])) return false;
+  }
+
+  return true;
+}
+
 function saveLeitstandEintrag(payload) {
   return mitSperreAusfuehren_(function() {
-    const daten = payload || {};
-    const zeile = Number(daten.row);
-    if (!zeile || zeile <= 1) throw new Error('Ungültige Tabellenzeile.');
+    const ergebnis = leitstandEintragSpeichernOhneSperre_(payload, { flush: true, direkteAblehnungsArchivierung: true });
+    return ergebnis;
+  }, 'saveLeitstandEintrag');
+}
 
-    const sh = tabelleHolen_('BRANDTAG_UEBERSICHT');
-    if (!sh) throw new Error('Blatt BRANDTAG_UEBERSICHT nicht gefunden.');
+function saveLeitstandEintraegeBatch(payloads) {
+  return mitSperreAusfuehren_(function() {
+    const liste = Array.isArray(payloads) ? payloads : [];
+    if (!liste.length) throw new Error('Keine markierten Leitstand-Zeilen übergeben.');
 
-    const sMap = spaltenZuordnungHolen_(sh);
-    const vId = textNormalisieren_(daten.vId || (sMap.VORGANGS_ID ? sh.getRange(zeile, sMap.VORGANGS_ID).getValue() : ''));
-    if (!vId) throw new Error('Vorgangs_ID fehlt.');
+    const result = {
+      ok: true,
+      gesamt: liste.length,
+      gespeichert: 0,
+      teilgespeichert: 0,
+      abgelehnt: 0,
+      uebersprungen: 0,
+      archiviert: 0,
+      details: []
+    };
 
-    if (sMap.ALKOHOL) {
-      sh.getRange(zeile, sMap.ALKOHOL).setValue(webAppFeldwertNormalisieren_('ALKOHOL', daten.alkohol));
-    }
+    liste.forEach(function(payload) {
+      const einzel = leitstandEintragSpeichernOhneSperre_(payload, { flush: false, direkteAblehnungsArchivierung: false, direkteErledigtArchivierung: false });
+      result.details.push(einzel);
 
-    if (sMap.AUSBEUTE) {
-      sh.getRange(zeile, sMap.AUSBEUTE).setValue(webAppFeldwertNormalisieren_('AUSBEUTE', daten.ausbeute));
-    }
+      if (einzel && einzel.zollAbgelehnt === true) {
+        result.abgelehnt++;
+      } else if (einzel && einzel.teilgespeichert === true) {
+        result.teilgespeichert++;
+      } else if (einzel && einzel.skipped === true) {
+        result.uebersprungen++;
+      } else if (einzel && einzel.erledigt === true) {
+        result.gespeichert++;
+      }
+    });
 
-    const erledigt = true;
-    const minderausbeute = daten.minderausbeute === true || daten.minderausbeute === 'true' || daten.minderausbeute === 1 || daten.minderausbeute === '1';
+    SpreadsheetApp.flush();
 
-    const statusAktion = minderausbeute
-      ? 'ERLEDIGT | Minderausbeute Brand Zoll informiert'
-      : KONFIGURATION.STATUSWERTE.ERLEDIGT;
+    const direktZuArchivierendeDetails = result.details.filter(function(einzel) {
+      return einzel && (einzel.erledigt === true || einzel.zollAbgelehnt === true) && einzel.row && einzel.vId;
+    }).sort(function(a, b) {
+      return Number(b.row) - Number(a.row);
+    });
 
-    if (sMap.STATUS_AKTION) {
-      sh.getRange(zeile, sMap.STATUS_AKTION).setValue(statusAktion);
-    }
-
-    if (sMap.STATUS) {
-      sh.getRange(zeile, sMap.STATUS).setValue(KONFIGURATION.STATUSWERTE.GEBRANNT);
-    }
+    direktZuArchivierendeDetails.forEach(function(einzel) {
+      const archivStatus = einzel.statusAktion || (einzel.zollAbgelehnt === true ? '❌ ABGELEHNT' : KONFIGURATION.STATUSWERTE.ERLEDIGT);
+      const archiv = leitstandEintragInsJahresarchivVerschiebenZeilenOhneSperre_(einzel.vId, archivStatus, [einzel.row]);
+      if (archiv && archiv.archiviert === true) result.archiviert++;
+    });
 
     SpreadsheetApp.flush();
 
     systemLogSchreiben_(
       'INFO',
       'WebApp',
-      'Leitstand-Eintrag gespeichert',
+      'Leitstand-Batch gespeichert',
+      '',
+      'Gesamt: ' + result.gesamt +
+        ' | Vollständig: ' + result.gespeichert +
+        ' | Teilgespeichert: ' + result.teilgespeichert +
+        ' | Abgelehnt: ' + result.abgelehnt +
+        ' | Übersprungen: ' + result.uebersprungen +
+        ' | Archiviert: ' + result.archiviert
+    );
+
+    return result;
+  }, 'saveLeitstandEintraegeBatch');
+}
+
+function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
+  const opts = optionen || {};
+  const sollFlushen = opts.flush !== false;
+  const direkteAblehnungsArchivierung = opts.direkteAblehnungsArchivierung !== false;
+  const direkteErledigtArchivierung = opts.direkteErledigtArchivierung !== false;
+  const daten = payload || {};
+  const zeile = Number(daten.row);
+  if (!zeile || zeile <= 1) throw new Error('Ungültige Tabellenzeile.');
+
+  const sh = tabelleHolen_('BRANDTAG_UEBERSICHT');
+  if (!sh) throw new Error('Blatt BRANDTAG_UEBERSICHT nicht gefunden.');
+
+  const sMap = spaltenZuordnungHolen_(sh);
+  const vId = textNormalisieren_(daten.vId || (sMap.VORGANGS_ID ? sh.getRange(zeile, sMap.VORGANGS_ID).getValue() : ''));
+  if (!vId) throw new Error('Vorgangs_ID fehlt.');
+
+  const zollAbgelehnt = daten.zollAbgelehnt === true || daten.zollAbgelehnt === 'true' || daten.zollAbgelehnt === 1 || daten.zollAbgelehnt === '1';
+  const ablehnungBemerkung = textNormalisieren_(daten.ablehnungBemerkung);
+
+  if (zollAbgelehnt) {
+    if (!ablehnungBemerkung) throw new Error('Bemerkung zur Zoll-Ablehnung fehlt.');
+
+    if (sMap.ALKOHOL) sh.getRange(zeile, sMap.ALKOHOL).setValue('');
+    if (sMap.AUSBEUTE) sh.getRange(zeile, sMap.AUSBEUTE).setValue('');
+    if (sMap.ZOLL_OK) sh.getRange(zeile, sMap.ZOLL_OK).setValue('❌ ABGELEHNT');
+    if (sMap.STATUS_AKTION) sh.getRange(zeile, sMap.STATUS_AKTION).setValue('❌ ABGELEHNT');
+    if (sMap.STATUS) sh.getRange(zeile, sMap.STATUS).setValue('❌ ABGELEHNT');
+    if (sMap.INFO_SYSTEM) sh.getRange(zeile, sMap.INFO_SYSTEM).setValue(ablehnungBemerkung);
+    leitstandAbgelehnteNummernMarkieren_(sh, sMap, [zeile]);
+
+    if (sollFlushen) SpreadsheetApp.flush();
+
+    const archivAblehnung = direkteAblehnungsArchivierung
+      ? leitstandEintragInsJahresarchivVerschiebenOhneSperre_(vId, '❌ ABGELEHNT')
+      : { archiviert: false, verschoben: false };
+
+    systemLogSchreiben_(
+      'INFO',
+      'WebApp',
+      'Leitstand-Brand wegen Zoll-Ablehnung archiviert',
       vId,
-      'Zeile: ' + zeile + ' | Alkohol: ' + daten.alkohol + ' | Ausbeute: ' + daten.ausbeute + ' | Status_Aktion: ' + statusAktion + ' | Archivierung: Mitternachtslauf'
+      'Zeile: ' + zeile + ' | ' + ablehnungBemerkung
     );
 
     return {
       ok: true,
-      erledigt: erledigt,
-      minderausbeute: minderausbeute,
+      erledigt: false,
+      zollAbgelehnt: true,
+      row: zeile,
+      vId: vId,
+      statusAktion: '❌ ABGELEHNT',
+      archiviert: archivAblehnung && archivAblehnung.archiviert === true,
+      verschoben: archivAblehnung && archivAblehnung.verschoben === true,
+      archivierung: direkteAblehnungsArchivierung ? 'ABLEHNUNG' : 'ABLEHNUNG_OHNE_DIREKTARCHIVIERUNG'
+    };
+  }
+
+  const minderausbeute = daten.minderausbeute === true || daten.minderausbeute === 'true' || daten.minderausbeute === 1 || daten.minderausbeute === '1';
+  const alkohol = minderausbeute ? '0' : webAppFeldwertNormalisieren_('ALKOHOL', daten.alkohol);
+  const ausbeute = minderausbeute ? '0' : webAppFeldwertNormalisieren_('AUSBEUTE', daten.ausbeute);
+  const hatAlkohol = !!textNormalisieren_(alkohol);
+  const hatAusbeute = !!textNormalisieren_(ausbeute);
+  const hatEingabe = hatAlkohol || hatAusbeute || minderausbeute;
+
+  if (!hatEingabe) {
+    systemLogSchreiben_(
+      'INFO',
+      'WebApp',
+      'Leitstand-Eintrag ohne Eingabe übersprungen',
+      vId,
+      'Zeile: ' + zeile
+    );
+
+    return {
+      ok: true,
+      skipped: true,
+      erledigt: false,
       archiviert: false,
       verschoben: false,
-      archivierung: erledigt ? 'MITTERNACHTSLAUF' : 'KEINE',
-      statusAktion: statusAktion
+      archivierung: 'KEINE_EINGABE'
     };
-  }, 'saveLeitstandEintrag');
+  }
+
+  if (sMap.ALKOHOL) {
+    sh.getRange(zeile, sMap.ALKOHOL).setValue(alkohol);
+  }
+
+  if (sMap.AUSBEUTE) {
+    sh.getRange(zeile, sMap.AUSBEUTE).setValue(ausbeute);
+  }
+
+  if (!hatAlkohol || !hatAusbeute) {
+    if (sollFlushen) SpreadsheetApp.flush();
+
+    systemLogSchreiben_(
+      'INFO',
+      'WebApp',
+      'Leitstand-Teileingabe gespeichert, Vorgang bleibt offen',
+      vId,
+      'Zeile: ' + zeile + ' | Alkohol: ' + alkohol + ' | Ausbeute: ' + ausbeute
+    );
+
+    return {
+      ok: true,
+      teilgespeichert: true,
+      erledigt: false,
+      archiviert: false,
+      verschoben: false,
+      archivierung: 'OFFEN_WEGEN_UNVOLLSTAENDIGER_EINGABE'
+    };
+  }
+
+  const statusAktion = minderausbeute
+    ? 'ERLEDIGT | Minderausbeute Brand Zoll informiert'
+    : KONFIGURATION.STATUSWERTE.ERLEDIGT;
+
+  if (sMap.STATUS_AKTION) {
+    sh.getRange(zeile, sMap.STATUS_AKTION).setValue(statusAktion);
+  }
+
+  if (sMap.STATUS) {
+    sh.getRange(zeile, sMap.STATUS).setValue(KONFIGURATION.STATUSWERTE.GEBRANNT);
+  }
+
+  if (minderausbeute) {
+    leitstandMinderausbeuteNummernMarkieren_(sh, sMap, [zeile]);
+  }
+
+  if (sollFlushen) SpreadsheetApp.flush();
+
+  const archivDirekt = direkteErledigtArchivierung
+    ? leitstandEintragInsJahresarchivVerschiebenZeilenOhneSperre_(vId, statusAktion, [zeile])
+    : { archiviert: false, verschoben: false };
+
+  systemLogSchreiben_(
+    'INFO',
+    'WebApp',
+    'Leitstand-Eintrag vollständig gespeichert',
+    vId,
+    'Zeile: ' + zeile + ' | Alkohol: ' + alkohol + ' | Ausbeute: ' + ausbeute + ' | Status_Aktion: ' + statusAktion + ' | Archivierung: sofort nur markierte Zeile' + (minderausbeute ? ' | Minderausbeute' : '')
+  );
+
+  return {
+    ok: true,
+    erledigt: true,
+    minderausbeute: minderausbeute,
+    row: zeile,
+    vId: vId,
+    archiviert: archivDirekt && archivDirekt.archiviert === true,
+    verschoben: archivDirekt && archivDirekt.verschoben === true,
+    archivierung: minderausbeute ? 'MINDERAUSBEUTE_SOFORT_NUR_MARKIERTE_ZEILE' : 'SOFORT_NUR_MARKIERTE_ZEILE',
+    statusAktion: statusAktion
+  };
 }
 
 /**
  * FUNKTION: Liefert alle Dropdown-Daten für die Web-Vorgangserfassung.
  * RÜCKGABE: Objekt mit Arrays
  */
+function archiviereErledigteLeitstandEintraegeJetzt() {
+  return leitstandErledigteEintraegeMitternachtArchivieren();
+}
+
 function getVorgangserfassungDropdowns() {
   return ladeWebAppDropdowns();
 }
@@ -673,17 +1023,27 @@ function datumAlsIsoString_(wert) {
  * FUNKTION: Formatiert Uhrzeitwerte für das Cockpit.
  */
 function wertAlsZeitText_(wert, displayWert) {
+  const displayText = textNormalisieren_(displayWert);
+  if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(displayText)) {
+    const teile = displayText.split(':');
+    return ('0' + Number(teile[0])).slice(-2) + ':' + ('0' + Number(teile[1])).slice(-2);
+  }
+
+  const displayTreffer = displayText.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:$|\s)/);
+  if (displayTreffer) {
+    return ('0' + Number(displayTreffer[1])).slice(-2) + ':' + ('0' + Number(displayTreffer[2])).slice(-2);
+  }
+
   if (wert instanceof Date) {
+    const jahr = wert.getFullYear();
+    if (jahr < 1901) {
+      return ('0' + wert.getHours()).slice(-2) + ':' + ('0' + wert.getMinutes()).slice(-2);
+    }
     return Utilities.formatDate(
       wert,
       KONFIGURATION.ZOLL_PARAMETER.ZEIT_PARAMETER.ZEITZONE,
       "HH:mm"
     );
-  }
-
-  const displayText = textNormalisieren_(displayWert);
-  if (/^\d{2}:\d{2}$/.test(displayText)) {
-    return displayText;
   }
 
   const text = textNormalisieren_(wert);
@@ -717,14 +1077,14 @@ function wertAlsZeitText_(wert, displayWert) {
 
 /**
  * =========================================================
- * MAISCHEANNAHME – API FÜR Index.html
+ * VORGANGSBEARBEITUNG – API FÜR Index.html
  * =========================================================
  */
 
 
 /**
  * FUNKTION:
- * Liefert Vorgänge und Dropdown-Stammdaten für die Maischeannahme-WebApp.
+ * Liefert Vorgänge und Dropdown-Stammdaten für die Vorgangsbearbeitung-WebApp.
  */
 function getMaischeannahmeDropdowns() {
   return {
@@ -744,7 +1104,7 @@ function getMaischeannahmeDropdowns() {
 
 /**
  * FUNKTION:
- * Lädt einen Vorgang für die Maischeannahme-WebApp.
+ * Lädt einen Vorgang für die Vorgangsbearbeitung-WebApp.
  */
 function getMaischeannahmeDetails(vorgangsId) {
   return ladeMaischeannahmeWebVorgang_(vorgangsId);
@@ -753,7 +1113,7 @@ function getMaischeannahmeDetails(vorgangsId) {
 
 /**
  * FUNKTION:
- * Speichert die Maischeannahme aus der WebApp.
+ * Speichert die Vorgangsbearbeitung aus der WebApp.
  */
 function saveMaischeannahme(payload) {
   return speichereMaischeannahmeWebVorgang_(payload);
@@ -783,6 +1143,58 @@ function getBrennfreigabeDetails(vorgangsId) {
 function saveBrennfreigabe(payload) {
   return speichereBrennfreigabeWebVorgang_(payload);
 }
+
+/**
+ * FUNKTION: Einheitliche operative Eingabemaske.
+ * Nutzt BRANDTAG_UEBERSICHT als operative Haupttabelle; Vorplanung bleibt Einstieg, Jahresarchiv bleibt Abschluss.
+ */
+function getVorgangsbearbeitungDropdowns() {
+  return {
+    vorgaenge: ladeVorgangsbearbeitungWebVorgaenge_(),
+    brennerListe: getBrandplanungBrennerListe(),
+    zollStatusListe: vorgangsbearbeitungZollStatusListe_(),
+    fassgroessenListe: holeDropdownWerteAusQuelleFuerWebApp_("FASS_VP"),
+    materialListe: holeDropdownWerteAusQuelleFuerWebApp_("MATERIAL"),
+    gewuerzeListe: holeDropdownWerteAusQuelleFuerWebApp_("GEWUERZE")
+  };
+}
+
+function vorgangsbearbeitungZollStatusListe_() {
+  const basis = (
+    KONFIGURATION &&
+    KONFIGURATION.FESTWERTE &&
+    Array.isArray(KONFIGURATION.FESTWERTE.ZOLL_OK)
+  ) ? KONFIGURATION.FESTWERTE.ZOLL_OK.slice() : [];
+
+  const pflicht = [
+    '',
+    '🛂 BEIM ZOLL',
+    '✅ GENEHMIGT',
+    '❌ ABGELEHNT'
+  ];
+
+  const gesehen = {};
+  const liste = [];
+
+  pflicht.concat(basis).forEach(function(wert) {
+    const text = textNormalisieren_(wert);
+    const key = text.toUpperCase();
+    if (gesehen[key]) return;
+    gesehen[key] = true;
+    liste.push(text);
+  });
+
+  return liste;
+}
+
+function getVorgangsbearbeitungDetails(vorgangsId) {
+  return ladeVorgangsbearbeitungWebVorgang_(vorgangsId);
+}
+
+function saveVorgangsbearbeitung(payload) {
+  return speichereVorgangsbearbeitungWebVorgang_(payload);
+}
+
 
 /**
  * FUNKTION:
@@ -1113,12 +1525,26 @@ function adminMitgliedPasstZurSuche_(mitglied, suche) {
     return textNormalisieren_(wert).toLowerCase();
   }).filter(Boolean);
 
+  const geburtsdatumFelder = [
+    mitglied['Geb.datum']
+  ].map(function(wert) {
+    return adminDatumSuchformen_(wert);
+  }).filter(Boolean);
+
   if (/\d/.test(q)) {
-    return nummerFelder.some(function(wert) { return wert.indexOf(q) !== -1; });
+    const qDatum = adminDatumSuchformen_(q);
+    return nummerFelder.some(function(wert) {
+      return wert.indexOf(q) !== -1;
+    }) || geburtsdatumFelder.some(function(wert) {
+      return wert.indexOf(qDatum) !== -1 || wert.indexOf(q) !== -1;
+    });
   }
 
   if (q.indexOf('@') !== -1 || q.indexOf('.') !== -1) {
-    return String(mitglied['E-Mail'] || '').toLowerCase().indexOf(q) !== -1;
+    return String(mitglied['E-Mail'] || '').toLowerCase().indexOf(q) !== -1
+      || geburtsdatumFelder.some(function(wert) {
+        return wert.indexOf(adminDatumSuchformen_(q)) !== -1;
+      });
   }
 
   const tokens = q.split(/\s+/).filter(Boolean);
@@ -1146,6 +1572,34 @@ function adminTextHatWortanfang_(text, token) {
   return t.split(/[^a-z0-9äöüß]+/i).some(function(wort) {
     return wort.indexOf(q) === 0;
   });
+}
+
+function adminDatumSuchformen_(wert) {
+  const roh = textNormalisieren_(wert).toLowerCase();
+  if (!roh) return '';
+
+  const ziffern = roh.replace(/\D+/g, '');
+  const teile = roh.match(/\d{1,4}/g) || [];
+  const suchformen = [roh, ziffern];
+
+  if (teile.length >= 2) {
+    const tag = teile[0].padStart(2, '0');
+    const monat = teile[1].padStart(2, '0');
+    const jahr = teile.length >= 3 ? teile[2] : '';
+
+    suchformen.push(tag + '.' + monat + (jahr ? '.' + jahr : ''));
+    suchformen.push(tag + monat + jahr);
+    suchformen.push(tag + '.' + monat);
+    suchformen.push(tag + monat);
+
+    if (jahr) {
+      suchformen.push(jahr);
+      suchformen.push(monat + '.' + jahr);
+      suchformen.push(monat + jahr);
+    }
+  }
+
+  return suchformen.filter(Boolean).join(' ');
 }
 
 function adminMitgliederHeader_() {

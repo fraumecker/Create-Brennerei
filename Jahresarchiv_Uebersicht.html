@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_self">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <?!= HtmlService.createHtmlOutputFromFile('Styles').getContent(); ?>
+  <style>
+    .main-frame {
+      margin-top: 80px !important;
+    }
+
+    .archiv-shell {
+      display: grid;
+      gap: 14px;
+    }
+
+    .archiv-card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .archiv-grid {
+      display: grid;
+      grid-template-columns: minmax(240px, 1.25fr) minmax(240px, 1.25fr) minmax(170px, 0.75fr) auto auto auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .archiv-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .archiv-field label {
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+    }
+
+    .archiv-input,
+    .archiv-select {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.28);
+      color: #ffffff;
+      font-size: 1rem;
+    }
+
+    .archiv-select option {
+      color: #000000;
+      background: #ffffff;
+    }
+
+    .archiv-btn,
+    .archiv-link-btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 11px 18px;
+      font-weight: 900;
+      cursor: pointer;
+      background: #e0007a;
+      color: #ffffff;
+      box-shadow: 0 8px 18px rgba(224, 0, 122, 0.25);
+      white-space: nowrap;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      box-sizing: border-box;
+    }
+
+    .archiv-btn.secondary,
+    .archiv-link-btn.secondary {
+      background: rgba(255, 255, 255, 0.14);
+      box-shadow: none;
+    }
+
+    .archiv-link-btn.disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .archiv-actions-bottom {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .archiv-status {
+      min-height: 22px;
+      font-weight: 700;
+    }
+
+    .archiv-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .archiv-chip {
+      border-radius: 999px;
+      padding: 7px 12px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      font-weight: 800;
+    }
+
+    .archiv-table-wrap {
+      overflow-x: auto;
+    }
+
+    .archiv-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 860px;
+    }
+
+    .archiv-table th,
+    .archiv-table td {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .archiv-table th {
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-size: 0.78rem;
+      opacity: 0.9;
+    }
+
+    .archiv-empty {
+      padding: 22px;
+      text-align: center;
+      font-weight: 800;
+      opacity: 0.78;
+    }
+
+    @media (max-width: 1200px) {
+      .archiv-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .archiv-btn,
+      .archiv-link-btn {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .archiv-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .archiv-actions-bottom {
+        justify-content: stretch;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+
+      .main-frame {
+        margin-top: 0 !important;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .archiv-card {
+        box-shadow: none !important;
+        border: 1px solid #999999 !important;
+        background: #ffffff !important;
+      }
+
+      .archiv-table th,
+      .archiv-table td {
+        border-bottom: 1px solid #cccccc !important;
+        color: #000000 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-frame">
+    <div class="archiv-shell">
+      <h1>OGV BREITFURT – JAHRESARCHIV-ÜBERSICHT</h1>
+
+      <div class="archiv-card no-print">
+        <div class="archiv-grid">
+          <div class="archiv-field">
+            <label for="stoffbesitzerAuswahl">Stoffbesitzer auswählen</label>
+            <select id="stoffbesitzerAuswahl" class="archiv-select" onchange="stoffbesitzerAusDropdownUebernehmen()">
+              <option value="">Bitte auswählen</option>
+            </select>
+          </div>
+
+          <div class="archiv-field">
+            <label for="stoffbesitzerSuche">Stoffbesitzer suchen</label>
+            <input id="stoffbesitzerSuche" class="archiv-input" type="text" placeholder="Name eingeben">
+          </div>
+
+          <div class="archiv-field">
+            <label for="jahrAuswahl">Jahr</label>
+            <select id="jahrAuswahl" class="archiv-select">
+              <option value="">Alle Jahresarchive</option>
+            </select>
+          </div>
+
+          <button class="archiv-btn" type="button" onclick="datenLaden()">Anzeigen</button>
+          <button class="archiv-btn secondary" type="button" onclick="window.print()">Drucken</button>
+          <a id="driveOrdnerLink" class="archiv-link-btn secondary disabled" href="#" target="_blank" rel="noopener">Drive-Ordner öffnen</a>
+        </div>
+
+        <div class="archiv-actions-bottom">
+          <button class="archiv-btn secondary" type="button" onclick="listeLeeren()">Liste leeren</button>
+          <button class="archiv-btn secondary" type="button" onclick="zurueckZumAdmin()">Zurück zum Admin-Hauptmenü</button>
+        </div>
+
+        <div id="status" class="archiv-status" style="margin-top: 12px;"></div>
+      </div>
+
+      <div class="archiv-card">
+        <div id="summary" class="archiv-summary"></div>
+      </div>
+
+      <div class="archiv-card archiv-table-wrap">
+        <table class="archiv-table">
+          <thead>
+            <tr>
+              <th>Stoffbesitzer</th>
+              <th>Registernummer</th>
+              <th>Brandtag</th>
+              <th>Material</th>
+              <th>Ausbeute</th>
+              <th>Jahr</th>
+              <th>Archivblatt</th>
+            </tr>
+          </thead>
+          <tbody id="ergebnisBody">
+            <tr><td class="archiv-empty" colspan="7">Bitte Stoffbesitzer auswählen oder eingeben.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WEBAPP_URL = '<?= webAppUrl ?>';
+    let letzteDaten = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      initialdatenLaden();
+    });
+
+    function initialdatenLaden() {
+      statusSetzen('Jahresarchive werden gelesen.');
+      google.script.run
+        .withSuccessHandler(function(res) {
+          letzteDaten = res;
+          auswahllistenRendern(res);
+          ergebnisseRendern(res);
+          statusSetzen('Bereit. Bitte Stoffbesitzer auswählen oder eingeben.');
+        })
+        .withFailureHandler(function(err) {
+          statusSetzen('Fehler beim Laden: ' + fehlermeldung(err));
+          ergebnisseRendern({ zeilen: [], stoffbesitzerAuswahlErforderlich: true });
+        })
+        .jahresarchivUebersichtInitialdatenLaden();
+    }
+
+    function datenLaden() {
+      const stoffbesitzer = document.getElementById('stoffbesitzerSuche').value.trim();
+      const jahr = document.getElementById('jahrAuswahl').value.trim();
+
+      if (!stoffbesitzer) {
+        statusSetzen('Bitte zuerst einen Stoffbesitzer auswählen oder eingeben.');
+        ergebnisseRendern({
+          zeilen: [],
+          archivblaetter: letzteDaten && letzteDaten.archivblaetter ? letzteDaten.archivblaetter : [],
+          stoffbesitzerListe: letzteDaten && letzteDaten.stoffbesitzerListe ? letzteDaten.stoffbesitzerListe : [],
+          jahre: letzteDaten && letzteDaten.jahre ? letzteDaten.jahre : [],
+          stoffbesitzerAuswahlErforderlich: true
+        });
+        return;
+      }
+
+      statusSetzen('Übersicht wird geladen.');
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          letzteDaten = res;
+          auswahllistenRendern(res);
+          ergebnisseRendern(res);
+          statusSetzen((res.anzahl || 0) + ' Einträge gefunden.');
+        })
+        .withFailureHandler(function(err) {
+          statusSetzen('Fehler beim Laden: ' + fehlermeldung(err));
+        })
+        .jahresarchivUebersichtDatenLaden({ stoffbesitzer: stoffbesitzer, jahr: jahr });
+    }
+
+    function auswahllistenRendern(res) {
+      res = res || {};
+      const stoffbesitzerAuswahl = document.getElementById('stoffbesitzerAuswahl');
+      const jahrAuswahl = document.getElementById('jahrAuswahl');
+      const stoffAktuell = document.getElementById('stoffbesitzerSuche').value.trim();
+      const jahrAktuell = jahrAuswahl.value;
+
+      stoffbesitzerAuswahl.innerHTML = '<option value="">Bitte auswählen</option>';
+      (res.stoffbesitzerListe || []).forEach(function(name) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        stoffbesitzerAuswahl.appendChild(opt);
+      });
+      stoffbesitzerAuswahl.value = stoffAktuell;
+
+      jahrAuswahl.innerHTML = '<option value="">Alle Jahresarchive</option>';
+      (res.jahre || []).forEach(function(jahr) {
+        const opt = document.createElement('option');
+        opt.value = jahr;
+        opt.textContent = jahr;
+        jahrAuswahl.appendChild(opt);
+      });
+      jahrAuswahl.value = jahrAktuell;
+    }
+
+    function stoffbesitzerAusDropdownUebernehmen() {
+      const auswahl = document.getElementById('stoffbesitzerAuswahl').value.trim();
+      document.getElementById('stoffbesitzerSuche').value = auswahl;
+      if (auswahl) datenLaden();
+    }
+
+    function ergebnisseRendern(res) {
+      res = res || {};
+      const body = document.getElementById('ergebnisBody');
+      const summary = document.getElementById('summary');
+      const zeilen = res.zeilen || [];
+      const stoff = document.getElementById('stoffbesitzerSuche').value.trim();
+
+      driveLinkAktualisieren(res.driveOrdnerUrl || '');
+
+      summary.innerHTML = '';
+      summary.appendChild(chipErstellen('Einträge: ' + zeilen.length));
+      summary.appendChild(chipErstellen('Archivblätter: ' + ((res.archivblaetter || []).length)));
+      if (stoff) {
+        summary.appendChild(chipErstellen('Stoffbesitzer: ' + stoff));
+      }
+      if (document.getElementById('jahrAuswahl').value.trim()) {
+        summary.appendChild(chipErstellen('Jahr: ' + document.getElementById('jahrAuswahl').value.trim()));
+      }
+      if (res.driveOrdnerUrl) {
+        summary.appendChild(chipErstellen('Drive-Ordner: vorhanden'));
+      } else if (stoff) {
+        summary.appendChild(chipErstellen('Drive-Ordner: nicht gefunden'));
+      }
+
+      if (!stoff || res.stoffbesitzerAuswahlErforderlich) {
+        body.innerHTML = '<tr><td class="archiv-empty" colspan="7">Bitte Stoffbesitzer auswählen oder eingeben. Es werden nicht alle Archivdaten gesammelt angezeigt.</td></tr>';
+        return;
+      }
+
+      if (!zeilen.length) {
+        body.innerHTML = '<tr><td class="archiv-empty" colspan="7">Keine Einträge für diesen Stoffbesitzer gefunden.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = '';
+      zeilen.forEach(function(z) {
+        const tr = document.createElement('tr');
+        ['stoffbesitzer', 'registernummer', 'brandtag', 'material', 'ausbeute', 'jahr', 'archivblatt'].forEach(function(key) {
+          const td = document.createElement('td');
+          td.textContent = z[key] || '';
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+    }
+
+    function driveLinkAktualisieren(url) {
+      const link = document.getElementById('driveOrdnerLink');
+      if (url) {
+        link.href = url;
+        link.classList.remove('disabled');
+        link.textContent = 'Drive-Ordner öffnen';
+      } else {
+        link.href = '#';
+        link.classList.add('disabled');
+        link.textContent = 'Drive-Ordner nicht gefunden';
+      }
+    }
+
+    function chipErstellen(text) {
+      const div = document.createElement('div');
+      div.className = 'archiv-chip';
+      div.textContent = text;
+      return div;
+    }
+
+    function listeLeeren() {
+      document.getElementById('stoffbesitzerSuche').value = '';
+      document.getElementById('stoffbesitzerAuswahl').value = '';
+      document.getElementById('jahrAuswahl').value = '';
+      driveLinkAktualisieren('');
+      ergebnisseRendern({
+        zeilen: [],
+        archivblaetter: letzteDaten && letzteDaten.archivblaetter ? letzteDaten.archivblaetter : [],
+        stoffbesitzerListe: letzteDaten && letzteDaten.stoffbesitzerListe ? letzteDaten.stoffbesitzerListe : [],
+        jahre: letzteDaten && letzteDaten.jahre ? letzteDaten.jahre : [],
+        stoffbesitzerAuswahlErforderlich: true
+      });
+      statusSetzen('Liste geleert. Bitte Stoffbesitzer auswählen oder eingeben.');
+    }
+
+    function zurueckZumAdmin() {
+      window.top.location.href = 'https://fraumecker.github.io/brennerei-startogv/admin.html';
+    }
+
+    function statusSetzen(text) {
+      document.getElementById('status').textContent = text || '';
+    }
+
+    function fehlermeldung(err) {
+      if (!err) return 'Unbekannter Fehler';
+      return err.message || String(err);
+    }
+  </script>
+</body>
+</html>

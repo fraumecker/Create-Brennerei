@@ -1,11 +1,11 @@
 /**
  * DATEI: 11_MaischeService.gs
  * ZWECK:
- * FACHLOGIK FÜR WEB-VORGANGSBLOCK / MAISCHEANNAHME IN 🍎_MAISCHEANNAHME
+ * FACHLOGIK FÜR WEB-VORGANGSBLOCK IN 🔥_BRANDTAG_UEBERSICHT
  *
  * WICHTIG:
  * - keine neue Tabellenarchitektur
- * - Speicherung strikt in der vorhandenen Tabelle 🍎_MAISCHEANNAHME
+ * - Operative Speicherung der WebApp direkt in 🔥_BRANDTAG_UEBERSICHT
  * - Vorgangs_ID bleibt technischer Schlüssel
  * - Stoffbesitzer bleibt operativer Bezug
  * - Brandplanung liefert Vorbelegung
@@ -85,6 +85,7 @@ function webVorgangBlockLaden_(vorgangsId) {
     brenner: details.brenner || '',
     zollOk: details.zollOk || '',
     status: details.status || '',
+    registernummer: details.registernummer || '',
     infoSystem: details.infoSystem || details.bemerkungVorplanung || '',
     faesser: (details.slots || []).map(function(slot) {
       return {
@@ -110,8 +111,10 @@ function webVorgangBlockLaden_(vorgangsId) {
 function ladeMaischeannahmeWebVorgaenge_() {
   const map = {};
 
+  // Performance-Fix:
+  // Die operative Eingabemaske braucht keine vollständige Auswertung der Brandtageplanung.
+  // Brandtageplanung kann groß werden und hat das Laden der Maischeannahme sichtbar verlangsamt.
   maischeannahmeVorgaengeAusVorplanungSammeln_(map);
-  maischeannahmeVorgaengeAusBrandplanungSammeln_(map);
   maischeannahmeVorgaengeAusMaischeblattSammeln_(map);
 
   return Object.keys(map)
@@ -147,6 +150,7 @@ function ladeMaischeannahmeWebVorgang_(vorgangsId) {
     bemerkungVorplanung: textNormalisieren_(vorplanung.bemerkungVorplanung),
     dossierLink: textNormalisieren_(vorplanung.dossierLink),
     infoSystem: textNormalisieren_(vorplanung.bemerkungVorplanung),
+    registernummer: textNormalisieren_(vorplanung.registernummer),
     status: holeMaischeannahmeStatusStandard_(),
     terminMaische: '',
     tagBrand: '',
@@ -166,13 +170,16 @@ function ladeMaischeannahmeWebVorgang_(vorgangsId) {
   if (zeilen.length > 0) {
     for (let i = 0; i < zeilen.length; i++) {
       const zeileNr = zeilen[i];
-      const row = blatt.getRange(zeileNr, 1, 1, blatt.getLastColumn()).getValues()[0];
-      const slot = maischeZeileAlsWebSlotObjekt_(row, sMap, zeileNr);
+      const range = blatt.getRange(zeileNr, 1, 1, blatt.getLastColumn());
+      const row = range.getValues()[0];
+      const displayRow = range.getDisplayValues()[0];
+      const slot = maischeZeileAlsWebSlotObjekt_(row, sMap, zeileNr, displayRow);
 
       details.slots.push(slot);
 
       if (!details.stoffbesitzer) details.stoffbesitzer = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.STOFFBESITZER));
       if (!details.dossierLink) details.dossierLink = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.DOSSIER_LINK));
+      if (!details.registernummer) details.registernummer = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.REGISTERNUMMER));
       if (!details.infoSystem) details.infoSystem = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.INFO_SYSTEM));
       if (!details.terminMaische) details.terminMaische = slot.terminMaische || '';
       if (!details.tagBrand) details.tagBrand = slot.tagBrand || '';
@@ -214,7 +221,7 @@ function speichereMaischeannahmeWebVorgang_(payload) {
     const vId = textNormalisieren_(payload.vorgangsId);
     const stoffbesitzer = textNormalisieren_(payload.stoffbesitzer);
     const bemerkungVorplanung = textNormalisieren_(payload.bemerkungVorplanung || payload.infoSystem);
-    const registernummer = '';
+    const registernummer = textNormalisieren_(payload.registernummer);
     const status = holeMaischeannahmeStatusStandard_();
     const slots = Array.isArray(payload.slots) ? payload.slots : [];
 
@@ -233,7 +240,15 @@ function speichereMaischeannahmeWebVorgang_(payload) {
     registereintragSicherstellen_(vId, stoffbesitzer, status);
 
     const vorplanung = holeVorplanungDatensatzNachVorgangsId_(vId);
-    const dossierLink = textNormalisieren_(payload.dossierLink || vorplanung.dossierLink);
+    let dossierLink = textNormalisieren_(payload.dossierLink || vorplanung.dossierLink);
+    if (!dossierLink && typeof dossierGrundstrukturInitialAnlegen_ === 'function') {
+      try {
+        const ordner = dossierGrundstrukturInitialAnlegen_(vId, stoffbesitzer, payload.terminMaische || new Date());
+        dossierLink = ordner && ordner.getUrl ? ordner.getUrl() : dossierLink;
+      } catch (e) {
+        systemLogSchreiben_('WARN', 'MaischeService', 'Drive-Grundstruktur konnte beim Speichern nicht angelegt werden', vId, String(e));
+      }
+    }
 
     const bestehendeZeilen = alleZeilenMitVorgangsIdHolen_(blatt, vId);
     const bestehendeDatenNachZeile = {};
@@ -376,7 +391,7 @@ function istVorgangArchiviert_(vorgangsId) {
  * VORGANGSQUELLEN
  * ====================================================================== */
 
-function maischeannahmeVorgaengeAusVorplanungSammeln_(zielMap) {
+function maischeannahmeVorgaengeAusVorplanungSammeln_(zielMap, filterCache) {
   const sh = tabelleHolen_('VORPLANUNG');
   if (!sh || sh.getLastRow() < 2) return;
 
@@ -387,10 +402,12 @@ function maischeannahmeVorgaengeAusVorplanungSammeln_(zielMap) {
     const row = daten[i];
     const vId = textNormalisieren_(sMap.VORGANGS_ID ? row[sMap.VORGANGS_ID - 1] : '');
     if (!vId) continue;
-    if (istVorgangArchiviert_(vId)) continue;
+    if (!vorgangsbearbeitungDarfAngezeigtWerden_(vId, filterCache)) continue;
 
     if (!zielMap[vId]) {
       zielMap[vId] = {
+        vorgangsId: vId,
+        anzeige: vId + ' – ' + textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
         stoffbesitzer: textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
         bemerkungVorplanung: textNormalisieren_(sMap.BEMERKUNG ? row[sMap.BEMERKUNG - 1] : '')
       };
@@ -413,6 +430,8 @@ function maischeannahmeVorgaengeAusBrandplanungSammeln_(zielMap) {
 
     if (!zielMap[vId]) {
       zielMap[vId] = {
+        vorgangsId: vId,
+        anzeige: vId + ' – ' + textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
         stoffbesitzer: textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
         bemerkungVorplanung: textNormalisieren_(sMap.BEMERKUNG_VORPLANUNG ? row[sMap.BEMERKUNG_VORPLANUNG - 1] : '')
       };
@@ -435,6 +454,8 @@ function maischeannahmeVorgaengeAusMaischeblattSammeln_(zielMap) {
 
     if (!zielMap[vId]) {
       zielMap[vId] = {
+        vorgangsId: vId,
+        anzeige: vId + ' – ' + textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
         stoffbesitzer: textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
         bemerkungVorplanung: textNormalisieren_(sMap.INFO_SYSTEM ? row[sMap.INFO_SYSTEM - 1] : '')
       };
@@ -451,7 +472,8 @@ function holeVorplanungDatensatzNachVorgangsId_(vorgangsId) {
   const result = {
     stoffbesitzer: '',
     bemerkungVorplanung: '',
-    dossierLink: ''
+    dossierLink: '',
+    registernummer: ''
   };
 
   const vId = textNormalisieren_(vorgangsId);
@@ -467,6 +489,7 @@ function holeVorplanungDatensatzNachVorgangsId_(vorgangsId) {
   result.stoffbesitzer = textNormalisieren_(sMap.STOFFBESITZER ? sh.getRange(zeile, sMap.STOFFBESITZER).getDisplayValue() : '');
   result.bemerkungVorplanung = textNormalisieren_(sMap.BEMERKUNG ? sh.getRange(zeile, sMap.BEMERKUNG).getDisplayValue() : '');
   result.dossierLink = textNormalisieren_(sMap.DOSSIER_LINK ? sh.getRange(zeile, sMap.DOSSIER_LINK).getDisplayValue() : '');
+  result.registernummer = textNormalisieren_(sMap.REGISTERNUMMER ? sh.getRange(zeile, sMap.REGISTERNUMMER).getDisplayValue() : '');
 
   return result;
 }
@@ -479,11 +502,14 @@ function ladeBrandplanungSlotsFuerMaischeannahme_(vorgangsId) {
   if (!sh || sh.getLastRow() < 2) return [];
 
   const sMap = spaltenZuordnungHolen_(sh);
-  const daten = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  const range = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn());
+  const daten = range.getValues();
+  const displayDaten = range.getDisplayValues();
   const liste = [];
 
   for (let i = 0; i < daten.length; i++) {
     const row = daten[i];
+    const displayRow = displayDaten[i] || [];
     const rowVId = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.VORGANGS_ID));
     if (rowVId !== vId) continue;
 
@@ -491,8 +517,8 @@ function ladeBrandplanungSlotsFuerMaischeannahme_(vorgangsId) {
       bestehendeZeile: '',
       terminMaische: datumAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.DATUM_MAISCHEANNAHME)),
       tagBrand: datumAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.BRANDTAG)),
-      von: zeitAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.ZEITSLOT_VON)),
-      bis: zeitAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.ZEITSLOT_BIS)),
+      von: zeitAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.ZEITSLOT_VON), holeZellenwertAusRawZeile_(displayRow, sMap.ZEITSLOT_VON)),
+      bis: zeitAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.ZEITSLOT_BIS), holeZellenwertAusRawZeile_(displayRow, sMap.ZEITSLOT_BIS)),
       brenner: textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.BRENNER)),
       fassnummern: '',
       fassgroesse: '',
@@ -515,13 +541,14 @@ function ladeBrandplanungSlotsFuerMaischeannahme_(vorgangsId) {
  * SLOT ↔ ZEILE
  * ====================================================================== */
 
-function maischeZeileAlsWebSlotObjekt_(row, sMap, zeileNr) {
+function maischeZeileAlsWebSlotObjekt_(row, sMap, zeileNr, displayRow) {
+  const display = displayRow || [];
   return {
     bestehendeZeile: String(zeileNr || ''),
     terminMaische: datumAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.TERMIN_MAISCHE)),
     tagBrand: datumAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.TAG_BRAND)),
-    von: zeitAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.VON)),
-    bis: zeitAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.BIS)),
+    von: zeitAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.VON), holeZellenwertAusRawZeile_(display, sMap.VON)),
+    bis: zeitAlsHtmlInputWertAusRaw_(holeZellenwertAusRawZeile_(row, sMap.BIS), holeZellenwertAusRawZeile_(display, sMap.BIS)),
     brenner: textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.BRENNER)),
     fassnummern: textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.FASS_NR)),
     fassgroesse: textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.FASS_VP)),
@@ -568,6 +595,15 @@ function baueMaischeWebSpeicherzeile_(basisZeile, sMap, data, anzahlSpalten) {
  * VALIDIERUNG / NORMALISIERUNG
  * ====================================================================== */
 
+
+function normalisiereFassnummernText_(wert) {
+  return textNormalisieren_(wert)
+    .replace(/\s*(?:und|\+|&|,|;)\s*/gi, ' / ')
+    .replace(/\s*\/\s*/g, ' / ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function normalisiereMaischeSlotPayload_(slot) {
   const obj = slot || {};
 
@@ -601,7 +637,7 @@ function normalisiereMaischeSlotPayload_(slot) {
     von: textNormalisieren_(obj.von),
     bis: textNormalisieren_(obj.bis),
     brenner: textNormalisieren_(obj.brenner),
-    fassnummern: textNormalisieren_(obj.fassnummern || obj.fassnummer),
+    fassnummern: normalisiereFassnummernText_(obj.fassnummern || obj.fassnummer),
     fassgroesse: textNormalisieren_(obj.fassgroesse),
     inhalt: textNormalisieren_(obj.inhalt),
     material: textNormalisieren_(material),
@@ -757,21 +793,35 @@ function datumAlsHtmlInputWertAusRaw_(wert) {
   return '';
 }
 
-function zeitAlsHtmlInputWertAusRaw_(wert) {
+function zeitAlsHtmlInputWertAusRaw_(wert, displayWert) {
+  const displayText = textNormalisieren_(displayWert);
+  let m = displayText.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (m) {
+    return ('0' + Number(m[1])).slice(-2) + ':' + ('0' + Number(m[2])).slice(-2);
+  }
+
+  m = displayText.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:$|\s)/);
+  if (m) {
+    return ('0' + Number(m[1])).slice(-2) + ':' + ('0' + Number(m[2])).slice(-2);
+  }
+
   if (!wert) return '';
 
   if (wert instanceof Date) {
+    if (wert.getFullYear() < 1901) {
+      return ('0' + wert.getHours()).slice(-2) + ':' + ('0' + wert.getMinutes()).slice(-2);
+    }
     return Utilities.formatDate(wert, holeZeitzone_(), 'HH:mm');
   }
 
   const text = textNormalisieren_(wert);
   if (!text) return '';
 
-  let m = text.match(/^(\d{2}):(\d{2})$/);
-  if (m) return m[1] + ':' + m[2];
+  m = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (m) return ('0' + Number(m[1])).slice(-2) + ':' + ('0' + Number(m[2])).slice(-2);
 
-  m = text.match(/^(\d{2}):(\d{2}):(\d{2})$/);
-  if (m) return m[1] + ':' + m[2];
+  m = text.match(/^(\d{4})$/);
+  if (m) return text.substring(0, 2) + ':' + text.substring(2, 4);
 
   return text.length >= 5 ? text.substring(0, 5) : text;
 }
@@ -803,8 +853,19 @@ function alsReineUhrzeitzelleSicher_(wert) {
   const text = textNormalisieren_(wert);
   if (!text) return '';
 
-  if (typeof alsReineUhrzeitzelle_ === 'function') {
-    return alsReineUhrzeitzelle_(text);
+  let match = text.match(/^(\d{1,2}):(\d{2})$/);
+  if (match) {
+    return ('0' + Number(match[1])).slice(-2) + ':' + ('0' + Number(match[2])).slice(-2);
+  }
+
+  match = text.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+  if (match) {
+    return ('0' + Number(match[1])).slice(-2) + ':' + ('0' + Number(match[2])).slice(-2);
+  }
+
+  match = text.match(/^(\d{4})$/);
+  if (match) {
+    return text.substring(0, 2) + ':' + text.substring(2, 4);
   }
 
   return text;
@@ -927,7 +988,7 @@ function ladeBrennfreigabeWebVorgang_(vorgangsId) {
   const zeilen = alleZeilenMitVorgangsIdHolen_(blatt, vId);
 
   if (zeilen.length === 0) {
-    throw new Error('Vorgang ist in 🔥_BRENNFREIGABE nicht vorhanden.');
+    return ladeBrennfreigabeWebVorgangAusMaischeannahme_(vId);
   }
 
   const details = {
@@ -949,8 +1010,10 @@ function ladeBrennfreigabeWebVorgang_(vorgangsId) {
 
   for (let i = 0; i < zeilen.length; i++) {
     const zeileNr = zeilen[i];
-    const row = blatt.getRange(zeileNr, 1, 1, blatt.getLastColumn()).getValues()[0];
-    const slot = maischeZeileAlsWebSlotObjekt_(row, sMap, zeileNr);
+    const range = blatt.getRange(zeileNr, 1, 1, blatt.getLastColumn());
+    const row = range.getValues()[0];
+    const displayRow = range.getDisplayValues()[0];
+    const slot = maischeZeileAlsWebSlotObjekt_(row, sMap, zeileNr, displayRow);
     slot.statusAktion = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.STATUS_AKTION));
     slot.ausbeute = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.AUSBEUTE));
     slot.alkohol = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.ALKOHOL));
@@ -974,6 +1037,444 @@ function ladeBrennfreigabeWebVorgang_(vorgangsId) {
 
   return details;
 }
+
+function ladeBrennfreigabeWebVorgangAusMaischeannahme_(vorgangsId) {
+  const vId = textNormalisieren_(vorgangsId);
+  const blatt = tabelleHolen_('MAISCHEANNAHME');
+  if (!blatt) throw new Error('Tabelle 🍎_MAISCHEANNAHME nicht gefunden.');
+
+  const sMap = spaltenZuordnungHolen_(blatt);
+  const zeilen = alleZeilenMitVorgangsIdHolen_(blatt, vId);
+
+  if (zeilen.length === 0) {
+    throw new Error('Vorgang ist weder in 🔥_BRENNFREIGABE noch in 🍎_MAISCHEANNAHME vorhanden.');
+  }
+
+  const details = {
+    vorgangsId: vId,
+    stoffbesitzer: '',
+    bemerkungVorplanung: '',
+    dossierLink: '',
+    infoSystem: '',
+    registernummer: '',
+    status: holeBrennfreigabeStatusStandard_(),
+    terminMaische: '',
+    tagBrand: '',
+    von: '',
+    bis: '',
+    brenner: '',
+    zollOk: '',
+    slots: []
+  };
+
+  for (let i = 0; i < zeilen.length; i++) {
+    const zeileNr = zeilen[i];
+    const range = blatt.getRange(zeileNr, 1, 1, blatt.getLastColumn());
+    const row = range.getValues()[0];
+    const displayRow = range.getDisplayValues()[0];
+    const slot = maischeZeileAlsWebSlotObjekt_(row, sMap, '', displayRow);
+    slot.zollOk = '';
+    slot.statusAktion = '';
+    slot.ausbeute = '';
+    slot.alkohol = '';
+    details.slots.push(slot);
+
+    if (!details.stoffbesitzer) details.stoffbesitzer = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.STOFFBESITZER));
+    if (!details.dossierLink) details.dossierLink = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.DOSSIER_LINK));
+    if (!details.registernummer) details.registernummer = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.REGISTERNUMMER));
+    if (!details.infoSystem) details.infoSystem = textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.INFO_SYSTEM));
+    if (!details.terminMaische) details.terminMaische = slot.terminMaische || '';
+    if (!details.tagBrand) details.tagBrand = slot.tagBrand || '';
+    if (!details.von) details.von = slot.von || '';
+    if (!details.bis) details.bis = slot.bis || '';
+    if (!details.brenner) details.brenner = slot.brenner || '';
+  }
+
+  if (!details.slots.length) details.slots.push(leererMaischeSlot_());
+
+  return details;
+}
+
+
+
+function ladeVorgangsbearbeitungWebVorgaenge_() {
+  const map = {};
+  const filterCache = vorgangsbearbeitungFilterCacheErstellen_();
+
+  // Operative Quelle: Vorplanung als Einstieg + BRANDTAG_UEBERSICHT als Haupttabelle.
+  // Bereits gebrannte / archivierte / vom Zoll entschiedene Vorgänge werden hier ausgeschlossen.
+  // Ausnahme: Status "BEIM ZOLL" bleibt sichtbar, solange keine Genehmigung/Ablehnung vorliegt.
+  maischeannahmeVorgaengeAusVorplanungSammeln_(map, filterCache);
+  vorgangsbearbeitungVorgaengeAusBrandtagSammeln_(map, filterCache);
+
+  return Object.keys(map)
+    .map(function(vId) { return map[vId]; })
+    .sort(function(a, b) {
+      const stoffA = String((a && a.stoffbesitzer) || '');
+      const stoffB = String((b && b.stoffbesitzer) || '');
+      const cmp = stoffA.localeCompare(stoffB, 'de');
+      if (cmp !== 0) return cmp;
+      return String((a && a.vorgangsId) || '').localeCompare(String((b && b.vorgangsId) || ''));
+    });
+}
+
+function vorgangsbearbeitungFilterCacheErstellen_() {
+  const cache = {
+    archiviert: {},
+    jahresarchiv: {},
+    entschiedenOderGebrannt: {},
+    beimZoll: {}
+  };
+
+  vorgangsbearbeitungIdsAusBlattMarkieren_(cache.jahresarchiv, 'JAHRESARCHIV');
+
+  const shZentral = tabelleHolen_('ZENTRALREGISTER');
+  if (shZentral && shZentral.getLastRow() >= 2) {
+    const zMap = spaltenZuordnungHolen_(shZentral);
+    const daten = shZentral.getDataRange().getDisplayValues();
+    for (let i = 1; i < daten.length; i++) {
+      const row = daten[i];
+      const vId = textNormalisieren_(zMap.VORGANGS_ID ? row[zMap.VORGANGS_ID - 1] : '');
+      if (!vId) continue;
+      const status = textNormalisieren_(zMap.STATUS ? row[zMap.STATUS - 1] : '').toUpperCase();
+      if (status === KONFIGURATION.STATUSWERTE.ARCHIVIERT) cache.archiviert[vId] = true;
+    }
+  }
+
+  const shBrandtag = tabelleHolen_('BRANDTAG_UEBERSICHT');
+  if (shBrandtag && shBrandtag.getLastRow() >= 2) {
+    const bMap = spaltenZuordnungHolen_(shBrandtag);
+    const daten = shBrandtag.getDataRange().getDisplayValues();
+
+    for (let i = 1; i < daten.length; i++) {
+      const row = daten[i];
+      const vId = textNormalisieren_(bMap.VORGANGS_ID ? row[bMap.VORGANGS_ID - 1] : '');
+      if (!vId) continue;
+
+      const status = textNormalisieren_(bMap.STATUS ? row[bMap.STATUS - 1] : '');
+      const statusAktion = textNormalisieren_(bMap.STATUS_AKTION ? row[bMap.STATUS_AKTION - 1] : '');
+      const zollOk = textNormalisieren_(bMap.ZOLL_OK ? row[bMap.ZOLL_OK - 1] : '');
+      const statusUpper = status.toUpperCase();
+      const aktionUpper = statusAktion.toUpperCase();
+
+      if (istZollstatusBeimZoll_(status) || istZollstatusBeimZoll_(statusAktion) || istZollstatusBeimZoll_(zollOk)) {
+        cache.beimZoll[vId] = true;
+      }
+
+      if (
+        istZollstatusGenehmigt_(status) ||
+        istZollstatusGenehmigt_(statusAktion) ||
+        istZollstatusGenehmigt_(zollOk) ||
+        istZollstatusAbgelehnt_(status) ||
+        istZollstatusAbgelehnt_(statusAktion) ||
+        istZollstatusAbgelehnt_(zollOk) ||
+        statusUpper === KONFIGURATION.STATUSWERTE.GEBRANNT ||
+        statusUpper === KONFIGURATION.STATUSWERTE.ARCHIVIERT ||
+        aktionUpper.indexOf(KONFIGURATION.STATUSWERTE.ERLEDIGT) === 0 ||
+        aktionUpper === KONFIGURATION.STATUSWERTE.ARCHIVIERT
+      ) {
+        cache.entschiedenOderGebrannt[vId] = true;
+      }
+    }
+  }
+
+  return cache;
+}
+
+function vorgangsbearbeitungIdsAusBlattMarkieren_(ziel, tabellenKey) {
+  const sh = tabelleHolen_(tabellenKey);
+  if (!sh || sh.getLastRow() < 2) return;
+
+  const sMap = spaltenZuordnungHolen_(sh);
+  if (!sMap.VORGANGS_ID) return;
+
+  const daten = sh.getRange(2, sMap.VORGANGS_ID, sh.getLastRow() - 1, 1).getDisplayValues();
+  for (let i = 0; i < daten.length; i++) {
+    const vId = textNormalisieren_(daten[i][0]);
+    if (vId) ziel[vId] = true;
+  }
+}
+
+function vorgangsbearbeitungDarfAngezeigtWerden_(vId, filterCache) {
+  const id = textNormalisieren_(vId);
+  if (!id) return false;
+  const cache = filterCache || vorgangsbearbeitungFilterCacheErstellen_();
+
+  if (cache.jahresarchiv[id]) return false;
+  if (cache.archiviert[id]) return false;
+
+  // Nach gebrannt/erledigt bleibt der Vorgang nur noch in dieser Maske,
+  // solange er tatsächlich beim Zoll liegt. Genehmigt/abgelehnt bleibt ausgeschlossen.
+  if (cache.entschiedenOderGebrannt[id] && !cache.beimZoll[id]) return false;
+
+  return true;
+}
+
+function vorgangsbearbeitungVorgaengeAusBrandtagSammeln_(zielMap, filterCache) {
+  const sh = tabelleHolen_('BRANDTAG_UEBERSICHT');
+  if (!sh || sh.getLastRow() < 2) return;
+
+  const sMap = spaltenZuordnungHolen_(sh);
+  const daten = sh.getDataRange().getDisplayValues();
+
+  for (let i = 1; i < daten.length; i++) {
+    const row = daten[i];
+    const vId = textNormalisieren_(sMap.VORGANGS_ID ? row[sMap.VORGANGS_ID - 1] : '');
+    if (!vId) continue;
+    if (!vorgangsbearbeitungDarfAngezeigtWerden_(vId, filterCache)) continue;
+
+    zielMap[vId] = {
+      vorgangsId: vId,
+      anzeige: vId + ' – ' + textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
+      stoffbesitzer: textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
+      bemerkungVorplanung: textNormalisieren_(sMap.INFO_SYSTEM ? row[sMap.INFO_SYSTEM - 1] : '')
+    };
+  }
+}
+
+function ladeVorgangsbearbeitungWebVorgang_(vorgangsId) {
+  const ausBrandtag = ladeVorgangsbearbeitungAusBrandtag_(vorgangsId);
+  if (ausBrandtag) return ausBrandtag;
+
+  return ladeVorgangsbearbeitungAusVorplanung_(vorgangsId);
+}
+
+function ladeVorgangsbearbeitungAusBrandtag_(vorgangsId) {
+  const vId = textNormalisieren_(vorgangsId);
+  if (!vId) throw new Error('Vorgangs_ID fehlt.');
+
+  const blatt = tabelleHolen_('BRANDTAG_UEBERSICHT');
+  if (!blatt || blatt.getLastRow() < 2) return null;
+
+  const sMap = spaltenZuordnungHolen_(blatt);
+  const zeilen = alleZeilenMitVorgangsIdHolen_(blatt, vId);
+  if (!zeilen.length) return null;
+
+  const vorplanung = holeVorplanungDatensatzNachVorgangsId_(vId);
+  const details = {
+    vorgangsId: vId,
+    stoffbesitzer: vorplanung.stoffbesitzer || '',
+    status: '',
+    terminMaische: '',
+    bemerkungVorplanung: vorplanung.bemerkungVorplanung || '',
+    infoSystem: vorplanung.bemerkungVorplanung || '',
+    dossierLink: vorplanung.dossierLink || '',
+    registernummer: vorplanung.registernummer || '',
+    anzahlBraende: '',
+    zollOk: '',
+    tagBrand: '',
+    von: '',
+    bis: '',
+    brenner: '',
+    slots: []
+  };
+
+  zeilen.forEach(function(zeileNr) {
+    const row = blatt.getRange(zeileNr, 1, 1, blatt.getLastColumn()).getValues()[0];
+    const displayRow = blatt.getRange(zeileNr, 1, 1, blatt.getLastColumn()).getDisplayValues()[0];
+    const slot = maischeZeileAlsWebSlotObjekt_(row, sMap, zeileNr, displayRow);
+    details.slots.push(slot);
+
+    if (!details.stoffbesitzer) details.stoffbesitzer = textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : '');
+    if (!details.status) details.status = textNormalisieren_(sMap.STATUS ? row[sMap.STATUS - 1] : '');
+    if (!details.terminMaische) details.terminMaische = slot.terminMaische || '';
+    if (!details.bemerkungVorplanung) details.bemerkungVorplanung = textNormalisieren_(sMap.INFO_SYSTEM ? row[sMap.INFO_SYSTEM - 1] : '');
+    if (!details.infoSystem) details.infoSystem = details.bemerkungVorplanung;
+    if (!details.dossierLink) details.dossierLink = textNormalisieren_(sMap.DOSSIER_LINK ? row[sMap.DOSSIER_LINK - 1] : '');
+    if (!details.registernummer) details.registernummer = textNormalisieren_(sMap.REGISTERNUMMER ? row[sMap.REGISTERNUMMER - 1] : '');
+    if (!details.anzahlBraende) details.anzahlBraende = slot.anzahlBraende || '';
+    if (!details.zollOk) details.zollOk = slot.zollOk || '';
+    if (!details.tagBrand) details.tagBrand = slot.tagBrand || '';
+    if (!details.von) details.von = slot.von || '';
+    if (!details.bis) details.bis = slot.bis || '';
+    if (!details.brenner) details.brenner = slot.brenner || '';
+  });
+
+  if (!details.slots.length) details.slots.push(leererMaischeSlot_());
+  return details;
+}
+
+function ladeVorgangsbearbeitungAusVorplanung_(vorgangsId) {
+  const vId = textNormalisieren_(vorgangsId);
+  if (!vId) throw new Error('Vorgangs_ID fehlt.');
+
+  const vorplanung = holeVorplanungDatensatzNachVorgangsId_(vId);
+  if (!vorplanung.stoffbesitzer && !vorplanung.bemerkungVorplanung && !vorplanung.dossierLink) {
+    throw new Error('Vorgang ist weder in BRANDTAG_UEBERSICHT noch in VORPLANUNG vorhanden.');
+  }
+
+  return {
+    vorgangsId: vId,
+    stoffbesitzer: vorplanung.stoffbesitzer || '',
+    status: 'OFFEN',
+    terminMaische: '',
+    bemerkungVorplanung: vorplanung.bemerkungVorplanung || '',
+    infoSystem: vorplanung.bemerkungVorplanung || '',
+    dossierLink: vorplanung.dossierLink || '',
+    registernummer: vorplanung.registernummer || '',
+    anzahlBraende: '',
+    zollOk: '',
+    tagBrand: '',
+    von: '',
+    bis: '',
+    brenner: '',
+    slots: [leererMaischeSlot_()]
+  };
+}
+
+function speichereVorgangsbearbeitungWebVorgang_(payload) {
+  return mitSperreAusfuehren_(function() {
+    if (!payload) throw new Error('Payload fehlt.');
+
+    const daten = payload || {};
+    const vId = textNormalisieren_(daten.vorgangsId);
+    const stoffbesitzer = textNormalisieren_(daten.stoffbesitzer);
+    const bemerkungVorplanung = textNormalisieren_(daten.bemerkungVorplanung || daten.infoSystem);
+    const registernummer = textNormalisieren_(daten.registernummer);
+    const slots = Array.isArray(daten.slots) ? daten.slots : [];
+    const zollAbgelehntAusPayload = daten.zollAbgelehnt === true || daten.zollAbgelehnt === 'true' || daten.zollAbgelehnt === 1 || daten.zollAbgelehnt === '1';
+    const zollAbgelehntAusStatus = slots.some(function(slot) {
+      return istZollstatusAbgelehnt_(slot && slot.zollOk);
+    });
+    const zollAbgelehnt = zollAbgelehntAusPayload || zollAbgelehntAusStatus || istZollstatusAbgelehnt_(daten.zollOk || daten.status);
+    const zollGenehmigt = daten.zollGenehmigt === true || daten.zollGenehmigt === 'true' || slots.some(function(slot) {
+      return istZollstatusGenehmigt_(slot && slot.zollOk);
+    }) || istZollstatusGenehmigt_(daten.zollOk || daten.status);
+    const ablehnungBemerkung = textNormalisieren_(daten.ablehnungBemerkung);
+
+    if (!vId) throw new Error('Vorgangs_ID fehlt.');
+    if (!stoffbesitzer) throw new Error('Stoffbesitzer fehlt.');
+    if (!slots.length) throw new Error('Es ist kein Zeitslot vorhanden.');
+    if (zollAbgelehnt && !ablehnungBemerkung) throw new Error('Bemerkung zur Zoll-Ablehnung fehlt.');
+    if (zollGenehmigt && !registernummer) throw new Error('Bei Genehmigung muss die Registernummer gefüllt sein.');
+
+    const blatt = tabelleHolen_('BRANDTAG_UEBERSICHT');
+    if (!blatt) throw new Error('Tabelle 🔥_BRANDTAG_UEBERSICHT nicht gefunden.');
+
+    const sMap = spaltenZuordnungHolen_(blatt);
+    const anzahlSpalten = blatt.getLastColumn();
+
+    let dossierLink = textNormalisieren_(daten.dossierLink);
+    const vorplanung = holeVorplanungDatensatzNachVorgangsId_(vId);
+    if (!dossierLink) dossierLink = textNormalisieren_(vorplanung.dossierLink);
+
+    if (!dossierLink && typeof dossierGrundstrukturInitialAnlegen_ === 'function') {
+      try {
+        const ordner = dossierGrundstrukturInitialAnlegen_(vId, stoffbesitzer, daten.terminMaische || new Date());
+        dossierLink = ordner && ordner.getUrl ? ordner.getUrl() : dossierLink;
+      } catch (e) {
+        systemLogSchreiben_('WARN', 'Vorgangsbearbeitung', 'Drive-Grundstruktur konnte beim Speichern nicht angelegt werden', vId, String(e));
+      }
+    }
+
+    const bestehendeZeilen = alleZeilenMitVorgangsIdHolen_(blatt, vId);
+    const bestehendeDatenNachZeile = {};
+    const uebermittelteBestehendeZeilen = {};
+    const neueZeilen = [];
+    const aktualisierteZeilen = [];
+    const zuLoeschendeZeilen = [];
+
+    for (let i = 0; i < bestehendeZeilen.length; i++) {
+      const zeileNr = bestehendeZeilen[i];
+      bestehendeDatenNachZeile[zeileNr] = blatt.getRange(zeileNr, 1, 1, anzahlSpalten).getValues()[0];
+    }
+
+    slots.forEach(function(slot, index) {
+      const s = normalisiereMaischeSlotPayload_(slot);
+      if (!s.terminMaische) s.terminMaische = textNormalisieren_(daten.terminMaische);
+      validiereMaischeSlot_(s, index + 1);
+
+      const bestehendeZeile = parseInt(s.bestehendeZeile, 10);
+      const basisZeile = (bestehendeZeile && bestehendeDatenNachZeile[bestehendeZeile])
+        ? bestehendeDatenNachZeile[bestehendeZeile].slice()
+        : new Array(anzahlSpalten).fill('');
+
+      if (zollAbgelehnt) {
+        s.zollOk = '❌ ABGELEHNT';
+        s.ausbeute = '';
+        s.alkohol = '';
+        s.statusAktion = '❌ ABGELEHNT';
+      }
+
+      const slotGenehmigt = istZollstatusGenehmigt_(s.zollOk);
+      const slotAbgelehnt = istZollstatusAbgelehnt_(s.zollOk);
+      const slotBeimZoll = istZollstatusBeimZoll_(s.zollOk);
+      const status = slotAbgelehnt
+        ? '❌ ABGELEHNT'
+        : (slotGenehmigt ? '✅ GENEHMIGT' : (slotBeimZoll ? '🛂 BEIM ZOLL' : (textNormalisieren_(daten.status) || 'OFFEN')));
+
+      const speicherZeile = baueMaischeWebSpeicherzeile_(basisZeile, sMap, {
+        vorgangsId: vId,
+        stoffbesitzer: stoffbesitzer,
+        status: status,
+        bemerkungVorplanung: zollAbgelehnt ? ablehnungBemerkung : bemerkungVorplanung,
+        dossierLink: dossierLink,
+        registernummer: registernummer,
+        slot: s
+      }, anzahlSpalten);
+
+      setZellenwertInZeile_(speicherZeile, sMap.AUSBEUTE, zollAbgelehnt ? '' : textNormalisieren_(slot.ausbeute));
+      setZellenwertInZeile_(speicherZeile, sMap.ALKOHOL, zollAbgelehnt ? '' : textNormalisieren_(slot.alkohol));
+      setZellenwertInZeile_(speicherZeile, sMap.STATUS_AKTION, zollAbgelehnt ? '❌ ABGELEHNT' : (slotGenehmigt ? '✅ GENEHMIGT' : (slotBeimZoll ? '🛂 BEIM ZOLL' : (textNormalisieren_(slot.statusAktion) || 'OFFEN'))));
+
+      if (bestehendeZeile && bestehendeDatenNachZeile[bestehendeZeile]) {
+        aktualisierteZeilen.push({ zeile: bestehendeZeile, daten: speicherZeile });
+        uebermittelteBestehendeZeilen[bestehendeZeile] = true;
+      } else {
+        neueZeilen.push(speicherZeile);
+      }
+    });
+
+    bestehendeZeilen.forEach(function(zeileNr) {
+      if (!uebermittelteBestehendeZeilen[zeileNr]) zuLoeschendeZeilen.push(zeileNr);
+    });
+
+    aktualisierteZeilen.forEach(function(item) {
+      blatt.getRange(item.zeile, 1, 1, anzahlSpalten).setValues([item.daten]);
+      aktualisiereBrandtagUebersichtFormatierung_(blatt, sMap, item.zeile, 1);
+    });
+
+    if (neueZeilen.length > 0) {
+      const startZeile = blatt.getLastRow() + 1;
+      blatt.getRange(startZeile, 1, neueZeilen.length, anzahlSpalten).setValues(neueZeilen);
+      aktualisiereBrandtagUebersichtFormatierung_(blatt, sMap, startZeile, neueZeilen.length);
+    }
+
+    if (zuLoeschendeZeilen.length > 0) loescheZeilenRueckwaerts_(blatt, zuLoeschendeZeilen);
+
+    SpreadsheetApp.flush();
+
+    try {
+      dossierLinkFuerGesamtenVorgangAktualisieren_(blatt, vId);
+    } catch (e) {
+      systemLogSchreiben_('WARN', 'Vorgangsbearbeitung', 'Dossier-Link Nachzug BRANDTAG_UEBERSICHT fehlgeschlagen', vId, String(e));
+    }
+
+    const alleSlotsAbgelehnt = zollAbgelehnt || (slots.length > 0 && slots.every(function(slot) {
+      return istZollstatusAbgelehnt_(slot && slot.zollOk);
+    }));
+
+    if (alleSlotsAbgelehnt) {
+      return brandtagVorgangAlsAbgelehntArchivierenOhneSperre_(vId);
+    }
+
+    const alleSlotsGenehmigt = slots.length > 0 && slots.every(function(slot) {
+      return istZollstatusGenehmigt_(slot && slot.zollOk);
+    });
+    const mindestensEinSlotBeimZoll = slots.some(function(slot) {
+      return istZollstatusBeimZoll_(slot && slot.zollOk);
+    });
+    const zielStatusRegister = alleSlotsGenehmigt
+      ? '✅ GENEHMIGT'
+      : (mindestensEinSlotBeimZoll ? '🛂 BEIM ZOLL' : 'IN BRANDTAG_UEBERSICHT');
+
+    registerStatusAktualisieren_(vId, zielStatusRegister);
+    systemLogSchreiben_('INFO', 'Vorgangsbearbeitung', 'Vorgang direkt in BRANDTAG_UEBERSICHT gespeichert', vId, String(slots.length) + ' | Status: ' + zielStatusRegister);
+
+    return { ok: true, archiviert: false, verschobenNachBrandtag: false, direktInBrandtag: true, status: zielStatusRegister };
+  }, 'speichereVorgangsbearbeitungWebVorgang_');
+}
+
 
 function speichereBrennfreigabeWebVorgang_(payload) {
   return mitSperreAusfuehren_(function() {
@@ -1000,7 +1501,15 @@ function speichereBrennfreigabeWebVorgang_(payload) {
     registereintragSicherstellen_(vId, stoffbesitzer, status);
 
     const vorplanung = holeVorplanungDatensatzNachVorgangsId_(vId);
-    const dossierLink = textNormalisieren_(payload.dossierLink || vorplanung.dossierLink);
+    let dossierLink = textNormalisieren_(payload.dossierLink || vorplanung.dossierLink);
+    if (!dossierLink && typeof dossierGrundstrukturInitialAnlegen_ === 'function') {
+      try {
+        const ordner = dossierGrundstrukturInitialAnlegen_(vId, stoffbesitzer, payload.terminMaische || new Date());
+        dossierLink = ordner && ordner.getUrl ? ordner.getUrl() : dossierLink;
+      } catch (e) {
+        systemLogSchreiben_('WARN', 'MaischeService', 'Drive-Grundstruktur konnte beim Speichern nicht angelegt werden', vId, String(e));
+      }
+    }
 
     const bestehendeZeilen = alleZeilenMitVorgangsIdHolen_(blatt, vId);
     const bestehendeDatenNachZeile = {};
@@ -1074,12 +1583,20 @@ function speichereBrennfreigabeWebVorgang_(payload) {
       return textNormalisieren_(slot && slot.zollOk);
     }).filter(String)));
 
-    if (zollStatusSet.length === 1 && zollStatusSet[0] === '✅ GENEHMIGT') {
+    const alleSlotsGenehmigt = slots.length > 0 && slots.every(function(slot) {
+      return istZollstatusGenehmigt_(slot && slot.zollOk);
+    });
+
+    const alleSlotsAbgelehnt = slots.length > 0 && slots.every(function(slot) {
+      return istZollstatusAbgelehnt_(slot && slot.zollOk);
+    });
+
+    if (alleSlotsGenehmigt) {
       verschiebeVorgangVonBrennfreigabeNachBrandtagOhneSperre_(vId);
       return { ok: true, archiviert: false, verschobenNachBrandtag: true };
     }
 
-    if (zollStatusSet.length === 1 && zollStatusSet[0] === '❌ ABGELEHNT') {
+    if (alleSlotsAbgelehnt) {
       return brennfreigabeVorgangAlsAbgelehntArchivierenOhneSperre_(vId);
     }
 
@@ -1126,6 +1643,21 @@ function verschiebeVorgangVonBrennfreigabeNachBrandtagOhneSperre_(vId) {
   systemLogSchreiben_('INFO', 'MaischeService', 'Vorgang nach BRANDTAG_UEBERSICHT verschoben', vIdClean, String(neueZeilen.length));
 }
 
+function istZollstatusGenehmigt_(wert) {
+  const status = textNormalisieren_(wert).toUpperCase();
+  return status === '✅ GENEHMIGT' || status === 'GENEHMIGT' || status.indexOf('GENEHMIGT') !== -1;
+}
+
+function istZollstatusAbgelehnt_(wert) {
+  const status = textNormalisieren_(wert).toUpperCase();
+  return status === '❌ ABGELEHNT' || status === 'ABGELEHNT' || status.indexOf('ABGELEHNT') !== -1;
+}
+
+function istZollstatusBeimZoll_(wert) {
+  const status = textNormalisieren_(wert).toUpperCase();
+  return status === '🛂 BEIM ZOLL' || status === 'BEIM ZOLL' || status.indexOf('BEIM ZOLL') !== -1;
+}
+
 
 function aktualisiereBrandtagUebersichtFormatierung_(blatt, sMap, startZeile, anzahlZeilen) {
   if (!blatt || !sMap || !startZeile || !anzahlZeilen) return;
@@ -1150,6 +1682,8 @@ function brennfreigabeVorgaengeAusBrennfreigabeSammeln_(zielMap) {
     if (istVorgangArchiviert_(vId)) continue;
 
     zielMap[vId] = {
+      vorgangsId: vId,
+      anzeige: vId + ' – ' + textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
       stoffbesitzer: textNormalisieren_(sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : ''),
       bemerkungVorplanung: textNormalisieren_(sMap.INFO_SYSTEM ? row[sMap.INFO_SYSTEM - 1] : '')
     };

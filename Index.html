@@ -30,12 +30,37 @@
         box-shadow: 0 0 0 1px rgba(55,142,255,0.16), var(--shadow-out) !important;
       }
 
+      .btn-back-overview {
+        background: #000000 !important;
+        color: var(--neon) !important;
+        border: 1px solid var(--neon) !important;
+        box-shadow: 0 0 18px rgba(0, 255, 0, 0.75), var(--neo-out) !important;
+        text-shadow: 0 0 10px var(--neon) !important;
+      }
+
       .overview-btn {
         width: 100%;
         min-height: 64px;
         font-size: 24px;
         font-weight: 900;
         border-radius: 16px;
+      }
+
+      .overview-close-btn {
+        background: #111111 !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255,255,255,0.24) !important;
+      }
+
+      .slot-time-row {
+        display: grid;
+        grid-template-columns: minmax(124px, 1.35fr) minmax(74px, 0.8fr) minmax(74px, 0.8fr) minmax(120px, 1fr);
+        gap: 10px;
+        align-items: end;
+      }
+
+      .time-text-input {
+        text-align: center;
       }
 
       .section-title {
@@ -116,6 +141,54 @@
       .slot-core select {
         color: var(--neon) !important;
         font-weight: 900;
+      }
+
+      .feld-gefuellt,
+      input.feld-gefuellt,
+      select.feld-gefuellt,
+      textarea.feld-gefuellt,
+      .multi-picker-input.feld-gefuellt,
+      #bereichMaischeannahme input.feld-gefuellt,
+      #bereichMaischeannahme select.feld-gefuellt,
+      #bereichMaischeannahme textarea.feld-gefuellt {
+        color: var(--neon) !important;
+        font-weight: 900 !important;
+        text-shadow: 0 0 8px rgba(0, 255, 0, 0.85) !important;
+        border-color: rgba(0, 255, 0, 0.85) !important;
+        box-shadow: var(--neo-in), 0 0 12px rgba(0, 255, 0, 0.35) !important;
+      }
+
+      select.feld-gefuellt option {
+        color: #111111;
+      }
+
+      .pflicht-label {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .pflicht-tab {
+        position: relative;
+        width: 100%;
+      }
+
+      .pflicht-tab::after {
+        content: "▾";
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--neon);
+        font-size: 18px;
+        font-weight: 900;
+        line-height: 1;
+        pointer-events: none;
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.95);
+      }
+
+      .pflicht-tab input,
+      .pflicht-tab select {
+        padding-right: 34px !important;
       }
 
       .multi-picker {
@@ -580,6 +653,15 @@
           gap: 6px;
         }
 
+        .slot-time-row {
+          grid-template-columns: minmax(112px, 1.25fr) minmax(64px, 0.72fr) minmax(64px, 0.72fr);
+          gap: 6px;
+        }
+
+        .slot-brenner-cell {
+          grid-column: 1 / -1;
+        }
+
         .multi-picker-input {
           min-height: 38px;
           padding: 8px 30px 8px 10px;
@@ -600,7 +682,95 @@
         }
       }
 
-    </style>
+    
+
+      /* Vorgang bearbeiten: ruhiger Archiv-Look statt Neon-Grün */
+      #bereichMaischeannahme {
+        --neon: #f3f6fb;
+        --card-bg: rgba(255, 255, 255, 0.08);
+        --input-bg: rgba(0, 0, 0, 0.28);
+        --line: rgba(255, 255, 255, 0.18);
+      }
+
+      #bereichMaischeannahme .card,
+      #bereichMaischeannahme .compact-card {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28) !important;
+      }
+
+      #bereichMaischeannahme label {
+        color: #f3f6fb !important;
+        text-shadow: none !important;
+        letter-spacing: 0.03em;
+      }
+
+      #bereichMaischeannahme input,
+      #bereichMaischeannahme select,
+      #bereichMaischeannahme textarea,
+      #bereichMaischeannahme .multi-picker-input {
+        background: rgba(0, 0, 0, 0.28) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.24) !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+
+      #bereichMaischeannahme .feld-gefuellt,
+      #bereichMaischeannahme input.feld-gefuellt,
+      #bereichMaischeannahme select.feld-gefuellt,
+      #bereichMaischeannahme textarea.feld-gefuellt,
+      #bereichMaischeannahme .multi-picker-input.has-selection {
+        color: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.32) !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+
+      #bereichMaischeannahme .pflicht-tab::after,
+      #bereichMaischeannahme .multi-picker-required::after {
+        color: #e0007a !important;
+        text-shadow: none !important;
+      }
+
+      #bereichMaischeannahme .check-chip:has(input:checked) {
+        color: #ffffff !important;
+        border-color: rgba(224, 0, 122, 0.72) !important;
+        background: rgba(224, 0, 122, 0.18) !important;
+        box-shadow: 0 8px 18px rgba(224, 0, 122, 0.18) !important;
+        text-shadow: none !important;
+      }
+
+      #bereichMaischeannahme .check-chip input {
+        accent-color: #e0007a !important;
+      }
+
+      #bereichMaischeannahme .folder-link {
+        color: #ffffff !important;
+        border-color: rgba(255, 255, 255, 0.24) !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+
+      #bereichMaischeannahme .btn-save,
+      #bereichMaischeannahme button.btn-save {
+        background: #e0007a !important;
+        color: #ffffff !important;
+        border: 0 !important;
+        box-shadow: 0 8px 18px rgba(224, 0, 122, 0.25) !important;
+        text-shadow: none !important;
+      }
+
+      #bereichMaischeannahme .action-row .btn-save:first-child,
+      #bereichMaischeannahme .btn-back-overview {
+        background: rgba(255, 255, 255, 0.14) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+</style>
   </head>
 
   <body>
@@ -620,6 +790,14 @@
           </button>
 
           <button
+            id="startVorgang"
+            class="btn-save overview-btn"
+            type="button"
+            onclick="oeffneVorgangsbearbeitung()">
+            Vorgang bearbeiten
+          </button>
+
+          <button
             id="startLeitstand"
             class="btn-save overview-btn"
             type="button"
@@ -633,6 +811,14 @@
             type="button"
             onclick="oeffneZollkontakte()">
             🚨 Zoll-Kontaktliste
+          </button>
+
+          <button
+            id="startSchliessen"
+            class="btn-save overview-btn overview-close-btn"
+            type="button"
+            onclick="appSchliessen()">
+            Schließen
           </button>
         </div>
       </div>
@@ -653,8 +839,8 @@
                     type="text"
                     placeholder="Stoffbesitzer wählen"
                     autocomplete="off"
-                    oninput="stoffbesitzerVorschlaegeAktualisieren()"
-                    onfocus="stoffbesitzerVorschlaegeAktualisieren()">
+                    oninput="stoffbesitzerVorschlaegeAktualisieren(true)"
+                    onfocus="stoffbesitzerVorschlaegeAktualisieren(false)">
                   <div id="stoffbesitzerVorschlaege" class="stoffbesitzer-vorschlaege"></div>
                 </div>
               </div>
@@ -697,10 +883,9 @@
       </div>
 
       <div id="bereichMaischeannahme" class="hidden-section">
-        <iframe id="maischePrintFrame" class="print-frame" title="Brennprotokoll-Druck"></iframe>
         <div class="card section-stack compact-card">
-          <input id="prozessModus" type="hidden" value="maischeannahme">
-          <div id="maischeBereichTitel" style="font-weight:900; font-size:18px; color:var(--text-main);">Maischeannahme</div>
+          <input id="prozessModus" type="hidden" value="vorgang">
+          <div id="maischeBereichTitel" style="font-weight:900; font-size:18px; color:var(--text-main);">Vorgangsbearbeitung</div>
           <input id="maischeVorgangsId" type="hidden">
           <input id="maischeStoffbesitzer" type="hidden">
           <input id="maischeDossierLink" type="hidden">
@@ -709,12 +894,12 @@
             <div class="grid-4">
               <div>
                 <label for="maischeVorgang">Vorgang</label>
-                <select id="maischeVorgang" onchange="maischeVorgangGeaendert()"></select>
+                <div class="pflicht-tab"><select id="maischeVorgang" onchange="maischeVorgangGeaendert()"></select></div>
               </div>
 
               <div>
-                <label for="maischeTerminMaischeGlobal">Termin_Maische</label>
-                <input id="maischeTerminMaischeGlobal" type="date">
+                <label for="maischeTerminMaischeGlobal">Termin</label>
+                <div class="pflicht-tab"><input id="maischeTerminMaischeGlobal" type="date"></div>
               </div>
 
               <div id="blockRegistriernummer">
@@ -730,16 +915,15 @@
 
             <div class="grid-2">
               <div>
-                <label for="maischeBemerkungVorplanung">Bemerkung Vorplanung</label>
+                <label for="maischeBemerkungVorplanung">Bemerkung / Info</label>
                 <textarea
                   id="maischeBemerkungVorplanung"
                   rows="3"
-                  readonly
-                  class="readonly-field bemerkung-feld"></textarea>
+                  class="bemerkung-feld"></textarea>
               </div>
 
               <div>
-                <label for="maischeAnzahlBraendeGlobal">Anzahl_Brände</label>
+                <label for="maischeAnzahlBraendeGlobal">Anzahl Brände</label>
                 <input id="maischeAnzahlBraendeGlobal" type="number" min="1" step="1" value="1">
               </div>
             </div>
@@ -758,38 +942,34 @@
             </div>
           </div>
 
-          <div style="margin-top:2px; display:grid; grid-template-columns:minmax(180px, 260px); gap:8px;">
+          <div style="margin-top:2px; display:grid; grid-template-columns:minmax(180px, 260px); gap:8px; align-items:end;">
             <div>
               <label for="maischeZollOkGlobal">Status</label>
-              <select id="maischeZollOkGlobal"></select>
+              <div class="pflicht-tab"><select id="maischeZollOkGlobal" onchange="maischeZollAblehnungSynchronisieren()"></select></div>
             </div>
           </div>
 
-          <div class="action-row">
-            <button
-              id="btnBrennprotokollDrucken"
-              class="btn-save full-width"
-              type="button"
-              onclick="druckeBrennprotokollAusMaske()"
-              style="display:none;">
-              Brennprotokoll drucken
-            </button>
+          <div id="blockZollAblehnungBemerkung" style="display:none; margin-top:8px;">
+            <label for="maischeZollAblehnungBemerkung">Bemerkung zur Zoll-Ablehnung</label>
+            <textarea id="maischeZollAblehnungBemerkung" rows="3" class="bemerkung-feld" placeholder="Grund / Hinweis zur Ablehnung eintragen"></textarea>
           </div>
 
-          <div class="action-row">
-            <button
-              class="btn-save full-width"
-              type="button"
-              onclick="zurueckOderUebersicht()">
-              Zur Übersicht
-            </button>
-
+          <div class="action-row" style="grid-template-columns:1fr;">
             <button
               id="btnSpeichernMaischebereich"
               class="btn-save full-width"
               type="button"
               onclick="speichernMaischeannahmeFrontend()">
               Speichern
+            </button>
+          </div>
+
+          <div style="margin-top:10px;">
+            <button
+              class="btn-save full-width btn-back-overview"
+              type="button"
+              onclick="zurueckOderUebersicht()">
+              Zur Übersicht
             </button>
           </div>
         </div>
@@ -818,7 +998,7 @@
       let maischeMaterialListe = [];
       let maischeGewuerzeListe = [];
       let maischeSlotIndex = 0;
-      let prozessModus = START_MODUS === 'brennfreigabe' ? 'brennfreigabe' : 'maischeannahme';
+      let prozessModus = 'vorgang';
 
       function escapeHtml(text) {
         if (text == null) return '';
@@ -867,15 +1047,19 @@
         return typeof item === 'string' ? item : String(item && (item.label || item.value) || '');
       }
 
-      function stoffbesitzerVorschlaegeAktualisieren() {
+      function stoffbesitzerVorschlaegeAktualisieren(istEingabe) {
         const eingabe = document.getElementById('stoffbesitzerSuche');
         const ziel = document.getElementById('stoffbesitzerVorschlaege');
         const hidden = document.getElementById('stoffbesitzer');
         if (!eingabe || !ziel || !hidden) return;
 
-        const suchtext = String(eingabe.value || '').trim().toLowerCase();
-        hidden.value = '';
+        const suchtextOriginal = String(eingabe.value || '').trim();
+        const suchtext = suchtextOriginal.toLowerCase();
         ziel.innerHTML = '';
+
+        if (istEingabe) {
+          hidden.value = '';
+        }
 
         if (suchtext.length < 2) {
           ziel.classList.remove('open');
@@ -986,8 +1170,9 @@
         if (!picker) return;
         const chip = input.closest('.check-chip');
         if (chip) { if (input.checked) chip.classList.add('selected'); else chip.classList.remove('selected'); }
-        const suchfeld = picker.querySelector('.multi-picker-input');
-        if (suchfeld) multiPickerFilternAusInput(suchfeld);
+        aktualisiereMultiPicker(picker);
+        picker.classList.remove('open');
+        aktualisiereFeldOptik(document.getElementById('bereichMaischeannahme') || document);
       }
 
       function aktualisiereMultiPicker(picker) {
@@ -1102,28 +1287,24 @@
       }
 
       function wendeProzessModusAn() {
-        const istBrennfreigabe = prozessModus === 'brennfreigabe';
+        prozessModus = 'vorgang';
         document.getElementById('prozessModus').value = prozessModus;
-        document.getElementById('maischeBereichTitel').textContent = istBrennfreigabe ? 'Brennfreigabe' : 'Maischeannahme';
-        document.getElementById('mainTitle').textContent = istBrennfreigabe ? 'OGV BREITFURT – BRENNFREIGABE' : 'OGV BREITFURT – MAISCHEANNAHME';
-        document.getElementById('blockRegistriernummer').style.display = istBrennfreigabe ? 'block' : 'none';
-        document.getElementById('btnBrennprotokollDrucken').style.display = 'none';
-        document.getElementById('btnSpeichernMaischebereich').textContent = istBrennfreigabe ? 'Brennfreigabe speichern' : 'Maischeannahme speichern';
-        document.getElementById('maischeZollOkGlobal').disabled = !istBrennfreigabe;
+        document.getElementById('maischeBereichTitel').textContent = 'Vorgangsbearbeitung';
+        document.getElementById('mainTitle').textContent = 'OGV BREITFURT – VORGANG BEARBEITEN';
+        document.getElementById('blockRegistriernummer').style.display = 'block';
+        document.getElementById('btnSpeichernMaischebereich').textContent = 'Vorgang speichern';
+        document.getElementById('maischeZollOkGlobal').disabled = false;
       }
 
       function zeigeMaischeannahme() {
-        prozessModus = 'maischeannahme';
+        prozessModus = 'vorgang';
         alleBereicheSchliessen();
         document.getElementById('bereichMaischeannahme').style.display = 'block';
         wendeProzessModusAn();
       }
 
       function zeigeBrennfreigabe() {
-        prozessModus = 'brennfreigabe';
-        alleBereicheSchliessen();
-        document.getElementById('bereichMaischeannahme').style.display = 'block';
-        wendeProzessModusAn();
+        zeigeMaischeannahme();
       }
 
 
@@ -1271,6 +1452,8 @@
         document.getElementById('maischeBemerkungVorplanung').value = '';
         document.getElementById('maischeAnzahlBraendeGlobal').value = '1';
         document.getElementById('maischeZollOkGlobal').innerHTML = optionenHtml(maischeZollStatusListe, '', 'Auswahl');
+        document.getElementById('maischeZollAblehnungBemerkung').value = '';
+        document.getElementById('blockZollAblehnungBemerkung').style.display = 'none';
         document.getElementById('maischeSlotsContainer').innerHTML = '';
         maischeSlotIndex = 0;
       }
@@ -1289,14 +1472,13 @@
       function oeffneProzessBereich(modus) {
         if (busy) return;
 
-        const istBrennfreigabe = modus === 'brennfreigabe';
         setBusy(true);
-        zeigeStatus('statusBoxMaische', (istBrennfreigabe ? 'Brennfreigabe' : 'Maischeannahme') + ' wird geladen …', 'info');
+        prozessModus = 'vorgang';
+        zeigeStatus('statusBoxMaische', 'Vorgangsbearbeitung wird geladen …', 'info');
 
         google.script.run
           .withSuccessHandler(function(data) {
             setBusy(false);
-            prozessModus = istBrennfreigabe ? 'brennfreigabe' : 'maischeannahme';
             maischeVorgaenge = data && Array.isArray(data.vorgaenge) ? data.vorgaenge : [];
             maischeBrennerListe = data && Array.isArray(data.brennerListe) ? data.brennerListe : [];
             maischeZollStatusListe = data && Array.isArray(data.zollStatusListe) ? data.zollStatusListe : [];
@@ -1305,40 +1487,62 @@
             maischeGewuerzeListe = data && Array.isArray(data.gewuerzeListe) ? data.gewuerzeListe : [];
             resetMaischeFormular();
             fuelleMaischeDropdownVorgaenge();
-            if (istBrennfreigabe) zeigeBrennfreigabe(); else zeigeMaischeannahme();
+            zeigeMaischeannahme();
             zeigeStatus('statusBoxMaische', '', 'info');
           })
           .withFailureHandler(function(err) {
             setBusy(false);
-            if (istBrennfreigabe) zeigeBrennfreigabe(); else zeigeMaischeannahme();
-            zeigeStatus('statusBoxMaische', (istBrennfreigabe ? 'Brennfreigabe' : 'Maischeannahme') + ' konnte nicht geladen werden: ' + leseFehler(err), 'error');
-          })[istBrennfreigabe ? 'getBrennfreigabeDropdowns' : 'getMaischeannahmeDropdowns']();
+            zeigeMaischeannahme();
+            zeigeStatus('statusBoxMaische', 'Vorgangsbearbeitung konnte nicht geladen werden: ' + leseFehler(err), 'error');
+          })
+          .getVorgangsbearbeitungDropdowns();
       }
 
       function oeffneMaischeannahme() {
-        oeffneProzessBereich('maischeannahme');
+        oeffneProzessBereich('vorgang');
       }
 
       function oeffneBrennfreigabe() {
-        oeffneProzessBereich('brennfreigabe');
+        oeffneProzessBereich('vorgang');
+      }
+
+      function oeffneVorgangsbearbeitung() {
+        oeffneProzessBereich('vorgang');
       }
 
       function oeffneLeitstand() {
-        if (WEBAPP_URL) {
-          window.location.href = WEBAPP_URL + '?mode=leitstand&origin=index';
-          return;
-        }
-
-        window.location.href = '?mode=leitstand&origin=index';
+        window.top.location.href = GITHUB_INDEX_URL + '?mode=leitstand';
       }
 
       function oeffneZollkontakte() {
-        if (WEBAPP_URL) {
-          window.location.href = WEBAPP_URL + '?mode=zollkontakte&origin=index';
-          return;
-        }
+        window.top.location.href = GITHUB_INDEX_URL + '?mode=zollkontakte';
+      }
 
-        window.location.href = '?mode=zollkontakte&origin=index';
+      function appSchliessen() {
+        zeigeToast('App wird geschlossen ...', 'info', { autoMs: 800 });
+
+        try {
+          window.top.close();
+        } catch (e1) {}
+
+        try {
+          window.close();
+        } catch (e2) {}
+
+        window.setTimeout(function() {
+          try {
+            if (window.history && window.history.length > 1) {
+              window.history.back();
+              return;
+            }
+          } catch (e3) {}
+
+          try {
+            window.top.location.href = 'about:blank';
+          } catch (e4) {
+            window.location.href = 'about:blank';
+          }
+        }, 250);
       }
 
       function maischeVorgangGeaendert() {
@@ -1363,7 +1567,7 @@
             setBusy(false);
             zeigeStatus('statusBoxMaische', 'Vorgang konnte nicht geladen werden: ' + leseFehler(err), 'error');
           })
-          .getMaischeannahmeDetails(vorgangsId);
+          .getVorgangsbearbeitungDetails(vorgangsId);
       }
 
       function fuelleMaischeFormular(details) {
@@ -1371,7 +1575,7 @@
         document.getElementById('maischeVorgangsId').value = details.vorgangsId || '';
         document.getElementById('maischeStoffbesitzer').value = details.stoffbesitzer || '';
         document.getElementById('maischeTerminMaischeGlobal').value = details.terminMaische || '';
-        document.getElementById('maischeRegistriernummer').value = prozessModus === 'brennfreigabe' ? (details.registernummer || '') : '';
+        document.getElementById('maischeRegistriernummer').value = details.registernummer || '';
         setzeDossierLink(details.dossierLink || '');
         document.getElementById('maischeBemerkungVorplanung').value = details.bemerkungVorplanung || details.infoSystem || '';
         document.getElementById('maischeAnzahlBraendeGlobal').value = (
@@ -1379,7 +1583,8 @@
             ? details.slots[0].anzahlBraende
             : '1'
         );
-        document.getElementById('maischeZollOkGlobal').innerHTML = optionenHtml(maischeZollStatusListe, prozessModus === 'brennfreigabe' ? (details.zollOk || (details.slots && details.slots[0] ? details.slots[0].zollOk : '')) : '', 'Auswahl');
+        document.getElementById('maischeZollOkGlobal').innerHTML = optionenHtml(maischeZollStatusListe, (details.zollOk || (details.slots && details.slots[0] ? details.slots[0].zollOk : '')), 'Auswahl');
+        maischeZollAblehnungSynchronisieren();
 
         const container = document.getElementById('maischeSlotsContainer');
         container.innerHTML = '';
@@ -1393,6 +1598,7 @@
         } else {
           maischeSlotHinzufuegen();
         }
+        aktualisiereFeldOptik(document.getElementById('bereichMaischeannahme'));
       }
 
       function baueSlotHtml(idx) {
@@ -1403,16 +1609,16 @@
           + '    <div></div>'
           + '    <div class="slot-remove-cell"><button type="button" class="slot-remove-btn" onclick="maischeSlotLoeschen(this)" aria-label="Slot löschen" title="Slot löschen">X</button></div>'
           + '  </div>'
-          + '  <div class="grid-4 slot-core">'
-          + '    <div><label>Brandtag</label><input type="date" class="maische-tagBrand"></div>'
-          + '    <div><label>von</label><input type="time" class="maische-von"></div>'
-          + '    <div><label>bis</label><input type="time" class="maische-bis"></div>'
-          + '    <div><label>Brenner</label><select class="maische-brenner"></select></div>'
+          + '  <div class="slot-core slot-time-row">'
+          + '    <div><label>Brandtag</label><div class="pflicht-tab"><input type="date" class="maische-tagBrand"></div></div>'
+          + '    <div><label>von</label><div class="pflicht-tab"><input type="text" inputmode="numeric" placeholder="730 / 1000" maxlength="8" class="maische-von time-text-input" onblur="uhrzeitFeldNormalisieren(this)"></div></div>'
+          + '    <div><label>bis</label><div class="pflicht-tab"><input type="text" inputmode="numeric" placeholder="1200" maxlength="8" class="maische-bis time-text-input" onblur="uhrzeitFeldNormalisieren(this)"></div></div>'
+          + '    <div class="slot-brenner-cell"><label>Brenner</label><div class="pflicht-tab"><select class="maische-brenner"></select></div></div>'
           + '  </div>'
           + '  <div class="grid-3">'
-          + '    <div><label>Faßnummern</label><input type="text" class="maische-fassnummern"></div>'
-          + '    <div><label>Faßgröße</label><select class="maische-fassgroesse"></select></div>'
-          + '    <div><label>Inhalt</label><input type="text" class="maische-inhalt"></div>'
+          + '    <div><label>Faßnummern</label><div class="pflicht-tab"><input type="text" class="maische-fassnummern" placeholder="z. B. 63 / 64"></div></div>'
+          + '    <div><label>Faßgröße</label><div class="pflicht-tab"><select class="maische-fassgroesse"></select></div></div>'
+          + '    <div><label>Inhalt</label><div class="pflicht-tab"><input type="text" class="maische-inhalt"></div></div>'
           + '  </div>'
           + '  <div class="grid-2">'
           + '    <div>'
@@ -1450,11 +1656,110 @@
         slotRoot.querySelector('.maische-fassnummern').value = data.fassnummern || '';
         slotRoot.querySelector('.maische-inhalt').value = data.inhalt || '';
         aktualisiereMultiPickerInRoot(slotRoot);
+        feldOptikEventsAktivieren(slotRoot);
       }
 
       function maischeSlotLoeschen(button) {
         const card = button.closest('.card');
         if (card) card.remove();
+      }
+
+      function istZollAblehnungWert(wert) {
+        return String(wert || '').toUpperCase().indexOf('ABGELEHNT') !== -1;
+      }
+
+      function istZollGenehmigtWert(wert) {
+        return String(wert || '').toUpperCase().indexOf('GENEHMIGT') !== -1;
+      }
+
+      function maischeZollAblehnungSynchronisieren() {
+        const select = document.getElementById('maischeZollOkGlobal');
+        const block = document.getElementById('blockZollAblehnungBemerkung');
+        if (!select || !block) return;
+        block.style.display = istZollAblehnungWert(select.value) ? 'block' : 'none';
+        aktualisiereFeldOptik(document.getElementById('bereichMaischeannahme'));
+      }
+
+      function normalisiereUhrzeitEingabe(wert) {
+        let text = String(wert || '').trim().toLowerCase();
+        if (!text) return '';
+
+        text = text
+          .replace(/uhr/g, '')
+          .replace(/[^0-9:.,]/g, '')
+          .replace(/[.,]/g, ':')
+          .trim();
+
+        if (/^\d{1,2}$/.test(text)) {
+          return String(Number(text)).padStart(2, '0') + ':00';
+        }
+
+        if (/^\d{3}$/.test(text)) {
+          return '0' + text.substring(0, 1) + ':' + text.substring(1, 3);
+        }
+
+        if (/^\d{4}$/.test(text)) {
+          return text.substring(0, 2) + ':' + text.substring(2, 4);
+        }
+
+        if (/^\d{1,2}:\d{1,2}$/.test(text)) {
+          const teile = text.split(':');
+          const stunde = Number(teile[0]);
+          const minute = Number(teile[1]);
+          if (isNaN(stunde) || isNaN(minute) || stunde > 23 || minute > 59) return String(wert || '').trim();
+          return String(stunde).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+        }
+
+        return String(wert || '').trim();
+      }
+
+      function uhrzeitFeldNormalisieren(feld) {
+        if (!feld) return;
+        feld.value = normalisiereUhrzeitEingabe(feld.value);
+        aktualisiereFeldOptik(feld.closest('[data-slot-index]') || document);
+      }
+
+      function feldHatWert(el) {
+        if (!el) return false;
+        if (el.classList && el.classList.contains('multi-picker')) {
+          return !!el.querySelector('input[type="checkbox"]:checked');
+        }
+        return String(el.value || '').trim() !== '';
+      }
+
+      function aktualisiereFeldOptik(root) {
+        const basis = root || document;
+        basis.querySelectorAll('input, select, textarea').forEach(function(el) {
+          if (el.type === 'hidden' || el.type === 'checkbox') return;
+          if (feldHatWert(el)) el.classList.add('feld-gefuellt');
+          else el.classList.remove('feld-gefuellt');
+        });
+
+        basis.querySelectorAll('.multi-picker').forEach(function(picker) {
+          const input = picker.querySelector('.multi-picker-input');
+          if (!input) return;
+          if (feldHatWert(picker)) input.classList.add('feld-gefuellt');
+          else input.classList.remove('feld-gefuellt');
+        });
+      }
+
+      function feldOptikEventsAktivieren(root) {
+        const basis = root || document;
+        basis.querySelectorAll('input, select, textarea').forEach(function(el) {
+          if (el.type === 'hidden' || el.type === 'checkbox') return;
+          el.addEventListener('input', function() { aktualisiereFeldOptik(document.getElementById('bereichMaischeannahme') || basis); });
+          el.addEventListener('change', function() { aktualisiereFeldOptik(document.getElementById('bereichMaischeannahme') || basis); });
+        });
+        aktualisiereFeldOptik(basis);
+      }
+
+
+      function normalisiereFassnummernEingabe(wert) {
+        return String(wert || '')
+          .trim()
+          .replace(/\s*(?:und|\+|&|,|;)\s*/gi, ' / ')
+          .replace(/\s*\/\s*/g, ' / ')
+          .replace(/\s{2,}/g, ' ');
       }
 
       function leseMaischeSlots() {
@@ -1469,10 +1774,10 @@
             bestehendeZeile: root.querySelector('.maische-bestehendeZeile').value.trim(),
             terminMaische: terminMaischeGlobal,
             tagBrand: root.querySelector('.maische-tagBrand').value,
-            von: root.querySelector('.maische-von').value,
-            bis: root.querySelector('.maische-bis').value,
+            von: normalisiereUhrzeitEingabe(root.querySelector('.maische-von').value),
+            bis: normalisiereUhrzeitEingabe(root.querySelector('.maische-bis').value),
             brenner: root.querySelector('.maische-brenner').value,
-            fassnummern: root.querySelector('.maische-fassnummern').value.trim(),
+            fassnummern: normalisiereFassnummernEingabe(root.querySelector('.maische-fassnummern').value),
             fassgroesse: root.querySelector('.maische-fassgroesse').value,
             inhalt: root.querySelector('.maische-inhalt').value.trim(),
             materialien: materialien,
@@ -1496,12 +1801,22 @@
         }
 
         if (!payload.terminMaische) {
-          zeigeStatus('statusBoxMaische', 'Termin_Maische fehlt.', 'error');
+          zeigeStatus('statusBoxMaische', 'Termin fehlt.', 'error');
           return false;
         }
 
         if (!payload.slots.length) {
           zeigeStatus('statusBoxMaische', 'Es ist kein Slot vorhanden.', 'error');
+          return false;
+        }
+
+        if (payload.zollAbgelehnt && !payload.ablehnungBemerkung) {
+          zeigeStatus('statusBoxMaische', 'Bemerkung zur Zoll-Ablehnung fehlt.', 'error');
+          return false;
+        }
+
+        if (payload.zollGenehmigt && !payload.registernummer) {
+          zeigeStatus('statusBoxMaische', 'Bei Genehmigung muss die Registernummer gefüllt sein.', 'error');
           return false;
         }
 
@@ -1536,94 +1851,64 @@
       function speichernMaischeannahmeFrontend() {
         if (busy) return;
 
+        const statusAuswahl = document.getElementById('maischeZollOkGlobal').value;
         const payload = {
           vorgangsId: document.getElementById('maischeVorgang').value || document.getElementById('maischeVorgangsId').value,
           stoffbesitzer: document.getElementById('maischeStoffbesitzer').value.trim(),
           terminMaische: document.getElementById('maischeTerminMaischeGlobal').value,
           bemerkungVorplanung: document.getElementById('maischeBemerkungVorplanung').value,
           infoSystem: document.getElementById('maischeBemerkungVorplanung').value,
-          registernummer: prozessModus === 'brennfreigabe' ? document.getElementById('maischeRegistriernummer').value.trim() : '',
-          status: prozessModus === 'brennfreigabe' ? 'IN BRENNFREIGABE' : 'AN ZOLL GESENDET',
+          registernummer: document.getElementById('maischeRegistriernummer').value.trim(),
+          status: 'OFFEN',
+          zollAbgelehnt: istZollAblehnungWert(statusAuswahl),
+          zollGenehmigt: istZollGenehmigtWert(statusAuswahl),
+          ablehnungBemerkung: document.getElementById('maischeZollAblehnungBemerkung').value.trim(),
           dossierLink: document.getElementById('maischeDossierLink').value.trim(),
-          slots: leseMaischeSlots().map(function(slot) {
-            if (prozessModus !== 'brennfreigabe') {
-              slot.zollOk = '';
-            }
-            return slot;
-          })
+          slots: leseMaischeSlots()
         };
 
         if (!validiereMaischePayload(payload)) return;
 
         setBusy(true);
-        zeigeStatus('statusBoxMaische', (prozessModus === 'brennfreigabe' ? 'Brennfreigabe' : 'Maischeannahme') + ' wird gespeichert …', 'info');
+        zeigeToast('Vorgang wird gespeichert …', 'info', { autoMs: 0 });
+        zeigeStatus('statusBoxMaische', 'Vorgang wird gespeichert …', 'info');
 
         google.script.run
           .withSuccessHandler(function(result) {
             setBusy(false);
             resetMaischeFormular();
             fuelleMaischeDropdownVorgaenge();
-            const meldung = result && result.archiviert
-              ? 'Brennfreigabe gespeichert und ins Jahresarchiv übergeben.'
-              : (prozessModus === 'brennfreigabe' ? 'Brennfreigabe gespeichert.' : 'Maischeannahme gespeichert.');
+            const meldung = result && result.verschobenNachBrandtag
+              ? 'Vorgang gespeichert und an den Leitstand übergeben.'
+              : (result && result.archiviert ? 'Vorgang gespeichert und archiviert.' : 'Vorgang gespeichert.');
             zeigeStatus('statusBoxMaische', meldung, 'ok');
             window.setTimeout(nachSpeichernZurueckInsHauptmenue, 900);
           })
           .withFailureHandler(function(err) {
             setBusy(false);
             zeigeStatus('statusBoxMaische', 'Speichern fehlgeschlagen: ' + leseFehler(err), 'error');
-          })[prozessModus === 'brennfreigabe' ? 'saveBrennfreigabe' : 'saveMaischeannahme'](payload);
+          }).saveVorgangsbearbeitung(payload);
       }
 
-      function druckeBrennprotokollAusMaske() {
-        if (busy || prozessModus !== 'brennfreigabe') return;
-
-        const datum = ermittleBrandtagAusMaske();
-        if (!datum) {
-          zeigeStatus('statusBoxMaische', 'Für den Druck muss genau ein Brandtag im Vorgang vorhanden sein.', 'error');
+      function checklisteAusMaskeErzeugen() {
+        if (busy) return;
+        const vorgangsId = document.getElementById('maischeVorgang').value || document.getElementById('maischeVorgangsId').value;
+        if (!vorgangsId) {
+          zeigeStatus('statusBoxMaische', 'Für die Checkliste muss ein Vorgang gewählt sein.', 'error');
           return;
         }
-
         setBusy(true);
-        zeigeStatus('statusBoxMaische', 'Brennprotokoll wird erstellt …', 'info');
-
+        zeigeStatus('statusBoxMaische', 'Checkliste wird erzeugt / versendet …', 'info');
         google.script.run
-          .withSuccessHandler(function(html) {
+          .withSuccessHandler(function(result) {
             setBusy(false);
-            if (!html || String(html).trim() === '') {
-              zeigeStatus('statusBoxMaische', 'Für den gewählten Brandtag wurde kein Brennprotokoll geliefert.', 'error');
-              return;
-            }
-
-            const frame = document.getElementById('maischePrintFrame');
-            const frameDoc = frame.contentWindow && frame.contentWindow.document;
-            if (!frameDoc) {
-              zeigeStatus('statusBoxMaische', 'Druckrahmen konnte nicht initialisiert werden.', 'error');
-              return;
-            }
-
-            frameDoc.open();
-            frameDoc.write(html || '');
-            frameDoc.close();
-
-            setTimeout(function() {
-              frame.contentWindow.focus();
-              frame.contentWindow.print();
-            }, 250);
+            zeigeStatus('statusBoxMaische', (result && result.hinweis) ? result.hinweis : 'Checkliste verarbeitet.', 'ok');
           })
           .withFailureHandler(function(err) {
             setBusy(false);
-            zeigeStatus('statusBoxMaische', 'Druck fehlgeschlagen: ' + leseFehler(err), 'error');
+            zeigeStatus('statusBoxMaische', 'Checkliste fehlgeschlagen: ' + leseFehler(err), 'error');
           })
-          .getProtokollHtmlFuerBrandtag(datum);
-      }
-
-      function ermittleBrandtagAusMaske() {
-        const werte = Array.prototype.slice.call(document.querySelectorAll('#maischeSlotsContainer .maische-tagBrand'))
-          .map(function(el) { return String(el.value || '').trim(); })
-          .filter(Boolean);
-        const uniq = Array.from(new Set(werte));
-        return uniq.length === 1 ? uniq[0] : '';
+          .pruefeUndVersendeChecklisteNachBrandplanung(vorgangsId);
       }
 
       document.addEventListener('click', function(event) {
@@ -1639,19 +1924,15 @@
         zeigeStartUebersicht();
         document.getElementById('statusBoxVorplanung').style.display = 'none';
         document.getElementById('statusBoxMaische').style.display = 'none';
+        feldOptikEventsAktivieren(document);
 
         if (START_MODUS === 'vorplanung') {
           oeffneVorplanung();
           return;
         }
 
-        if (START_MODUS === 'maischeannahme') {
-          oeffneMaischeannahme();
-          return;
-        }
-
-        if (START_MODUS === 'brennfreigabe') {
-          oeffneBrennfreigabe();
+        if (START_MODUS === 'maischeannahme' || START_MODUS === 'brennfreigabe' || START_MODUS === 'vorgang') {
+          oeffneVorgangsbearbeitung();
           return;
         }
       });

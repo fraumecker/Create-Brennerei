@@ -240,6 +240,8 @@ function speichereBrandplanung(payload) {
       sh.getRange(z, sMap.GEAENDERT_AM).setNumberFormat("dd.MM.yyyy HH:mm");
     }
 
+    brandplanungAbgelehnteZeilenMarkieren_(sh, sMap, startZeile, zeilen.length);
+
     const letzterStatus = planungen[planungen.length - 1].status;
 
     if (letzterStatus === KONFIGURATION.STATUSWERTE.IN_MAISCHEANNAHME_UEBERGEBEN) {
@@ -347,23 +349,10 @@ function normalisiereBrandplanungsEintrag_(payload, nummer) {
 }
 
 function pruefeDoppelteBrandplanungseintraege_(planungen) {
-  const lookup = {};
-
-  for (let i = 0; i < planungen.length; i++) {
-    const item = planungen[i];
-    const key = [
-      datumAlsVergleichsschluessel_(item.brandtag),
-      item.brenner,
-      zeitAlsVergleichsschluessel_(item.zeitslotVon),
-      zeitAlsVergleichsschluessel_(item.zeitslotBis)
-    ].join("|");
-
-    if (lookup[key]) {
-      throw new Error("Doppelter Brandplanungseintrag im Speichervorgang erkannt. Brandtag, Brenner und Zeitslot sind mindestens zweimal identisch.");
-    }
-
-    lookup[key] = true;
-  }
+  // Gleicher Brandtag, gleicher Brenner und gleicher Zeitslot sind zulässig,
+  // weil zwei Fässer parallel bzw. zur gleichen Brennzeit geplant werden können.
+  // Die Funktion bleibt als Bestandsschnittstelle erhalten, blockiert aber keine legitimen Doppel-Zeitslots mehr.
+  return true;
 }
 
 
@@ -503,7 +492,56 @@ function istGueltigerBrandplanungStatus_(status) {
       ? KONFIGURATION.FESTWERTE.BRANDPLANUNG_STATUS
       : [];
 
-  return liste.indexOf(wert) > -1;
+  if (liste.indexOf(wert) > -1) return true;
+  if (istBrandplanungStatusBeimZoll_(wert)) return true;
+  if (istBrandplanungStatusAbgelehnt_(wert)) return true;
+
+  return false;
+}
+
+function istBrandplanungStatusBeimZoll_(status) {
+  const wert = textNormalisieren_(status).toUpperCase();
+  return wert === '🛂 BEIM ZOLL' || wert === 'BEIM ZOLL' || wert.indexOf('BEIM ZOLL') !== -1;
+}
+
+function istBrandplanungStatusAbgelehnt_(status) {
+  const wert = textNormalisieren_(status).toUpperCase();
+  return wert === '❌ ABGELEHNT' || wert === 'ABGELEHNT' || wert.indexOf('ABGELEHNT') !== -1;
+}
+
+function brandplanungAbgelehnteZeilenMarkieren_(sh, sMap, startZeile, anzahlZeilen) {
+  if (!sh || !sMap || !sMap.STATUS || !startZeile || !anzahlZeilen) return 0;
+
+  const letzteSpalte = sh.getLastColumn();
+  const werte = sh.getRange(startZeile, sMap.STATUS, anzahlZeilen, 1).getDisplayValues();
+  let markiert = 0;
+
+  for (let i = 0; i < werte.length; i++) {
+    const zeile = startZeile + i;
+    const status = textNormalisieren_(werte[i][0]);
+    if (istBrandplanungStatusAbgelehnt_(status)) {
+      sh.getRange(zeile, 1, 1, letzteSpalte)
+        .setBackground('#f4cccc')
+        .setFontColor('#990000');
+      markiert++;
+    }
+  }
+
+  return markiert;
+}
+
+function brandplanungAbgelehnteZeilenNachziehen() {
+  return mitSperreAusfuehren_(function() {
+    const sh = tabelleHolen_("BRANDTAGE_PLANUNG");
+    if (!sh || sh.getLastRow() < 2) return { ok: true, markiert: 0 };
+
+    const sMap = spaltenZuordnungHolen_(sh);
+    if (!sMap.STATUS) throw new Error('Spalte STATUS fehlt in BRANDTAGE_PLANUNG.');
+
+    const markiert = brandplanungAbgelehnteZeilenMarkieren_(sh, sMap, 2, sh.getLastRow() - 1);
+    SpreadsheetApp.flush();
+    return { ok: true, markiert: markiert };
+  }, 'brandplanungAbgelehnteZeilenNachziehen');
 }
 
 
@@ -716,8 +754,12 @@ function alsReineDatumzelle_(wert) {
 }
 
 function alsReineUhrzeitzelle_(wert) {
+  function zwei_(n) {
+    return ("0" + Number(n)).slice(-2);
+  }
+
   if (wert instanceof Date && !isNaN(wert.getTime())) {
-    return new Date(1899, 11, 30, wert.getHours(), wert.getMinutes(), 0, 0);
+    return zwei_(wert.getHours()) + ":" + zwei_(wert.getMinutes());
   }
 
   const text = textNormalisieren_(wert);
@@ -725,17 +767,22 @@ function alsReineUhrzeitzelle_(wert) {
 
   let match = text.match(/^(\d{1,2}):(\d{2})$/);
   if (match) {
-    return new Date(1899, 11, 30, Number(match[1]), Number(match[2]), 0, 0);
+    return zwei_(match[1]) + ":" + zwei_(match[2]);
   }
 
   match = text.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
   if (match) {
-    return new Date(1899, 11, 30, Number(match[1]), Number(match[2]), 0, 0);
+    return zwei_(match[1]) + ":" + zwei_(match[2]);
+  }
+
+  match = text.match(/^(\d{4})$/);
+  if (match) {
+    return text.substring(0, 2) + ":" + text.substring(2, 4);
   }
 
   const d = new Date(text);
   if (isNaN(d.getTime())) return "";
-  return new Date(1899, 11, 30, d.getHours(), d.getMinutes(), 0, 0);
+  return zwei_(d.getHours()) + ":" + zwei_(d.getMinutes());
 }
 
 function istZeitslotReihenfolgeGueltig_(von, bis) {

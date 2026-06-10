@@ -195,6 +195,14 @@
         padding-left: 52px;
       }
 
+
+      .admin-close-btn {
+        background: #111111 !important;
+        color: var(--admin-green) !important;
+        border: 1px solid rgba(57, 255, 20, 0.8) !important;
+        box-shadow: 0 0 18px rgba(57, 255, 20, 0.24), 0 12px 26px rgba(0,0,0,0.24) !important;
+      }
+
       .zoll-access-btn::before {
         content: "🚨";
         position: absolute;
@@ -316,20 +324,87 @@
           width: auto;
         }
       }
-    </style>
+    
+      #adminBeendetOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        box-sizing: border-box;
+        background: #f4f4f4;
+      }
+
+      .admin-beendet-box {
+        width: min(460px, 100%);
+        border-radius: 22px;
+        padding: 24px;
+        box-sizing: border-box;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.96);
+        color: #111;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      .admin-beendet-title {
+        font-size: 26px;
+        font-weight: 950;
+        margin-bottom: 12px;
+        color: var(--admin-pink);
+      }
+
+      .admin-beendet-text {
+        font-size: 17px;
+        font-weight: 900;
+        line-height: 1.45;
+        margin-bottom: 14px;
+      }
+
+      .admin-beendet-hinweis {
+        font-size: 15px;
+        font-weight: 800;
+        line-height: 1.45;
+        color: #333;
+      }
+
+
+      /* Toast */
+      #adminToast {
+        display: none;
+        position: sticky;
+        top: 8px;
+        z-index: 9999;
+        width: 100%;
+        padding: 13px 16px;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 900;
+        text-align: center;
+        margin-bottom: 12px;
+        box-sizing: border-box;
+        box-shadow: 0 6px 22px rgba(0,0,0,0.32);
+      }
+      #adminToast.active  { display: block; }
+      #adminToast.success { background: #12a139; color: #ffffff; border: 1px solid #9dffb1; box-shadow: 0 0 16px rgba(57,255,20,0.45), 0 6px 22px rgba(0,0,0,0.32); }
+      #adminToast.error   { background: #7d1225; color: #ffffff; border: 1px solid #ffb6c9; }
+      #adminToast.info    { background: #1c1c1c; color: #eeeeee; border: 1px solid #555555; }
+</style>
   </head>
 
   <body>
     <div class="main-frame">
+      <div id="adminToast" role="status" aria-live="polite"></div>
       <h1 id="mainTitle">OGV BREITFURT – ADMIN</h1>
 
       <div class="card cockpit-stack admin-entry-section">
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorplanung&origin=admin" target="_top">Vorplanung</a>
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=brandplanung&origin=admin" target="_top">Brandplanung</a>
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=maischeannahme&origin=admin" target="_top">Maischeannahme</a>
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=brennfreigabe&origin=admin" target="_top">Brennfreigabe</a>
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=leitstand&origin=admin" target="_top">Leitstand</a>
-        <a class="btn-save cockpit-btn zoll-access-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=zollkontakte&origin=admin" target="_top">Zoll-Kontaktliste</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorplanung_admin" target="_top">Vorplanung</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorgang" target="_top">Vorgang bearbeiten</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=leitstand_admin" target="_top">Leitstand</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=jahresarchiv_admin" target="_top">Jahresarchiv-Übersicht</a>
+        <a class="btn-save cockpit-btn zoll-access-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=zollkontakte_admin" target="_top">Zoll-Kontaktliste</a>
+        <button class="btn-save cockpit-btn admin-close-btn" type="button" onclick="return adminAppSchliessen(event)">Schließen</button>
       </div>
 
       <div class="card admin-card admin-entry-section" style="margin-top: 16px;">
@@ -357,7 +432,7 @@
           <div class="admin-search-line">
             <div class="admin-row">
               <label for="mitgliedSuche">Suche</label>
-              <input id="mitgliedSuche" class="admin-input" type="text" placeholder="Name / SB-Nr. / Ort / Telefon / E-Mail" oninput="mitgliederSucheVerzoegert()" onkeydown="if(event.key==='Enter'){event.preventDefault(); mitgliederLaden(true);}">
+              <input id="mitgliedSuche" class="admin-input" type="text" placeholder="Name / SB-Nr. / Geburtsdatum / Ort / Telefon / E-Mail" oninput="mitgliederSucheVerzoegert()" onkeydown="if(event.key==='Enter'){event.preventDefault(); mitgliederLaden(true);}">
             </div>
 
             <button class="admin-pink-btn" type="button" onclick="mitgliederLaden(true)">Suchen</button>
@@ -473,27 +548,163 @@
       let aktuellerModus = 'bearbeiten';
       let aktuelleZeile = 0;
       let aktuellerDriveUrl = '';
+      let mitgliederSucheRequestId = 0;
+      let speichernRequestLaeuft = false;
+      let ordnerRequestLaeuft = false;
+      let adminAppIstGeschlossen = false;
+
+      let adminToastTimer = null;
+
+      function showToast(msg, type, durationMs) {
+        const toast = document.getElementById('adminToast');
+        if (!toast) return;
+        if (adminToastTimer) { clearTimeout(adminToastTimer); adminToastTimer = null; }
+        toast.textContent = msg || '';
+        toast.className = msg ? ('active ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : 'info')) : '';
+        if (msg && durationMs && durationMs > 0) {
+          adminToastTimer = setTimeout(function() {
+            toast.className = '';
+            toast.textContent = '';
+          }, durationMs);
+        }
+      }
 
       const feldMap = {
         MitgliederID: 'feldMitgliederID',
         Stoffbesitzernummer: 'feldStoffbesitzernummer',
         Zuname: 'feldZuname',
         Vorname: 'feldVorname',
-        PLZ: 'feldPLZ',
-        Wohnort: 'feldWohnort',
-        'Straße': 'feldStrasse',
-        'Nr.': 'feldNr',
         'Geb.datum': 'feldGebdatum',
         Eintritt: 'feldEintritt',
+        'Straße': 'feldStrasse',
+        'Nr.': 'feldNr',
+        PLZ: 'feldPLZ',
+        Wohnort: 'feldWohnort',
         Telefon: 'feldTelefon',
         'E-Mail': 'feldEmail',
-        NameAnzeige: 'feldNameAnzeige',
-        Vereinsmitglied: 'feldVereinsmitglied'
+        Vereinsmitglied: 'feldVereinsmitglied',
+        NameAnzeige: 'feldNameAnzeige'
       };
+
+
+      function adminAppSchliessen(evt) {
+        /*
+          Mobilbrowser und installierte Web-Apps dürfen nicht per JavaScript
+          geschlossen werden. Diese Funktion erzeugt deshalb eine echte,
+          sichtbare Abschlussansicht innerhalb derselben Seite.
+        */
+
+        if (evt && typeof evt.preventDefault === 'function') evt.preventDefault();
+        if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+
+        try {
+          if (window.event) {
+            window.event.preventDefault();
+            window.event.stopPropagation();
+          }
+        } catch (e0) {}
+
+        try {
+          if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
+          }
+        } catch (e1) {}
+
+        adminAppIstGeschlossen = true;
+        adminPinToken = '';
+        mitgliederCache = [];
+        aktuelleZeile = 0;
+        aktuellerDriveUrl = '';
+        aktuellerModus = 'neu';
+        speichernRequestLaeuft = false;
+        ordnerRequestLaeuft = false;
+        mitgliederSucheRequestId++;
+
+        if (sucheTimer) {
+          window.clearTimeout(sucheTimer);
+          sucheTimer = null;
+        }
+
+        try {
+          sessionStorage.clear();
+        } catch (e2) {}
+
+        try {
+          localStorage.removeItem('adminPinToken');
+          localStorage.removeItem('adminPin');
+          localStorage.removeItem('pin');
+        } catch (e3) {}
+
+        let overlay = document.getElementById('adminBeendetOverlay');
+
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = 'adminBeendetOverlay';
+          overlay.setAttribute('role', 'dialog');
+          overlay.setAttribute('aria-modal', 'true');
+          document.body.appendChild(overlay);
+        }
+
+        overlay.innerHTML =
+          '<div class="admin-beendet-box">' +
+            '<div class="admin-beendet-title">Admin beendet</div>' +
+            '<div class="admin-beendet-text">Die Admin-Sitzung wurde beendet.</div>' +
+            '<div class="admin-beendet-hinweis">Du bist fertig. Bitte gehe jetzt mit der Home-Geste, Zurück-Geste oder über den App-Wechsler zurück zum Handy-Bildschirm.</div>' +
+          '</div>';
+
+        try {
+          const mainFrame = document.querySelector('.main-frame');
+          if (mainFrame) mainFrame.style.display = 'none';
+        } catch (e4) {}
+
+        document.documentElement.style.setProperty('height', '100%', 'important');
+        document.body.style.setProperty('min-height', '100vh', 'important');
+        document.body.style.setProperty('overflow', 'hidden', 'important');
+        document.body.style.setProperty('background', '#f4f4f4', 'important');
+
+        overlay.style.setProperty('position', 'fixed', 'important');
+        overlay.style.setProperty('inset', '0', 'important');
+        overlay.style.setProperty('z-index', '2147483647', 'important');
+        overlay.style.setProperty('display', 'flex', 'important');
+        overlay.style.setProperty('align-items', 'center', 'important');
+        overlay.style.setProperty('justify-content', 'center', 'important');
+        overlay.style.setProperty('padding', '24px', 'important');
+        overlay.style.setProperty('box-sizing', 'border-box', 'important');
+        overlay.style.setProperty('background', '#f4f4f4', 'important');
+        overlay.style.setProperty('color', '#111111', 'important');
+
+        try {
+          window.scrollTo(0, 0);
+        } catch (e5) {}
+
+        return false;
+      }
 
       function setText(id, text) {
         const el = document.getElementById(id);
         if (el) el.textContent = text || '';
+      }
+
+      function setBusy(selector, busy) {
+        const el = document.querySelector(selector);
+        if (!el) return;
+
+        el.disabled = !!busy;
+        el.style.opacity = busy ? '0.65' : '';
+        el.style.pointerEvents = busy ? 'none' : '';
+      }
+
+      function appStartEventsBinden() {
+        const pin = document.getElementById('adminPin');
+
+        if (pin) {
+          pin.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              adminPinFreischalten();
+            }
+          });
+        }
       }
 
       function esc(text) {
@@ -520,19 +731,24 @@
       }
 
       function adminPinFreischalten() {
-        const pin = document.getElementById('adminPin').value.trim();
+        const pinFeld = document.getElementById('adminPin');
+        const pin = pinFeld ? pinFeld.value.trim() : '';
 
         if (!pin) {
-          setText('pinStatus', 'PIN fehlt.');
+          showToast('PIN fehlt.', 'error', 4000);
           return;
         }
 
-        setText('pinStatus', 'PIN wird geprüft ...');
+        showToast('PIN wird geprüft ...', 'success', 0);
+        setBusy('#pinBox .admin-pink-btn', true);
 
         google.script.run
           .withSuccessHandler(function(res) {
+            if (adminAppIstGeschlossen) return;
+            setBusy('#pinBox .admin-pink-btn', false);
+
             if (!res || !res.ok) {
-              setText('pinStatus', 'PIN ungültig.');
+              showToast('PIN ungültig.', 'error', 5000);
               return;
             }
 
@@ -541,7 +757,7 @@
             document.getElementById('mitgliederBereich').classList.remove('admin-hidden');
             document.body.classList.add('admin-members-open');
 
-            setText('pinStatus', '');
+            showToast('', 'info', 1);
             sucheLeeren();
 
             mitgliederCache = [];
@@ -554,7 +770,9 @@
             if (suche) suche.focus();
           })
           .withFailureHandler(function(err) {
-            setText('pinStatus', err && err.message ? err.message : String(err));
+            if (adminAppIstGeschlossen) return;
+            setBusy('#pinBox .admin-pink-btn', false);
+            showToast(err && err.message ? err.message : String(err), 'error', 6000);
           })
           .adminMitgliederPinPruefen(pin);
       }
@@ -564,6 +782,7 @@
         document.getElementById('mitgliederBereich').classList.add('admin-hidden');
 
         adminPinToken = '';
+        mitgliederSucheRequestId++;
 
         const pin = document.getElementById('adminPin');
         if (pin) pin.value = '';
@@ -575,7 +794,7 @@
         renderMitgliederTreffer();
 
         setText('listenStatus', '');
-        setText('pinStatus', '');
+        showToast('', 'info', 1);
       }
 
       function mitgliederSucheVerzoegert() {
@@ -597,23 +816,30 @@
 
       function mitgliederLaden(force) {
         if (!adminPinToken) {
-          setText('listenStatus', 'PIN fehlt.');
+          showToast('PIN fehlt.', 'error', 4000);
           return;
         }
 
-        const suchtext = document.getElementById('mitgliedSuche').value.trim();
+        const sucheFeld = document.getElementById('mitgliedSuche');
+        const suchtext = sucheFeld ? sucheFeld.value.trim() : '';
 
         if (suchtext.length < 2) {
+          mitgliederSucheRequestId++;
           mitgliederCache = [];
           renderMitgliederTreffer();
-          setText('listenStatus', force ? 'Mindestens 2 Zeichen.' : '');
+          if (force) showToast('Mindestens 2 Zeichen eingeben.', 'error', 3000);
           return;
         }
 
-        setText('listenStatus', 'Lade ...');
+        const requestId = ++mitgliederSucheRequestId;
+
+        showToast('Mitglieder werden geladen ...', 'success', 0);
 
         google.script.run
           .withSuccessHandler(function(res) {
+            if (adminAppIstGeschlossen) return;
+            if (requestId !== mitgliederSucheRequestId) return;
+
             const roh = res && res.mitglieder ? res.mitglieder : [];
 
             mitgliederCache = roh.filter(function(m) {
@@ -628,7 +854,9 @@
             );
           })
           .withFailureHandler(function(err) {
-            setText('listenStatus', err && err.message ? err.message : String(err));
+            if (adminAppIstGeschlossen) return;
+            if (requestId !== mitgliederSucheRequestId) return;
+            showToast(err && err.message ? err.message : String(err), 'error', 6000);
           })
           .adminMitgliederListeLaden(adminPinToken, suchtext);
       }
@@ -642,6 +870,7 @@
           m.Vorname,
           m.Stoffbesitzernummer,
           m.Wohnort,
+          m['Geb.datum'],
           m.Telefon,
           m['E-Mail']
         ].join('')).trim();
@@ -674,6 +903,7 @@
           const meta = [
             m.Stoffbesitzernummer ? 'SB ' + m.Stoffbesitzernummer : '',
             m.Wohnort || '',
+            m['Geb.datum'] ? 'Geb. ' + m['Geb.datum'] : '',
             m.Telefon || ''
           ].filter(Boolean).join(' · ');
 
@@ -753,9 +983,11 @@
       }
 
       function payloadAusFormular() {
+        const driveFeld = document.getElementById('feldDriveOrdner');
         const payload = {
           _zeile: aktuelleZeile,
-          _modus: aktuellerModus
+          _modus: aktuellerModus,
+          DriveOrdnerUrl: driveFeld && driveFeld.value ? driveFeld.value.trim() : (aktuellerDriveUrl || '')
         };
 
         Object.keys(feldMap).forEach(function(key) {
@@ -774,24 +1006,32 @@
       }
 
       function mitgliedSpeichern() {
+        if (speichernRequestLaeuft) return;
+
         if (!adminPinToken) {
-          setText('detailStatus', 'PIN fehlt.');
+          showToast('PIN fehlt.', 'error', 4000);
           return;
         }
 
         const payload = payloadAusFormular();
 
         if (!payload.Zuname && !payload.Vorname && !payload.NameAnzeige) {
-          setText('detailStatus', 'Name fehlt.');
+          showToast('Name fehlt.', 'error', 4000);
           return;
         }
 
-        setText('detailStatus', 'Speichern ...');
+        speichernRequestLaeuft = true;
+        setBusy('#mitgliederDetailMaske .admin-green-btn', true);
+        showToast('Wird gespeichert ...', 'success', 0);
 
         google.script.run
           .withSuccessHandler(function(res) {
+            if (adminAppIstGeschlossen) return;
+            speichernRequestLaeuft = false;
+            setBusy('#mitgliederDetailMaske .admin-green-btn', false);
+
             if (!res || !res.ok) {
-              setText('detailStatus', 'Speichern nicht bestätigt.');
+              showToast('Speichern nicht bestätigt.', 'error', 5000);
               return;
             }
 
@@ -803,39 +1043,55 @@
             formularLeeren({ ohneAnsichtWechsel: true });
             ansichtSuche();
 
+            showToast('Gespeichert!', 'success', 3000);
             setText('listenStatus', '');
             setText('detailStatus', '');
           })
           .withFailureHandler(function(err) {
-            setText('detailStatus', err && err.message ? err.message : String(err));
+            if (adminAppIstGeschlossen) return;
+            speichernRequestLaeuft = false;
+            setBusy('#mitgliederDetailMaske .admin-green-btn', false);
+            showToast(err && err.message ? err.message : String(err), 'error', 6000);
           })
           .adminMitgliedSpeichern(adminPinToken, payload);
       }
 
       function driveOrdnerOeffnenOderAnlegen() {
-        if (aktuellerDriveUrl) {
-          window.open(aktuellerDriveUrl, '_blank');
+        const driveFeld = document.getElementById('feldDriveOrdner');
+        const vorhandeneUrl = driveFeld && driveFeld.value ? driveFeld.value.trim() : aktuellerDriveUrl;
+
+        if (vorhandeneUrl) {
+          aktuellerDriveUrl = vorhandeneUrl;
+          window.open(vorhandeneUrl, '_blank');
           return;
         }
 
+        if (ordnerRequestLaeuft) return;
+
         if (!adminPinToken) {
-          setText('detailStatus', 'PIN fehlt.');
+          showToast('PIN fehlt.', 'error', 4000);
           return;
         }
 
         const payload = payloadAusFormular();
 
         if (!payload.Zuname && !payload.Vorname && !payload.NameAnzeige) {
-          setText('detailStatus', 'Name fehlt.');
+          showToast('Name fehlt.', 'error', 4000);
           return;
         }
 
-        setText('detailStatus', 'Ordner ...');
+        ordnerRequestLaeuft = true;
+        setBusy('#mitgliederDetailMaske .admin-pink-btn', true);
+        showToast('Drive-Ordner wird geöffnet ...', 'success', 0);
 
         google.script.run
           .withSuccessHandler(function(res) {
+            if (adminAppIstGeschlossen) return;
+            ordnerRequestLaeuft = false;
+            setBusy('#mitgliederDetailMaske .admin-pink-btn', false);
+
             if (!res || !res.ok || !res.url) {
-              setText('detailStatus', 'Ordner nicht bestätigt.');
+              showToast('Ordner nicht gefunden.', 'error', 5000);
               return;
             }
 
@@ -848,10 +1104,15 @@
             setText('detailStatus', '');
           })
           .withFailureHandler(function(err) {
-            setText('detailStatus', err && err.message ? err.message : String(err));
+            if (adminAppIstGeschlossen) return;
+            ordnerRequestLaeuft = false;
+            setBusy('#mitgliederDetailMaske .admin-pink-btn', false);
+            showToast(err && err.message ? err.message : String(err), 'error', 6000);
           })
           .adminStoffbesitzerOrdnerSicherstellen(adminPinToken, payload);
       }
+
+      document.addEventListener('DOMContentLoaded', appStartEventsBinden);
     </script>
   </body>
 </html>
