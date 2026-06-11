@@ -336,8 +336,8 @@ function protokollHerabsetzungBerechnen_(alkoholText, ausbeuteText, literText, t
   const trink = protokollZahlAusText_(trinkstaerkeText);
   let liter = protokollZahlAusText_(literText);
 
-  if (!liter && ausbeute > 0 && alkohol > 0) {
-    liter = (ausbeute * 100) / alkohol;
+  if (!liter && ausbeute > 0) {
+    liter = ausbeute;
     literText = liter.toFixed(2).replace('.', ',');
   }
 

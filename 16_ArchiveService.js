@@ -170,6 +170,11 @@ function leitstandEintragInsJahresarchivUebertragenOhneSperre_(vId, statusAktion
   const alleZeilen = alleZeilenMitVorgangsIdHolen_(shQuelle, vIdClean);
   if (!alleZeilen.length) throw new Error('Keine Daten in BRANDTAG_UEBERSICHT gefunden.');
 
+  if (typeof leitstandSpaltenSicherstellen_ === 'function' && typeof leitstandBerechnungsSpaltenNamen_ === 'function') {
+    leitstandSpaltenSicherstellen_(shQuelle, leitstandBerechnungsSpaltenNamen_());
+    leitstandSpaltenSicherstellen_(shArchiv, leitstandBerechnungsSpaltenNamen_());
+  }
+
   const headerQuelle = shQuelle.getRange(1, 1, 1, shQuelle.getLastColumn()).getDisplayValues()[0].map(textNormalisieren_);
   const headerArchiv = shArchiv.getRange(1, 1, 1, shArchiv.getLastColumn()).getDisplayValues()[0].map(textNormalisieren_);
   const archivMap = spaltenZuordnungHolen_(shArchiv);

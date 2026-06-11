@@ -126,6 +126,12 @@ function leitstandZeileZuAnzeigeObjekt_(blatt, sMap, row, displayRow, zeile, arc
     ),
     alk: leitstandWert_(row, displayRow, sMap.ALKOHOL),
     ausbeute: leitstandWert_(row, displayRow, sMap.AUSBEUTE),
+    trinkstaerke: leitstandWert_(row, displayRow, sMap.TRINKSTAERKE),
+    wasser: leitstandWert_(row, displayRow, sMap.WASSER),
+    literDestillat: leitstandWert_(row, displayRow, sMap.LITER_DESTILLAT),
+    endmenge: leitstandWert_(row, displayRow, sMap.ENDMENGE),
+    kostenart: leitstandWert_(row, displayRow, sMap.KOSTENART),
+    kosten: leitstandWert_(row, displayRow, sMap.KOSTEN),
     anzahlBraende: leitstandWert_(row, displayRow, sMap.ANZAHL_BRAENDE),
     zollOk: leitstandWert_(row, displayRow, sMap.ZOLL_OK),
     zollAbgelehnt: leitstandIstZeileAbgelehnt_(row, displayRow, sMap),
@@ -549,6 +555,72 @@ function saveLeitstandEintraegeBatch(payloads) {
   }, 'saveLeitstandEintraegeBatch');
 }
 
+function leitstandSpaltenSicherstellen_(sh, spaltennamen) {
+  if (!sh || !Array.isArray(spaltennamen) || !spaltennamen.length) return;
+  const letzteSpalte = Math.max(1, sh.getLastColumn());
+  const header = sh.getRange(1, 1, 1, letzteSpalte).getDisplayValues()[0].map(textNormalisieren_);
+  const neu = [];
+
+  spaltennamen.forEach(function(name) {
+    const sauber = textNormalisieren_(name);
+    if (sauber && header.indexOf(sauber) === -1 && neu.indexOf(sauber) === -1) neu.push(sauber);
+  });
+
+  if (neu.length) {
+    sh.getRange(1, letzteSpalte + 1, 1, neu.length).setValues([neu]);
+    SpreadsheetApp.flush();
+  }
+}
+
+function leitstandBerechnungsSpaltenNamen_() {
+  return [
+    KONFIGURATION.SPALTEN.TRINKSTAERKE,
+    KONFIGURATION.SPALTEN.WASSER,
+    KONFIGURATION.SPALTEN.LITER_DESTILLAT,
+    KONFIGURATION.SPALTEN.ENDMENGE,
+    KONFIGURATION.SPALTEN.KOSTENART,
+    KONFIGURATION.SPALTEN.KOSTEN
+  ];
+}
+
+function leitstandZahlAusText_(wert) {
+  const text = textNormalisieren_(wert).replace(',', '.').replace(/[^0-9.\-]/g, '');
+  const zahl = Number(text);
+  return isFinite(zahl) ? zahl : 0;
+}
+
+function leitstandZahlFormat_(zahl) {
+  if (!isFinite(Number(zahl))) return '';
+  return Number(zahl).toFixed(2).replace('.', ',');
+}
+
+function leitstandHerabsetzungBerechnen_(alkoholText, ausbeuteText, literText, trinkstaerkeText) {
+  const alkohol = leitstandZahlAusText_(alkoholText);
+  const ausbeute = leitstandZahlAusText_(ausbeuteText);
+  const trinkstaerke = leitstandZahlAusText_(trinkstaerkeText);
+  let literDestillat = leitstandZahlAusText_(literText);
+
+  if (ausbeute > 0) {
+    literDestillat = ausbeute;
+  }
+
+  if (literDestillat > 0 && alkohol > 0 && trinkstaerke > 0) {
+    const endmenge = (literDestillat * alkohol) / trinkstaerke;
+    const wasser = endmenge - literDestillat;
+    return {
+      literDestillat: leitstandZahlFormat_(literDestillat),
+      wasser: wasser >= 0 ? leitstandZahlFormat_(wasser) : '',
+      endmenge: leitstandZahlFormat_(endmenge)
+    };
+  }
+
+  return {
+    literDestillat: literDestillat > 0 ? leitstandZahlFormat_(literDestillat) : textNormalisieren_(literText),
+    wasser: '',
+    endmenge: ''
+  };
+}
+
 function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
   const opts = optionen || {};
   const sollFlushen = opts.flush !== false;
@@ -560,6 +632,7 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
   const sh = tabelleHolen_('BRANDTAG_UEBERSICHT');
   if (!sh) throw new Error('Blatt BRANDTAG_UEBERSICHT nicht gefunden.');
 
+  leitstandSpaltenSicherstellen_(sh, leitstandBerechnungsSpaltenNamen_());
   const sMap = spaltenZuordnungHolen_(sh);
   const vId = textNormalisieren_(daten.vId || (sMap.VORGANGS_ID ? sh.getRange(zeile, sMap.VORGANGS_ID).getValue() : ''));
   if (!vId) throw new Error('Vorgangs_ID fehlt.');
@@ -604,10 +677,17 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
 
   const alkohol = webAppFeldwertNormalisieren_('ALKOHOL', daten.alkohol);
   const ausbeute = webAppFeldwertNormalisieren_('AUSBEUTE', daten.ausbeute);
+  const trinkstaerke = webAppFeldwertNormalisieren_('TRINKSTAERKE', daten.trinkstaerke);
+  const kostenart = webAppFeldwertNormalisieren_('KOSTENART', daten.kostenart);
+  const kosten = webAppFeldwertNormalisieren_('KOSTEN', daten.kosten);
+  const berechnung = leitstandHerabsetzungBerechnen_(alkohol, ausbeute, daten.liter, trinkstaerke);
+  const literDestillat = berechnung.literDestillat;
+  const wasser = berechnung.wasser;
+  const endmenge = berechnung.endmenge;
   const minderausbeute = daten.minderausbeute === true || daten.minderausbeute === 'true' || daten.minderausbeute === 1 || daten.minderausbeute === '1';
   const hatAlkohol = !!textNormalisieren_(alkohol);
   const hatAusbeute = !!textNormalisieren_(ausbeute);
-  const hatEingabe = hatAlkohol || hatAusbeute || minderausbeute;
+  const hatEingabe = hatAlkohol || hatAusbeute || !!textNormalisieren_(trinkstaerke) || !!textNormalisieren_(literDestillat) || !!textNormalisieren_(kostenart) || !!textNormalisieren_(kosten) || minderausbeute;
 
   if (!hatEingabe) {
     systemLogSchreiben_(
@@ -640,6 +720,30 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
     sh.getRange(zeile, sMap.AUSBEUTE).setValue(ausbeute);
   }
 
+  if (sMap.TRINKSTAERKE) {
+    sh.getRange(zeile, sMap.TRINKSTAERKE).setValue(trinkstaerke);
+  }
+
+  if (sMap.WASSER) {
+    sh.getRange(zeile, sMap.WASSER).setValue(wasser);
+  }
+
+  if (sMap.LITER_DESTILLAT) {
+    sh.getRange(zeile, sMap.LITER_DESTILLAT).setValue(literDestillat);
+  }
+
+  if (sMap.ENDMENGE) {
+    sh.getRange(zeile, sMap.ENDMENGE).setValue(endmenge);
+  }
+
+  if (sMap.KOSTENART) {
+    sh.getRange(zeile, sMap.KOSTENART).setValue(kostenart);
+  }
+
+  if (sMap.KOSTEN) {
+    sh.getRange(zeile, sMap.KOSTEN).setValue(kosten);
+  }
+
   if (!hatAlkohol || !hatAusbeute) {
     if (sollFlushen) SpreadsheetApp.flush();
 
@@ -648,7 +752,7 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
       'WebApp',
       'Leitstand-Teileingabe gespeichert, Vorgang bleibt offen',
       vId,
-      'Zeile: ' + zeile + ' | Alkohol: ' + alkohol + ' | Ausbeute: ' + ausbeute
+      'Zeile: ' + zeile + ' | Alkohol: ' + alkohol + ' | Ausbeute: ' + ausbeute + ' | Liter Destillat: ' + literDestillat + ' | Wasser: ' + wasser + ' | Endmenge: ' + endmenge
     );
 
     return {
@@ -680,7 +784,7 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
     'WebApp',
     'Leitstand-Eintrag vollständig gespeichert',
     vId,
-    'Zeile: ' + zeile + ' | Alkohol: ' + alkohol + ' | Ausbeute: ' + ausbeute + ' | Status_Aktion: ' + statusAktion + ' | Archivierung: nach Sammelspeicherung'
+    'Zeile: ' + zeile + ' | Alkohol: ' + alkohol + ' | Ausbeute: ' + ausbeute + ' | Liter Destillat: ' + literDestillat + ' | Wasser: ' + wasser + ' | Endmenge: ' + endmenge + ' | Status_Aktion: ' + statusAktion + ' | Archivierung: nach Sammelspeicherung'
   );
 
   return {

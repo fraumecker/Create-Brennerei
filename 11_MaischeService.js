@@ -555,6 +555,7 @@ function maischeZeileAlsWebSlotObjekt_(row, sMap, zeileNr, displayRow) {
     inhalt: textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.INH_VP)),
     material: materialRawNachFrontendText_(holeZellenwertAusRawZeile_(row, sMap.MATERIAL)),
     gewuerze: textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.GEWUERZE)),
+    fassSplittung: textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.FASS_SPLITTUNG)),
     anzahlBraende: textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.ANZAHL_BRAENDE)) || '1',
     zollOk: textNormalisieren_(holeZellenwertAusRawZeile_(row, sMap.ZOLL_OK)),
   };

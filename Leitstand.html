@@ -1862,6 +1862,24 @@
   const originModus = <?= JSON.stringify(typeof originModus !== 'undefined' ? originModus : '') ?>;
   const istAdminRuecksprung = <?= (typeof istAdminRuecksprung !== 'undefined' && istAdminRuecksprung) ? 'true' : 'false' ?>;
   const zollKontaktBootstrap = <?= (typeof zollKontaktlisteJson !== 'undefined' && zollKontaktlisteJson) ? zollKontaktlisteJson : 'null' ?>;
+  const ZOLL_KONTAKT_FALLBACK = {
+    titel: 'Hauptzollamt Saarbrücken',
+    untertitel: 'Telefonliste Steueraufsicht Abfindungsbrennereien',
+    stand: '19. Januar 2026',
+    faxAlleStandorte: '0681/8308-0901',
+    zentraleEmail: 'poststelle.hza-saarbruecken@zoll.bund.de',
+    kontakte: [
+      { name: 'Benedum', dienstsitz: 'KL', telefon: '0681 8308-0953', mobil: '0151-20482069', email: 'florian.benedum@zoll.bund.de' },
+      { name: 'Saxler', dienstsitz: 'SB', telefon: '0681/8308-0954', mobil: '0171-5410791', email: 'hans-ulrich.saxler@zoll.bund.de' },
+      { name: 'Bethge', dienstsitz: 'SB', telefon: '0681/8308-0934', mobil: '0171-5574045', email: 'dariusz.bethge@zoll.bund.de' },
+      { name: 'Enzweiler', dienstsitz: 'SB', telefon: '0681/8308-0940', mobil: '0151-46212125', email: 'andreas.enzweiler@zoll.bund.de' },
+      { name: 'Letzelter', dienstsitz: 'SB', telefon: '0681/8308-0908', mobil: '0160-98019895', email: 'fabian.letzelter@zoll.bund.de' },
+      { name: 'Müller', dienstsitz: 'SB', telefon: '0681/8308-0670', mobil: '0175-1168740', email: 'leon.mueller@zoll.bund.de' },
+      { name: 'Becker', dienstsitz: 'KL', telefon: '', mobil: '0160-98033505', email: 'tobias.becker@zoll.bund.de' },
+      { name: 'Ludwig', dienstsitz: 'KL', telefon: '', mobil: '0171-5416871', email: 'elias.ludwig@zoll.bund.de' },
+      { name: 'Weber', dienstsitz: 'PS', telefon: '06331/5538-17', mobil: '0171-5418967', email: 'jens.weber@zoll.bund.de' }
+    ]
+  };
   let geplanteBrandtage = [];
   let offeneBrandtage = [];
   let fertigeBrandtage = [];
@@ -2223,15 +2241,16 @@
       + '<div class="meta-cell"><div class="meta-label">Von</div><div class="meta-value">' + escapeHtml_(j.von || '-') + '</div></div>'
       + '<div class="meta-cell"><div class="meta-label">Bis</div><div class="meta-value">' + escapeHtml_(j.bis || '-') + '</div></div>'
       + '<div class="meta-cell required-input"><div class="meta-label">Alkohol %</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.alk || '-') : '<input type="number" step="0.01" value="' + escapeAttr_(j.alk || '') + '" data-role="gruppenAlkohol" oninput="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'alkohol\', this.value)" onchange="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'alkohol\', this.value)">') + '</div></div>'
-      + '<div class="meta-cell required-input"><div class="meta-label">Ausbeute l A</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.ausbeute || '-') : '<input type="number" step="0.01" value="' + escapeAttr_(j.ausbeute || '') + '" data-role="gruppenAusbeute" oninput="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'ausbeute\', this.value)" onchange="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'ausbeute\', this.value)">') + '</div></div>'
+      + '<div class="meta-cell required-input"><div class="meta-label">Liter Destillat</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.ausbeute || j.liter || j.literDestillat || '-') : '<input type="number" step="0.01" value="' + escapeAttr_(j.ausbeute || j.liter || j.literDestillat || '') + '" data-role="gruppenAusbeute" oninput="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'ausbeute\', this.value)" onchange="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'ausbeute\', this.value)">') + '</div></div>'
       + '</div>'
       + '<div class="fass-section-title">Branddetails / Herabsetzung / Kosten</div>'
       + '<div class="result-grid">'
       + '<div class="meta-cell required-input"><div class="meta-label">Trinkstärke %</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.trinkstaerke || '-') : '<input type="number" step="0.1" value="' + escapeAttr_(j.trinkstaerke || '') + '" data-role="gruppenTrinkstaerke" oninput="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'trinkstaerke\', this.value)" onchange="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'trinkstaerke\', this.value)">') + '</div></div>'
-      + '<div class="meta-cell calculated-output"><div class="meta-label">Wasserzugabe</div><div class="meta-value" data-role="wasserzugabeAnzeige">-</div></div>'
-      + '<div class="meta-cell calculated-output"><div class="meta-label">Liter Destillat</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.liter || j.literDestillat || '-') : '<input type="number" step="0.01" readonly value="' + escapeAttr_(j.liter || j.literDestillat || '') + '" data-role="gruppenLiter" title="Wird aus Ausbeute l A und Alkohol % berechnet">') + '</div></div>'
+      + '<div class="meta-cell calculated-output"><div class="meta-label">Wasserzugabe</div><div class="meta-value" data-role="wasserzugabeAnzeige">' + (istArchiv ? escapeHtml_(j.wasser || '-') : '-') + '</div></div>'
+      + '<div class="meta-cell calculated-output"><div class="meta-label">Endmenge</div><div class="meta-value" data-role="endmengeAnzeige">' + (istArchiv ? escapeHtml_(j.endmenge || '-') : '-') + '</div></div>'
+      + (istArchiv ? '' : '<input type="hidden" value="' + escapeAttr_(j.liter || j.literDestillat || j.ausbeute || '') + '" data-role="gruppenLiter">')
       + '<div class="meta-cell required-input"><div class="meta-label">Kostensatz</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.kostenart || '-') : selectKostenartHtml_(j)) + '</div></div>'
-      + '<div class="meta-cell calculated-output"><div class="meta-label">Kosten Brand</div><div class="meta-value" data-role="kostenAnzeige">-</div></div>'
+      + '<div class="meta-cell calculated-output"><div class="meta-label">Kosten Brand</div><div class="meta-value" data-role="kostenAnzeige">' + (istArchiv ? escapeHtml_(j.kosten || '-') : '-') + '</div></div>'
       + '</div>'
       + (istArchiv ? '' : '<div class="brand-action-row"><button class="brand-save-btn" type="button" onclick="markiereAktiveBrandKartenZumSpeichern_(false); saveAllCards(this)">💾 SPEICHERN</button><button class="brand-burn-btn" type="button" onclick="markiereAktiveBrandKartenZumSpeichern_(true); saveAllCards(this)">🔥 ALS GEBRANNT MARKIEREN</button></div>');
   }
@@ -2330,37 +2349,50 @@
     return isFinite(zahl) ? zahl : 0;
   }
 
+  function zahlFormatDeutsch_(zahl) {
+    if (!isFinite(Number(zahl))) return '';
+    return Number(zahl).toFixed(2).replace('.', ',');
+  }
+
   function berechneWasserzugabe_() {
     const literInput = document.querySelector('[data-role="gruppenLiter"]');
-    const ziel = document.querySelector('[data-role="wasserzugabeAnzeige"]');
-    if (!ziel) return;
+    const wasserZiel = document.querySelector('[data-role="wasserzugabeAnzeige"]');
+    const endmengeZiel = document.querySelector('[data-role="endmengeAnzeige"]');
 
-    const alkohol = zahlAusEingabe_(document.querySelector('[data-role="gruppenAlkohol"]') && document.querySelector('[data-role="gruppenAlkohol"]').value);
-    const ausbeute = zahlAusEingabe_(document.querySelector('[data-role="gruppenAusbeute"]') && document.querySelector('[data-role="gruppenAusbeute"]').value);
-    const trink = zahlAusEingabe_(document.querySelector('[data-role="gruppenTrinkstaerke"]') && document.querySelector('[data-role="gruppenTrinkstaerke"]').value);
+    const alkoholFeld = document.querySelector('[data-role="gruppenAlkohol"]');
+    const ausbeuteFeld = document.querySelector('[data-role="gruppenAusbeute"]');
+    const trinkFeld = document.querySelector('[data-role="gruppenTrinkstaerke"]');
+
+    const alkohol = zahlAusEingabe_(alkoholFeld && alkoholFeld.value);
+    const ausbeute = zahlAusEingabe_(ausbeuteFeld && ausbeuteFeld.value);
+    const trink = zahlAusEingabe_(trinkFeld && trinkFeld.value);
     let liter = zahlAusEingabe_(literInput && literInput.value);
 
-    if (ausbeute > 0 && alkohol > 0) {
-      liter = (ausbeute * 100) / alkohol;
+    if (ausbeute > 0) {
+      liter = ausbeute;
       if (literInput) {
-        literInput.value = liter.toFixed(2).replace('.', ',');
+        literInput.value = zahlFormatDeutsch_(liter);
         uebernehmeGruppenFeld_('liter', literInput.value);
       }
     }
 
     if (!liter || !alkohol || !trink) {
-      ziel.textContent = '-';
+      if (wasserZiel) wasserZiel.textContent = '-';
+      if (endmengeZiel) endmengeZiel.textContent = '-';
+      uebernehmeGruppenFeld_('wasser', '');
+      uebernehmeGruppenFeld_('endmenge', '');
       return;
     }
 
-    let endmenge;
-    if (ausbeute > 0) {
-      endmenge = (ausbeute * 100) / trink;
-    } else {
-      endmenge = (liter * alkohol) / trink;
-    }
+    const endmenge = (liter * alkohol) / trink;
     const wasser = endmenge - liter;
-    ziel.textContent = (wasser >= 0 ? wasser.toFixed(2).replace('.', ',') + ' Liter' : '-');
+    const wasserText = wasser >= 0 ? zahlFormatDeutsch_(wasser) : '';
+    const endmengeText = zahlFormatDeutsch_(endmenge);
+
+    if (wasserZiel) wasserZiel.textContent = wasserText ? wasserText + ' Liter' : '-';
+    if (endmengeZiel) endmengeZiel.textContent = endmengeText ? endmengeText + ' Liter' : '-';
+    uebernehmeGruppenFeld_('wasser', wasserText);
+    uebernehmeGruppenFeld_('endmenge', endmengeText);
   }
 
   function normalisiereKostenart_(wert) {
@@ -2393,6 +2425,8 @@
       ausbeute: 'ausbeute',
       liter: 'liter',
       trinkstaerke: 'trinkstaerke',
+      wasser: 'wasser',
+      endmenge: 'endmenge',
       kostenart: 'kostenart',
       kosten: 'kosten'
     };
@@ -2669,6 +2703,8 @@
       + '<input type="hidden" data-role="ausbeute" value="' + escapeAttr_(j.ausbeute || '') + '">'
       + '<input type="hidden" data-role="liter" value="' + escapeAttr_(j.liter || j.literDestillat || '') + '">'
       + '<input type="hidden" data-role="trinkstaerke" value="' + escapeAttr_(j.trinkstaerke || '') + '">'
+      + '<input type="hidden" data-role="wasser" value="' + escapeAttr_(j.wasser || '') + '">'
+      + '<input type="hidden" data-role="endmenge" value="' + escapeAttr_(j.endmenge || '') + '">'
       + '<input type="hidden" data-role="kostenart" value="' + escapeAttr_(normalisiereKostenart_((j.kostenart || j.kostensatz || j.kosten) || '')) + '">'
       + '<input type="hidden" data-role="kosten" value="' + escapeAttr_(j.kosten || '') + '">'
       + '</div>'
@@ -2682,6 +2718,8 @@
     const gruppenAusbeute = document.querySelector('[data-role="gruppenAusbeute"]');
     const gruppenLiter = document.querySelector('[data-role="gruppenLiter"]');
     const gruppenTrinkstaerke = document.querySelector('[data-role="gruppenTrinkstaerke"]');
+    const wasserHiddenWert = document.querySelector('[data-role="wasser"]');
+    const endmengeHiddenWert = document.querySelector('[data-role="endmenge"]');
     const kostenart = document.querySelector('[data-role="kostenart"]');
     const kostenAnzeige = document.querySelector('[data-role="kostenAnzeige"]');
 
@@ -2692,6 +2730,8 @@
       const ausbeute = card.querySelector('[data-role="ausbeute"]');
       const liter = card.querySelector('[data-role="liter"]');
       const trinkstaerke = card.querySelector('[data-role="trinkstaerke"]');
+      const wasserHidden = card.querySelector('[data-role="wasser"]');
+      const endmengeHidden = card.querySelector('[data-role="endmenge"]');
       const kostenartHidden = card.querySelector('[data-role="kostenart"]');
       const kostenHidden = card.querySelector('[data-role="kosten"]');
 
@@ -2700,6 +2740,8 @@
       if (ausbeute && gruppenAusbeute) ausbeute.value = gruppenAusbeute.value;
       if (liter && gruppenLiter) liter.value = gruppenLiter.value;
       if (trinkstaerke && gruppenTrinkstaerke) trinkstaerke.value = gruppenTrinkstaerke.value;
+      if (wasserHidden && wasserHiddenWert) wasserHidden.value = wasserHiddenWert.value;
+      if (endmengeHidden && endmengeHiddenWert) endmengeHidden.value = endmengeHiddenWert.value;
       if (kostenartHidden && kostenart) kostenartHidden.value = kostenart.value;
       if (kostenHidden && kostenAnzeige) kostenHidden.value = kostenAnzeige.textContent || '';
     });
@@ -2755,6 +2797,8 @@
       ausbeute: leseFeldwert(card, 'ausbeute'),
       liter: leseFeldwert(card, 'liter'),
       trinkstaerke: leseFeldwert(card, 'trinkstaerke'),
+      wasser: leseFeldwert(card, 'wasser'),
+      endmenge: leseFeldwert(card, 'endmenge'),
       kostenart: leseFeldwert(card, 'kostenart'),
       kosten: leseFeldwert(card, 'kosten'),
       erledigt: true,
@@ -2788,6 +2832,8 @@
         || String(payload.ausbeute || '').trim()
         || String(payload.liter || '').trim()
         || String(payload.trinkstaerke || '').trim()
+        || String(payload.wasser || '').trim()
+        || String(payload.endmenge || '').trim()
         || String(payload.kostenart || '').trim()
         || String(payload.kosten || '').trim()
         || payload.minderausbeute === true;
@@ -2982,9 +3028,10 @@
     }
 
     if (!window.google || !window.google.script || !window.google.script.run) {
-      showToast('Zoll-Kontaktliste wird separat geöffnet', 'success', 1800);
-      try { window.top.location.href = GITHUB_INDEX_URL + '?mode=zollkontakte'; }
-      catch (e) { window.location.href = GITHUB_INDEX_URL + '?mode=zollkontakte'; }
+      const fallbackPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
+      zollKontaktPayload = fallbackPayload;
+      showZollKontaktModal(fallbackPayload, true);
+      showToast('Zoll-Kontaktliste geöffnet', 'success', 2600);
       return;
     }
 
@@ -3010,8 +3057,10 @@
       .withFailureHandler(function(err) {
         zollKontaktLaedt = false;
         const msg = err && err.message ? err.message : String(err || 'Unbekannter Fehler');
-        showToast('Zoll-Kontaktliste konnte nicht geladen werden', 'error', 4200);
-        setZollModalFehler_('Fehler beim Laden: ' + msg + '<br><br><button class="modal-btn" type="button" onclick="window.top.location.href=\'' + GITHUB_INDEX_URL + '?mode=zollkontakte\'">Zoll-Kontaktliste separat öffnen</button>');
+        const fallbackPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
+        zollKontaktPayload = fallbackPayload;
+        showZollKontaktModal(fallbackPayload, true);
+        showToast('Zoll-Kontaktliste lokal geöffnet', 'success', 2600);
       })
       .getZollNotfallKontaktliste();
   }

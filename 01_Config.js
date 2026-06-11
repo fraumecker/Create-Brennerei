@@ -143,6 +143,12 @@ var KONFIGURATION = {
     ZOLL_OK: "Zoll_OK",
     AUSBEUTE: "Ausbeute",
     ALKOHOL: "Alkohol %",
+    TRINKSTAERKE: "Trinkstärke",
+    WASSER: "Wasser",
+    LITER_DESTILLAT: "Liter Destillat",
+    ENDMENGE: "Endmenge",
+    KOSTENART: "Kostenart",
+    KOSTEN: "Kosten",
     STATUS_AKTION: "Status_Aktion",
 
     PLANUNG_ID: "Planung_ID",
