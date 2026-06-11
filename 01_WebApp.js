@@ -18,70 +18,23 @@ function getLeitstandData(dateStr) {
   const bereitsGeladen = {};
   let totalBraende = 0;
 
-  function leitstandEintraegeAusBlattSammeln_(tabellenKey, archivQuelle) {
-    const sh = tabelleHolen_(tabellenKey);
-    if (!sh || sh.getLastRow() < 2) return;
+  leitstandEintraegeAusBlattSammeln_("BRANDTAG_UEBERSICHT", false, datumGesucht, jobs, bereitsGeladen, function(anzahl) {
+    totalBraende += anzahl;
+  });
 
-    const sMap = spaltenZuordnungHolen_(sh);
-    if (!sMap.TAG_BRAND) return;
-
-    const range = sh.getDataRange();
-    const daten = range.getValues();
-    const displayDaten = range.getDisplayValues();
-
-    for (let i = 1; i < daten.length; i++) {
-      const row = daten[i];
-      const displayRow = displayDaten[i] || [];
-      const brandTagRaw = row[sMap.TAG_BRAND - 1];
-      const rowDate = datumAlsIsoString_(brandTagRaw);
-      if (rowDate !== datumGesucht) continue;
-
-      const statusAktionRoh = sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : "";
-      const statusAktion = textNormalisieren_(statusAktionRoh);
-      const statusAktionUpper = statusAktion.toUpperCase();
-      const statusRoh = sMap.STATUS ? row[sMap.STATUS - 1] : "";
-      const statusNorm = textNormalisieren_(statusRoh).toUpperCase();
-      const zollOkNorm = textNormalisieren_(sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : '').toUpperCase();
-
-      const istAbgelehnt = istZollstatusAbgelehnt_(zollOkNorm) || istZollstatusAbgelehnt_(statusAktionUpper) || istZollstatusAbgelehnt_(statusNorm);
-      if (istAbgelehnt) continue;
-
-      const istErledigt = statusAktionUpper.indexOf(KONFIGURATION.STATUSWERTE.ERLEDIGT) === 0
-        || statusNorm === KONFIGURATION.STATUSWERTE.GEBRANNT
-        || statusNorm === KONFIGURATION.STATUSWERTE.ARCHIVIERT
-        || archivQuelle === true;
-      const istMinderausbeute = statusAktionUpper.indexOf('MINDERAUSBEUTE BRAND ZOLL INFORMIERT') !== -1;
-
-      const vId = textNormalisieren_(sMap.VORGANGS_ID ? row[sMap.VORGANGS_ID - 1] : '');
-      const von = wertAlsZeitText_(sMap.VON ? row[sMap.VON - 1] : "", sMap.VON ? displayRow[sMap.VON - 1] : "");
-      const bis = wertAlsZeitText_(sMap.BIS ? row[sMap.BIS - 1] : "", sMap.BIS ? displayRow[sMap.BIS - 1] : "");
-      const fassNr = textNormalisieren_(sMap.FASS_NR ? row[sMap.FASS_NR - 1] : "");
-      const dupeKey = [tabellenKey, vId, von, bis, fassNr].join('|');
-      if (bereitsGeladen[dupeKey]) continue;
-      bereitsGeladen[dupeKey] = true;
-
-      const anzahlBraendeRoh = sMap.ANZAHL_BRAENDE ? row[sMap.ANZAHL_BRAENDE - 1] : "";
-      const anzahlBraende = parseInt(textNormalisieren_(anzahlBraendeRoh), 10);
-      totalBraende += isNaN(anzahlBraende) || anzahlBraende < 1 ? 1 : anzahlBraende;
-
-      const eintrag = leitstandZeileZuAnzeigeObjekt_(sh, sMap, row, displayRow, i + 1, archivQuelle === true || istErledigt);
-      eintrag.istErledigt = istErledigt;
-      eintrag.istMinderausbeute = istMinderausbeute;
-      if (archivQuelle === true || istErledigt) {
-        eintrag.archivInfo = true;
-        eintrag.readonly = true;
-      }
-      jobs.push(eintrag);
-    }
-  }
-
-  leitstandEintraegeAusBlattSammeln_("BRANDTAG_UEBERSICHT", false);
-  leitstandEintraegeAusBlattSammeln_("JAHRESARCHIV", true);
+  leitstandEintraegeAusBlattSammeln_("JAHRESARCHIV", true, datumGesucht, jobs, bereitsGeladen, function(anzahl) {
+    totalBraende += anzahl;
+  });
 
   jobs.sort(function(a, b) {
-    const archivSort = (a.archivInfo === true ? 1 : 0) - (b.archivInfo === true ? 1 : 0);
-    if (archivSort !== 0) return archivSort;
-    return String(a.von || "").localeCompare(String(b.von || ""));
+    const archivA = a.archivInfo === true ? 1 : 0;
+    const archivB = b.archivInfo === true ? 1 : 0;
+    if (archivA !== archivB) return archivA - archivB;
+
+    const zeitVergleich = String(a.von || "").localeCompare(String(b.von || ""));
+    if (zeitVergleich !== 0) return zeitVergleich;
+
+    return String(a.owner || "").localeCompare(String(b.owner || ""), "de");
   });
 
   return {
@@ -94,38 +47,96 @@ function getLeitstandData(dateStr) {
   };
 }
 
+function leitstandEintraegeAusBlattSammeln_(tabellenKey, archivQuelle, datumGesucht, jobs, bereitsGeladen, zaehlerCallback) {
+  const sh = tabelleHolen_(tabellenKey);
+  if (!sh || sh.getLastRow() < 2) return;
+
+  const sMap = spaltenZuordnungHolen_(sh);
+  if (!sMap.TAG_BRAND) return;
+
+  const range = sh.getDataRange();
+  const daten = range.getValues();
+  const displayDaten = range.getDisplayValues();
+
+  for (let i = 1; i < daten.length; i++) {
+    const row = daten[i];
+    const displayRow = displayDaten[i] || [];
+    const rowDate = leitstandDatumIsoAusZeile_(row, displayRow, sMap.TAG_BRAND);
+
+    if (rowDate !== datumGesucht) continue;
+
+    const statusInfo = leitstandStatusInfoAusZeile_(row, displayRow, sMap, archivQuelle);
+    if (statusInfo.abgelehnt) continue;
+
+    const vId = textNormalisieren_(leitstandWert_(row, displayRow, sMap.VORGANGS_ID));
+    const von = wertAlsZeitText_(
+      sMap.VON ? row[sMap.VON - 1] : "",
+      sMap.VON ? displayRow[sMap.VON - 1] : ""
+    );
+    const bis = wertAlsZeitText_(
+      sMap.BIS ? row[sMap.BIS - 1] : "",
+      sMap.BIS ? displayRow[sMap.BIS - 1] : ""
+    );
+    const fassNr = textNormalisieren_(leitstandWert_(row, displayRow, sMap.FASS_NR));
+    const regNr = textNormalisieren_(leitstandWert_(row, displayRow, sMap.REGISTERNUMMER));
+
+    const dupeKey = leitstandAnzeigeSchluessel_(tabellenKey, vId, rowDate, von, bis, fassNr, regNr);
+    if (bereitsGeladen[dupeKey]) continue;
+    bereitsGeladen[dupeKey] = true;
+
+    const anzahlBraendeRoh = textNormalisieren_(leitstandWert_(row, displayRow, sMap.ANZAHL_BRAENDE));
+    const anzahlBraende = parseInt(anzahlBraendeRoh, 10);
+    const zaehlwert = isNaN(anzahlBraende) || anzahlBraende < 1 ? 1 : anzahlBraende;
+
+    if (typeof zaehlerCallback === "function") {
+      zaehlerCallback(zaehlwert);
+    }
+
+    const eintrag = leitstandZeileZuAnzeigeObjekt_(sh, sMap, row, displayRow, i + 1, archivQuelle === true || statusInfo.fertig);
+    eintrag.istErledigt = statusInfo.fertig;
+    eintrag.istMinderausbeute = statusInfo.minderausbeute;
+    eintrag.archivInfo = archivQuelle === true || statusInfo.fertig;
+    eintrag.readonly = archivQuelle === true || statusInfo.fertig;
+    eintrag.quelle = archivQuelle === true ? "JAHRESARCHIV" : "BRANDTAG_UEBERSICHT";
+
+    jobs.push(eintrag);
+  }
+}
+
 function leitstandZeileZuAnzeigeObjekt_(blatt, sMap, row, displayRow, zeile, archivInfo) {
   return {
     row: zeile,
-    vId: sMap.VORGANGS_ID ? row[sMap.VORGANGS_ID - 1] : "",
-    owner: sMap.STOFFBESITZER ? row[sMap.STOFFBESITZER - 1] : "",
-    brenner: sMap.BRENNER ? row[sMap.BRENNER - 1] : "",
-    material: sMap.MATERIAL ? row[sMap.MATERIAL - 1] : "",
-    gewuerze: sMap.GEWUERZE ? row[sMap.GEWUERZE - 1] : "",
-    fassNr: sMap.FASS_NR ? row[sMap.FASS_NR - 1] : "",
-    fassgroesse: sMap.FASS_VP ? row[sMap.FASS_VP - 1] : "",
-    inhalt: sMap.INH_VP ? row[sMap.INH_VP - 1] : "",
-    regNr: sMap.REGISTERNUMMER ? row[sMap.REGISTERNUMMER - 1] : "",
-    von: wertAlsZeitText_(sMap.VON ? row[sMap.VON - 1] : "", sMap.VON ? displayRow[sMap.VON - 1] : ""),
-    bis: wertAlsZeitText_(sMap.BIS ? row[sMap.BIS - 1] : "", sMap.BIS ? displayRow[sMap.BIS - 1] : ""),
-    alk: sMap.ALKOHOL ? row[sMap.ALKOHOL - 1] : "",
-    ausbeute: sMap.AUSBEUTE ? row[sMap.AUSBEUTE - 1] : "",
-    anzahlBraende: sMap.ANZAHL_BRAENDE ? row[sMap.ANZAHL_BRAENDE - 1] : "",
-    zollOk: sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : "",
-    zollAbgelehnt: istZollstatusAbgelehnt_(sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : "") || istZollstatusAbgelehnt_(sMap.STATUS ? row[sMap.STATUS - 1] : "") || istZollstatusAbgelehnt_(sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : ""),
-    status: sMap.STATUS ? row[sMap.STATUS - 1] : "",
-    statusAktion: textNormalisieren_(sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : ""),
-    infoSystem: sMap.INFO_SYSTEM ? row[sMap.INFO_SYSTEM - 1] : "",
-    link: sMap.DOSSIER_LINK ? row[sMap.DOSSIER_LINK - 1] : "",
+    vId: leitstandWert_(row, displayRow, sMap.VORGANGS_ID),
+    owner: leitstandWert_(row, displayRow, sMap.STOFFBESITZER),
+    brenner: leitstandWert_(row, displayRow, sMap.BRENNER),
+    material: leitstandWert_(row, displayRow, sMap.MATERIAL),
+    gewuerze: leitstandWert_(row, displayRow, sMap.GEWUERZE),
+    fassNr: leitstandWert_(row, displayRow, sMap.FASS_NR),
+    fassgroesse: leitstandWert_(row, displayRow, sMap.FASS_VP),
+    inhalt: leitstandWert_(row, displayRow, sMap.INH_VP),
+    regNr: leitstandWert_(row, displayRow, sMap.REGISTERNUMMER),
+    von: wertAlsZeitText_(
+      sMap.VON ? row[sMap.VON - 1] : "",
+      sMap.VON ? displayRow[sMap.VON - 1] : ""
+    ),
+    bis: wertAlsZeitText_(
+      sMap.BIS ? row[sMap.BIS - 1] : "",
+      sMap.BIS ? displayRow[sMap.BIS - 1] : ""
+    ),
+    alk: leitstandWert_(row, displayRow, sMap.ALKOHOL),
+    ausbeute: leitstandWert_(row, displayRow, sMap.AUSBEUTE),
+    anzahlBraende: leitstandWert_(row, displayRow, sMap.ANZAHL_BRAENDE),
+    zollOk: leitstandWert_(row, displayRow, sMap.ZOLL_OK),
+    zollAbgelehnt: leitstandIstZeileAbgelehnt_(row, displayRow, sMap),
+    status: leitstandWert_(row, displayRow, sMap.STATUS),
+    statusAktion: textNormalisieren_(leitstandWert_(row, displayRow, sMap.STATUS_AKTION)),
+    infoSystem: leitstandWert_(row, displayRow, sMap.INFO_SYSTEM),
+    link: leitstandWert_(row, displayRow, sMap.DOSSIER_LINK),
     archivInfo: archivInfo === true,
     readonly: archivInfo === true
   };
 }
 
-/**
- * FUNKTION: Liefert alle geplanten Brandtage für die Leitstand-Kalender-Markierung.
- * RÜCKGABE: Array mit ISO-Datum yyyy-MM-dd
- */
 function getLeitstandGeplanteBrandtage() {
   const tage = {};
 
@@ -133,13 +144,14 @@ function getLeitstandGeplanteBrandtage() {
   leitstandBrandtageAusBlattSammeln_("JAHRESARCHIV", tage, true);
 
   const sortierteTage = Object.keys(tage).sort();
+
   return {
     tage: sortierteTage,
     offen: sortierteTage.filter(function(iso) {
       return tage[iso] && tage[iso].offen === true && tage[iso].abgelehnt !== true;
     }),
     fertig: sortierteTage.filter(function(iso) {
-      return tage[iso] && tage[iso].fertig === true && tage[iso].offen !== true && tage[iso].abgelehnt !== true;
+      return tage[iso] && tage[iso].fertig === true && tage[iso].abgelehnt !== true;
     }),
     abgelehnt: []
   };
@@ -152,27 +164,127 @@ function leitstandBrandtageAusBlattSammeln_(tabellenKey, ziel, archivQuelle) {
   const sMap = spaltenZuordnungHolen_(sh);
   if (!sMap.TAG_BRAND) return;
 
-  const daten = sh.getDataRange().getValues();
+  const range = sh.getDataRange();
+  const daten = range.getValues();
+  const displayDaten = range.getDisplayValues();
 
   for (let i = 1; i < daten.length; i++) {
     const row = daten[i];
-    const statusAktion = textNormalisieren_(sMap.STATUS_AKTION ? row[sMap.STATUS_AKTION - 1] : '').toUpperCase();
-    const status = textNormalisieren_(sMap.STATUS ? row[sMap.STATUS - 1] : '').toUpperCase();
-    const zollOk = textNormalisieren_(sMap.ZOLL_OK ? row[sMap.ZOLL_OK - 1] : '').toUpperCase();
-    const istAbgelehnt = istZollstatusAbgelehnt_(zollOk) || istZollstatusAbgelehnt_(statusAktion) || istZollstatusAbgelehnt_(status);
-    const istFertig = !istAbgelehnt && (statusAktion.indexOf(KONFIGURATION.STATUSWERTE.ERLEDIGT) === 0 || status === KONFIGURATION.STATUSWERTE.GEBRANNT || status === KONFIGURATION.STATUSWERTE.ARCHIVIERT || archivQuelle === true);
-    const istOffen = !istAbgelehnt && !istFertig;
+    const displayRow = displayDaten[i] || [];
+    const iso = leitstandDatumIsoAusZeile_(row, displayRow, sMap.TAG_BRAND);
 
-    const iso = datumAlsIsoString_(row[sMap.TAG_BRAND - 1]);
     if (!iso) continue;
 
-    if (istAbgelehnt) continue;
+    const statusInfo = leitstandStatusInfoAusZeile_(row, displayRow, sMap, archivQuelle);
+    if (statusInfo.abgelehnt) continue;
 
-    if (!ziel[iso]) ziel[iso] = { geplant: false, offen: false, fertig: false, abgelehnt: false };
+    if (!ziel[iso]) {
+      ziel[iso] = {
+        geplant: false,
+        offen: false,
+        fertig: false,
+        abgelehnt: false
+      };
+    }
+
     ziel[iso].geplant = true;
-    if (istOffen) ziel[iso].offen = true;
-    if (istFertig) ziel[iso].fertig = true;
+
+    if (archivQuelle === true) {
+      ziel[iso].fertig = true;
+      continue;
+    }
+
+    if (statusInfo.fertig) {
+      ziel[iso].fertig = true;
+    } else {
+      ziel[iso].offen = true;
+    }
   }
+}
+
+function leitstandWert_(row, displayRow, spaltenIndex) {
+  if (!spaltenIndex) return "";
+
+  const display = displayRow && displayRow.length >= spaltenIndex
+    ? textNormalisieren_(displayRow[spaltenIndex - 1])
+    : "";
+
+  if (display) return display;
+
+  return row && row.length >= spaltenIndex
+    ? row[spaltenIndex - 1]
+    : "";
+}
+
+function leitstandDatumIsoAusZeile_(row, displayRow, spaltenIndex) {
+  if (!spaltenIndex) return "";
+
+  const raw = row && row.length >= spaltenIndex ? row[spaltenIndex - 1] : "";
+  const display = displayRow && displayRow.length >= spaltenIndex ? displayRow[spaltenIndex - 1] : "";
+
+  const isoRaw = datumAlsIsoString_(raw);
+  if (isoRaw) return isoRaw;
+
+  const isoDisplay = datumAlsIsoString_(display);
+  if (isoDisplay) return isoDisplay;
+
+  const text = textNormalisieren_(display || raw);
+  if (!text) return "";
+
+  let m = text.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (m) return m[3] + "-" + m[2] + "-" + m[1];
+
+  m = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return text;
+
+  return "";
+}
+
+function leitstandStatusInfoAusZeile_(row, displayRow, sMap, archivQuelle) {
+  const statusAktion = textNormalisieren_(leitstandWert_(row, displayRow, sMap.STATUS_AKTION)).toUpperCase();
+  const status = textNormalisieren_(leitstandWert_(row, displayRow, sMap.STATUS)).toUpperCase();
+  const zollOk = textNormalisieren_(leitstandWert_(row, displayRow, sMap.ZOLL_OK)).toUpperCase();
+
+  const abgelehnt =
+    istZollstatusAbgelehnt_(zollOk) ||
+    istZollstatusAbgelehnt_(statusAktion) ||
+    istZollstatusAbgelehnt_(status);
+
+  const minderausbeute = statusAktion.indexOf("MINDERAUSBEUTE BRAND ZOLL INFORMIERT") !== -1;
+
+  const fertig =
+    archivQuelle === true ||
+    statusAktion.indexOf(KONFIGURATION.STATUSWERTE.ERLEDIGT) === 0 ||
+    status === KONFIGURATION.STATUSWERTE.GEBRANNT ||
+    status === KONFIGURATION.STATUSWERTE.ARCHIVIERT;
+
+  return {
+    abgelehnt: abgelehnt,
+    fertig: fertig,
+    minderausbeute: minderausbeute
+  };
+}
+
+function leitstandIstZeileAbgelehnt_(row, displayRow, sMap) {
+  const zollOk = textNormalisieren_(leitstandWert_(row, displayRow, sMap.ZOLL_OK));
+  const status = textNormalisieren_(leitstandWert_(row, displayRow, sMap.STATUS));
+  const statusAktion = textNormalisieren_(leitstandWert_(row, displayRow, sMap.STATUS_AKTION));
+
+  return istZollstatusAbgelehnt_(zollOk) ||
+    istZollstatusAbgelehnt_(status) ||
+    istZollstatusAbgelehnt_(statusAktion);
+}
+
+function leitstandAnzeigeSchluessel_(tabellenKey, vId, tag, von, bis, fassNr, regNr) {
+  return [
+    textNormalisieren_(tabellenKey),
+    textNormalisieren_(vId),
+    textNormalisieren_(tag),
+    textNormalisieren_(von),
+    textNormalisieren_(bis),
+    textNormalisieren_(fassNr),
+    textNormalisieren_(regNr)
+  ].join("|").toUpperCase();
 }
 
 function leitstandAbgelehnteNummernMarkieren_(blatt, sMap, zeilen) {
@@ -184,30 +296,6 @@ function leitstandAbgelehnteNummernMarkieren_(blatt, sMap, zeilen) {
   if (!letzteSpalte || letzteSpalte < 1) {
     return 0;
   }
-
-  let markiert = 0;
-  zeilen.forEach(function(zeile) {
-    const z = Number(zeile);
-    if (!z || z <= 1) return;
-
-    blatt.getRange(z, 1, 1, letzteSpalte)
-      .setBackground('#f4cccc')
-      .setFontColor('#990000');
-
-    if (sMap && sMap.VORGANGS_ID) {
-      blatt.getRange(z, sMap.VORGANGS_ID).setFontWeight('bold');
-    }
-
-    markiert++;
-  });
-  return markiert;
-}
-
-function leitstandMinderausbeuteNummernMarkieren_(blatt, sMap, zeilen) {
-  if (!blatt || !zeilen || !zeilen.length) return 0;
-
-  const letzteSpalte = blatt.getLastColumn();
-  if (!letzteSpalte || letzteSpalte < 1) return 0;
 
   let markiert = 0;
   zeilen.forEach(function(zeile) {
@@ -401,7 +489,6 @@ function saveLeitstandEintrag(payload) {
   }, 'saveLeitstandEintrag');
 }
 
-// FIX: Archivierungsprüfung verwendet leitstandZeileIstArchivfaehigMitWerten_ (kein Re-Read, kein Flush-Cache-Bug)
 function saveLeitstandEintraegeBatch(payloads) {
   return mitSperreAusfuehren_(function() {
     const liste = Array.isArray(payloads) ? payloads : [];
@@ -419,7 +506,7 @@ function saveLeitstandEintraegeBatch(payloads) {
     };
 
     liste.forEach(function(payload) {
-      const einzel = leitstandEintragSpeichernOhneSperre_(payload, { flush: false, direkteAblehnungsArchivierung: false, direkteErledigtArchivierung: false });
+      const einzel = leitstandEintragSpeichernOhneSperre_(payload, { flush: false, direkteAblehnungsArchivierung: true });
       result.details.push(einzel);
 
       if (einzel && einzel.zollAbgelehnt === true) {
@@ -435,29 +522,14 @@ function saveLeitstandEintraegeBatch(payloads) {
 
     SpreadsheetApp.flush();
 
-    // FIX: Archivfähigkeit mit den gerade geschriebenen Werten prüfen — kein Re-Read der Tabelle
-    const direktZuArchivierendeDetails = result.details.filter(function(einzel) {
-      if (!einzel || (!einzel.erledigt && !einzel.zollAbgelehnt)) return false;
-      if (!einzel.row || !einzel.vId) return false;
-      return leitstandZeileIstArchivfaehigMitWerten_(
-        einzel.alkohol,
-        einzel.ausbeute,
-        einzel.statusAktion,
-        einzel.zollAbgelehnt ? '❌ ABGELEHNT' : KONFIGURATION.STATUSWERTE.GEBRANNT,
-        einzel.zollOk || '',
-        einzel.minderausbeute === true
-      );
-    }).sort(function(a, b) {
-      return Number(b.row) - Number(a.row);
-    });
-
-    direktZuArchivierendeDetails.forEach(function(einzel) {
-      const archivStatus = einzel.statusAktion || (einzel.zollAbgelehnt === true ? '❌ ABGELEHNT' : KONFIGURATION.STATUSWERTE.ERLEDIGT);
-      const archiv = leitstandEintragInsJahresarchivVerschiebenZeilenOhneSperre_(einzel.vId, archivStatus, [einzel.row]);
-      if (archiv && archiv.archiviert === true) result.archiviert++;
-    });
-
-    SpreadsheetApp.flush();
+    const archiv = leitstandErledigteEintraegeMitternachtArchivierenOhneSperre_();
+    if (archiv) {
+      if (typeof archiv.archiviert !== 'undefined') {
+        result.archiviert = Number(archiv.archiviert) || 0;
+      } else if (archiv.archiviert === true) {
+        result.archiviert = 1;
+      }
+    }
 
     systemLogSchreiben_(
       'INFO',
@@ -476,12 +548,10 @@ function saveLeitstandEintraegeBatch(payloads) {
   }, 'saveLeitstandEintraegeBatch');
 }
 
-// FIX: 0 ist gültiger Wert für Alkohol/Ausbeute; alkohol/ausbeute/zollOk im Rückgabeobjekt
 function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
   const opts = optionen || {};
   const sollFlushen = opts.flush !== false;
   const direkteAblehnungsArchivierung = opts.direkteAblehnungsArchivierung !== false;
-  const direkteErledigtArchivierung = opts.direkteErledigtArchivierung !== false;
   const daten = payload || {};
   const zeile = Number(daten.row);
   if (!zeile || zeile <= 1) throw new Error('Ungültige Tabellenzeile.');
@@ -525,25 +595,17 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
       ok: true,
       erledigt: false,
       zollAbgelehnt: true,
-      row: zeile,
-      vId: vId,
-      alkohol: '',
-      ausbeute: '',
-      zollOk: '❌ ABGELEHNT',
-      statusAktion: '❌ ABGELEHNT',
       archiviert: archivAblehnung && archivAblehnung.archiviert === true,
       verschoben: archivAblehnung && archivAblehnung.verschoben === true,
       archivierung: direkteAblehnungsArchivierung ? 'ABLEHNUNG' : 'ABLEHNUNG_OHNE_DIREKTARCHIVIERUNG'
     };
   }
 
+  const alkohol = webAppFeldwertNormalisieren_('ALKOHOL', daten.alkohol);
+  const ausbeute = webAppFeldwertNormalisieren_('AUSBEUTE', daten.ausbeute);
   const minderausbeute = daten.minderausbeute === true || daten.minderausbeute === 'true' || daten.minderausbeute === 1 || daten.minderausbeute === '1';
-  const alkohol = minderausbeute ? '0' : webAppFeldwertNormalisieren_('ALKOHOL', daten.alkohol);
-  const ausbeute = minderausbeute ? '0' : webAppFeldwertNormalisieren_('AUSBEUTE', daten.ausbeute);
-
-  // FIX: 0 ist gültiger Wert — explizite Prüfung statt !!textNormalisieren_()
-  const hatAlkohol = alkohol !== null && alkohol !== undefined && alkohol !== '';
-  const hatAusbeute = ausbeute !== null && ausbeute !== undefined && ausbeute !== '';
+  const hatAlkohol = !!textNormalisieren_(alkohol);
+  const hatAusbeute = !!textNormalisieren_(ausbeute);
   const hatEingabe = hatAlkohol || hatAusbeute || minderausbeute;
 
   if (!hatEingabe) {
@@ -563,6 +625,10 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
       verschoben: false,
       archivierung: 'KEINE_EINGABE'
     };
+  }
+
+  if (minderausbeute && (!hatAlkohol || !hatAusbeute)) {
+    throw new Error('Minderausbeute darf erst gespeichert werden, wenn Alkohol und Liter ausgefüllt sind.');
   }
 
   if (sMap.ALKOHOL) {
@@ -606,37 +672,24 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
     sh.getRange(zeile, sMap.STATUS).setValue(KONFIGURATION.STATUSWERTE.GEBRANNT);
   }
 
-  if (minderausbeute) {
-    leitstandMinderausbeuteNummernMarkieren_(sh, sMap, [zeile]);
-  }
-
   if (sollFlushen) SpreadsheetApp.flush();
-
-  const archivDirekt = direkteErledigtArchivierung
-    ? leitstandEintragInsJahresarchivVerschiebenZeilenOhneSperre_(vId, statusAktion, [zeile])
-    : { archiviert: false, verschoben: false };
 
   systemLogSchreiben_(
     'INFO',
     'WebApp',
     'Leitstand-Eintrag vollständig gespeichert',
     vId,
-    'Zeile: ' + zeile + ' | Alkohol: ' + alkohol + ' | Ausbeute: ' + ausbeute + ' | Status_Aktion: ' + statusAktion + ' | Archivierung: sofort nur markierte Zeile' + (minderausbeute ? ' | Minderausbeute' : '')
+    'Zeile: ' + zeile + ' | Alkohol: ' + alkohol + ' | Ausbeute: ' + ausbeute + ' | Status_Aktion: ' + statusAktion + ' | Archivierung: nach Sammelspeicherung'
   );
 
   return {
     ok: true,
     erledigt: true,
     minderausbeute: minderausbeute,
-    row: zeile,
-    vId: vId,
-    alkohol: alkohol,
-    ausbeute: ausbeute,
-    zollOk: '',
-    statusAktion: statusAktion,
-    archiviert: archivDirekt && archivDirekt.archiviert === true,
-    verschoben: archivDirekt && archivDirekt.verschoben === true,
-    archivierung: minderausbeute ? 'MINDERAUSBEUTE_SOFORT_NUR_MARKIERTE_ZEILE' : 'SOFORT_NUR_MARKIERTE_ZEILE'
+    archiviert: false,
+    verschoben: false,
+    archivierung: 'NACH_SAMMELSPEICHERUNG',
+    statusAktion: statusAktion
   };
 }
 
@@ -1275,6 +1328,13 @@ function holeDropdownWerteAusQuelleFuerWebApp_(key) {
 
 /**
  * FUNKTION: Liefert die Zollkontaktliste aus der zentralen KONFIGURATION.
+ * ZWECK:
+ * - Anzeige im Leitstand
+ * - keine automatische Mail
+ * - keine automatische Benachrichtigung
+ * - keine hart codierten Kontaktdaten im Leitstand
+ * QUELLE:
+ * - KONFIGURATION.ZOLL_KONTAKTLISTE
  */
 function getZollNotfallKontaktliste() {
   var quelle = KONFIGURATION.ZOLL_KONTAKTLISTE;
@@ -1304,6 +1364,7 @@ function getZollNotfallKontaktliste() {
 
 /**
  * FUNKTION: Prüft die Admin-PIN für die geschützte Mitgliederverwaltung.
+ * HINWEIS: Bei Linkzugang ohne Google-Anmeldung ersetzt diese PIN keine echte Nutzeridentität.
  */
 function adminMitgliederPinPruefen(pin) {
   pruefeAdminMitgliederPin_(pin);
@@ -1312,6 +1373,7 @@ function adminMitgliederPinPruefen(pin) {
 
 /**
  * FUNKTION: Lädt Mitglieder für die Admin-Mitgliederverwaltung.
+ * RÜCKGABE: Vollständige sichtbare Kontaktdaten aus 👥_MITGLIEDER.
  */
 function adminMitgliederListeLaden(pin, suchtext) {
   pruefeAdminMitgliederPin_(pin);
@@ -1443,7 +1505,8 @@ function adminMitgliedSpeichern(pin, payload) {
 
 
 /**
- * FUNKTION: Erstellt oder öffnet den Hauptordner des Stoffbesitzers.
+ * FUNKTION: Erstellt oder öffnet den Hauptordner des Stoffbesitzers unter dem konfigurierten Drive-Wurzelordner.
+ * HINWEIS: Die eigentliche Ordnerlogik liegt in 05_DriveService.gs.
  */
 function adminStoffbesitzerOrdnerSicherstellen(pin, payload) {
   pruefeAdminMitgliederPin_(pin);
