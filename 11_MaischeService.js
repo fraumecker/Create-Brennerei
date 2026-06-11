@@ -583,6 +583,7 @@ function baueMaischeWebSpeicherzeile_(basisZeile, sMap, data, anzahlSpalten) {
   setZellenwertInZeile_(zeile, sMap.ANZAHL_BRAENDE, slot.anzahlBraende || '1');
   setZellenwertInZeile_(zeile, sMap.REGISTERNUMMER, data.registernummer);
   setZellenwertInZeile_(zeile, sMap.ZOLL_OK, slot.zollOk);
+  setZellenwertInZeile_(zeile, sMap.FASS_SPLITTUNG, slot.fassSplittung);
   setZellenwertInZeile_(zeile, sMap.DOSSIER_LINK, data.dossierLink);
   setZellenwertInZeile_(zeile, sMap.STATUS, data.status);
   setZellenwertInZeile_(zeile, sMap.INFO_SYSTEM, data.bemerkungVorplanung);
@@ -642,6 +643,7 @@ function normalisiereMaischeSlotPayload_(slot) {
     inhalt: textNormalisieren_(obj.inhalt),
     material: textNormalisieren_(material),
     gewuerze: textNormalisieren_(gewuerze),
+    fassSplittung: textNormalisieren_(obj.fassSplittung),
     anzahlBraende: textNormalisieren_(obj.anzahlBraende) || '1',
     zollOk: textNormalisieren_(obj.zollOk)
   };
@@ -675,6 +677,7 @@ function leererMaischeSlot_() {
     inhalt: '',
     material: '',
     gewuerze: '',
+    fassSplittung: '',
     anzahlBraende: '1',
     zollOk: ''
   };

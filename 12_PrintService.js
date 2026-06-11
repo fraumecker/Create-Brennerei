@@ -285,6 +285,7 @@ function protokollDrucken() {
     const fassNr = protokollWertAusZeile_(displayRow, map, "FASS_NR");
     const fassVolumen = protokollWertAusZeile_(displayRow, map, "FASS_VP") || protokollWertAusZeile_(displayRow, map, "FASSVOLUMEN") || protokollWertAusZeile_(displayRow, map, "FASS_VOLUMEN");
     const inhalt = protokollWertAusZeile_(displayRow, map, "INH_VP") || protokollWertAusZeile_(displayRow, map, "INHALT");
+    const fassSplittung = protokollWertAusZeile_(displayRow, map, "FASS_SPLITTUNG");
     const alkohol = protokollWertAusZeile_(displayRow, map, "ALKOHOL");
     const ausbeute = protokollWertAusZeile_(displayRow, map, "AUSBEUTE");
     const wasser = protokollWertAusZeile_(displayRow, map, "WASSER");
@@ -719,6 +720,7 @@ function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
     const fassNr = protokollWertAusZeile_(displayRow, map, "FASS_NR");
     const fassVolumen = protokollWertAusZeile_(displayRow, map, "FASS_VP") || protokollWertAusZeile_(displayRow, map, "FASSVOLUMEN") || protokollWertAusZeile_(displayRow, map, "FASS_VOLUMEN");
     const inhalt = protokollWertAusZeile_(displayRow, map, "INH_VP") || protokollWertAusZeile_(displayRow, map, "INHALT");
+    const fassSplittung = protokollWertAusZeile_(displayRow, map, "FASS_SPLITTUNG");
     const alkohol = protokollWertAusZeile_(displayRow, map, "ALKOHOL");
     const ausbeute = protokollWertAusZeile_(displayRow, map, "AUSBEUTE");
     const wasser = protokollWertAusZeile_(displayRow, map, "WASSER");

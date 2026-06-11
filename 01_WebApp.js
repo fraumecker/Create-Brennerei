@@ -114,6 +114,7 @@ function leitstandZeileZuAnzeigeObjekt_(blatt, sMap, row, displayRow, zeile, arc
     fassNr: leitstandWert_(row, displayRow, sMap.FASS_NR),
     fassgroesse: leitstandWert_(row, displayRow, sMap.FASS_VP),
     inhalt: leitstandWert_(row, displayRow, sMap.INH_VP),
+    fassSplittung: leitstandWert_(row, displayRow, sMap.FASS_SPLITTUNG),
     regNr: leitstandWert_(row, displayRow, sMap.REGISTERNUMMER),
     von: wertAlsZeitText_(
       sMap.VON ? row[sMap.VON - 1] : "",

@@ -496,6 +496,40 @@
         resize: vertical;
       }
 
+      .fass-splittung-box {
+        display: grid;
+        gap: 6px;
+        padding: 10px;
+        border-radius: 16px;
+        background: rgba(255, 216, 77, 0.10);
+        border: 1px solid rgba(255, 216, 77, 0.80);
+        box-shadow: 0 0 14px rgba(255, 216, 77, 0.22);
+      }
+
+      .fass-splittung-title {
+        color: #ffd84d !important;
+        font-size: 12px !important;
+        font-weight: 900 !important;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      textarea.fass-splittung-feld {
+        width: 100%;
+        min-height: 64px;
+        background: rgba(0, 0, 0, 0.28) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 216, 77, 0.55) !important;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.35;
+        outline: none;
+        resize: vertical;
+        box-shadow: none !important;
+      }
+
       .multi-picker-hint {display:block;padding:8px 10px;color:#bdbdbd;font-size:13px;font-weight:800;}
       .check-chip.selected {color:var(--neon) !important;border-color:var(--neon);box-shadow:0 0 22px rgba(0,255,0,.95);background:rgba(0,255,0,.20);text-shadow:0 0 10px rgba(0,255,0,1);}
 
@@ -1622,6 +1656,10 @@
           + '      <div class="multi-picker maische-gewuerze" data-titel="Gewürze"></div>'
           + '    </div>'
           + '  </div>'
+          + '  <div class="fass-splittung-box">'
+          + '    <label class="fass-splittung-title">🔀 Fasssplittung / mitgebranntes Fass</label>'
+          + '    <textarea class="maische-fassSplittung fass-splittung-feld" placeholder="Optional: z. B. Fass 72 gesplittet: 29 l mit Fass 71 in diesem Brand; 31 l Folgebrand. Ausbeute/Alkohol gelten für den gemeinsamen Brand."></textarea>'
+          + '  </div>'
           + '</div>';
       }
 
@@ -1647,6 +1685,7 @@
         slotRoot.querySelector('.maische-bis').value = data.bis || '';
         slotRoot.querySelector('.maische-fassnummern').value = data.fassnummern || '';
         slotRoot.querySelector('.maische-inhalt').value = data.inhalt || '';
+        slotRoot.querySelector('.maische-fassSplittung').value = data.fassSplittung || '';
         aktualisiereMultiPickerInRoot(slotRoot);
         feldOptikEventsAktivieren(slotRoot);
       }
@@ -1775,6 +1814,7 @@
             materialien: materialien,
             material: materialien,
             gewuerze: gewuerze,
+            fassSplittung: root.querySelector('.maische-fassSplittung').value.trim(),
             anzahlBraende: anzahlBraendeGlobal,
             zollOk: zollOkGlobal
           };

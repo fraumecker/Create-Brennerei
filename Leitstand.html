@@ -431,6 +431,492 @@
       padding-bottom: 18px;
     }
 
+
+
+    /* Leitstand 2026: Kartenansicht nach freigegebenem Zielbild, ohne serverseitige Automationen zu verändern. */
+    .leitstand-board {
+      display: grid;
+      grid-template-columns: minmax(260px, 34%) minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .leitstand-sidebar,
+    .leitstand-main {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .leitstand-panel,
+    .brand-main-card,
+    .protocol-preview-card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 18px;
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .leitstand-panel-title {
+      margin: 0 0 8px 0;
+      color: var(--pink);
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(255, 0, 127, 0.35);
+    }
+
+    .brand-day-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .day-brand-card {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 15px;
+      background: rgba(0, 0, 0, 0.18);
+      color: #ffffff;
+      padding: 10px;
+      display: grid;
+      gap: 5px;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: var(--neo-in);
+    }
+
+    .day-brand-card.active {
+      border-color: var(--pink);
+      box-shadow: 0 0 0 1px rgba(255,0,127,0.45), 0 0 18px rgba(255,0,127,0.45);
+    }
+
+    .day-brand-topline,
+    .brand-headline {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .brand-time {
+      color: var(--pink);
+      font-size: 18px;
+      font-weight: 900;
+      text-shadow: 0 0 10px rgba(255, 0, 127, 0.45);
+      white-space: nowrap;
+    }
+
+    .brand-owner-name {
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .day-brand-owner {
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .day-brand-meta {
+      color: var(--text-soft);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .mini-folder-btn,
+    .drive-open-btn,
+    .zoll-open-btn,
+    .protocol-action-btn,
+    .brand-burn-btn,
+    .brand-save-btn {
+      border: none;
+      border-radius: 12px;
+      min-height: 38px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: var(--neo-out);
+      color: #ffffff;
+    }
+
+    .mini-folder-btn {
+      min-width: 38px;
+      padding: 6px;
+      background: #202020;
+      color: #ffd84d;
+      border: 1px solid rgba(255,216,77,0.36);
+    }
+
+    .drive-open-btn {
+      background: #202020;
+      color: #ffd84d;
+      border: 1px solid rgba(255,216,77,0.36);
+      white-space: nowrap;
+    }
+
+    .drive-open-btn[disabled],
+    .mini-folder-btn[disabled] {
+      opacity: 0.45;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .meta-grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .meta-cell {
+      min-width: 0;
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 10px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .meta-label {
+      color: var(--text-soft);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .meta-value {
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      max-width: 100%;
+      min-height: 28px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      white-space: normal;
+    }
+
+    .status-pill.ok {
+      color: #c6ffc6;
+      background: rgba(0, 255, 0, 0.12);
+      border: 1px solid rgba(0, 255, 0, 0.42);
+    }
+
+    .status-pill.pending {
+      color: #ffffff;
+      background: rgba(55, 142, 255, 0.15);
+      border: 1px solid rgba(55, 142, 255, 0.45);
+    }
+
+    .status-pill.open {
+      color: #dddddd;
+      background: rgba(180, 180, 180, 0.13);
+      border: 1px solid rgba(180, 180, 180, 0.35);
+    }
+
+    .status-pill.archive {
+      color: #1f1700;
+      background: #ffd84d;
+      border: 1px solid #fff1a8;
+    }
+
+    .fass-section-title {
+      margin: 12px 0 8px 0;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .fass-cards {
+      display: grid;
+      gap: 8px;
+    }
+
+    .fass-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 16px;
+      padding: 10px;
+    }
+
+
+    .fass-card.locked-other-brand {
+      opacity: 0.62;
+      border-color: rgba(255, 216, 77, 0.55);
+      background: rgba(255, 216, 77, 0.07);
+    }
+
+    .fass-lock-note {
+      grid-column: 1 / -1;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(255, 216, 77, 0.10);
+      border: 1px solid rgba(255, 216, 77, 0.55);
+      color: #ffd84d;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.35;
+    }
+
+    .fass-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--pink);
+      border: 1px solid rgba(255,0,127,0.32);
+      background: rgba(255,0,127,0.08);
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .fass-body {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .fass-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .fass-title {
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .fass-type-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: rgba(0,255,0,0.12);
+      border: 1px solid rgba(0,255,0,0.38);
+      color: #c6ffc6;
+      font-size: 9px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .fass-type-chip.split {
+      background: rgba(255,216,77,0.14);
+      border-color: rgba(255,216,77,0.62);
+      color: #ffd84d;
+    }
+
+    .fass-values {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .fass-anteil-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .fass-anteil-box {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .fass-split-note {
+      grid-column: 1 / -1;
+      padding: 10px;
+      border-radius: 14px;
+      background: rgba(255, 216, 77, 0.10);
+      border: 1px solid rgba(255, 216, 77, 0.75);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .fass-card-actions {
+      display: grid;
+      gap: 8px;
+      justify-items: end;
+    }
+
+    .mini-check.fass-check {
+      max-width: none;
+      white-space: nowrap;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .brand-action-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .brand-save-btn {
+      background: #202020;
+      border: 1px solid rgba(255,255,255,0.24);
+    }
+
+    .brand-burn-btn {
+      background: linear-gradient(145deg, var(--pink), var(--pink-dark));
+    }
+
+    .brand-extra-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .fass-action-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .fass-action-row .mini-check {
+      width: 100%;
+      max-width: none;
+      min-height: 42px;
+      font-size: 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+    }
+
+    .fass-action-row .mini-check input {
+      width: 18px;
+      height: 18px;
+      flex-basis: 18px;
+    }
+
+    .lower-dashboard {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 12px;
+      align-items: start;
+    }
+
+    .protocol-paper {
+      background: #ffffff;
+      color: #111111;
+      border-radius: 12px;
+      padding: 18px;
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      display: grid;
+      gap: 8px;
+      min-height: 220px;
+    }
+
+    .protocol-paper-title {
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+
+    .protocol-line {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 8px;
+    }
+
+    .protocol-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-top: 4px;
+    }
+
+    .protocol-table th,
+    .protocol-table td {
+      border: 1px solid #777777;
+      padding: 5px;
+      text-align: left;
+    }
+
+    .protocol-button-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .protocol-action-btn,
+    .zoll-open-btn {
+      background: #202020;
+      border: 1px solid rgba(255,255,255,0.24);
+    }
+
+    .protocol-action-btn.primary {
+      background: linear-gradient(145deg, var(--pink), var(--pink-dark));
+    }
+
+    .empty-leitstand {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
+    }
     .bottom-actions {
       display: flex;
       justify-content: flex-end;
@@ -779,6 +1265,33 @@
       align-self: start;
     }
 
+    .split-fass-card {
+      display: grid;
+      gap: 5px;
+      padding: 10px;
+      border-radius: 15px;
+      background: rgba(255, 216, 77, 0.10);
+      border: 1px solid rgba(255, 216, 77, 0.82);
+      box-shadow: 0 0 14px rgba(255, 216, 77, 0.22);
+    }
+
+    .split-fass-title {
+      color: #ffd84d;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.55px;
+      text-transform: uppercase;
+    }
+
+    .split-fass-text {
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
     .details-panel {
       display: none;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1103,13 +1616,175 @@
         padding-right: 10px;
       }
     }
-  </style>
+
+
+    @media (max-width: 980px) {
+      .leitstand-board,
+      .lower-dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .meta-grid,
+      .result-grid,
+      .fass-values,
+      .protocol-button-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      .day-brand-topline,
+      .brand-headline,
+      .fass-card,
+      .brand-action-row,
+      .meta-grid,
+      .meta-grid.two,
+      .result-grid,
+      .fass-values,
+      .protocol-button-row {
+        grid-template-columns: 1fr;
+      }
+
+      .drive-open-btn,
+      .brand-save-btn,
+      .brand-burn-btn,
+      .protocol-action-btn,
+      .zoll-open-btn {
+        width: 100%;
+      }
+
+      .fass-card-actions {
+        justify-items: stretch;
+      }
+    }
+
+
+    /* Leitstand 2026: Vorrang vor alter .job-card-Regel */
+    .fass-card.job-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 16px;
+      padding: 10px;
+      box-shadow: none;
+    }
+
+    .brand-main-card.archiv-info-card {
+      display: grid;
+      gap: 10px;
+      opacity: 1;
+    }
+
+    .brand-main-card input[type="number"] {
+      width: 100%;
+      min-height: 38px;
+      border-radius: 10px;
+      border: 1px solid #3a3a3a;
+      background: var(--input-bg);
+      color: #ffffff;
+      padding: 8px 10px;
+      font-weight: 900;
+      box-shadow: var(--neo-in);
+      outline: none;
+    }
+
+    @media (max-width: 560px) {
+      .fass-card.job-card {
+        grid-template-columns: 1fr;
+      }
+    }
+  
+  .fass-anteil-box {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.14);
+    margin-bottom: 8px;
+  }
+
+
+
+  /* Fassanteile sauber untereinander, Werte im Fassanteil lesbar nebeneinander. */
+  .fass-anteil-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .fass-anteil-box .fass-values {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .fass-anteil-box .meta-cell {
+    min-width: 0;
+  }
+
+  .fass-anteil-box .meta-label {
+    font-size: 9px;
+    line-height: 1.15;
+  }
+
+  .fass-anteil-box .meta-value {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  @media (max-width: 980px) {
+    .fass-anteil-box .fass-values {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    .fass-anteil-box .fass-values {
+      grid-template-columns: 1fr;
+    }
+  }
+
+
+    /* Leitstand Pflichtfelder / Berechnung sichtbar hervorheben */
+    .required-input {
+      background: rgba(255, 216, 77, 0.16) !important;
+      border-color: rgba(255, 216, 77, 0.95) !important;
+      box-shadow: 0 0 0 1px rgba(255,216,77,0.24), 0 0 16px rgba(255,216,77,0.18) !important;
+    }
+    .required-input .meta-label::after { content: " · EINGABE"; color: #ffd84d; font-weight: 900; }
+    .required-input input, .required-input select {
+      color: #ffffff !important; border: 1px solid rgba(255,216,77,0.95) !important;
+      background: rgba(0,0,0,0.38) !important; border-radius: 10px; padding: 7px 9px; min-height: 36px; font-weight: 900;
+    }
+    .calculated-output {
+      background: rgba(0, 195, 255, 0.14) !important; border-color: rgba(0, 195, 255, 0.85) !important;
+      box-shadow: 0 0 0 1px rgba(0,195,255,0.18), 0 0 14px rgba(0,195,255,0.16) !important;
+    }
+    .calculated-output .meta-label::after { content: " · BERECHNET"; color: #8be8ff; font-weight: 900; }
+    .calculated-output input[readonly] {
+      color: #ffffff !important; border: 1px solid rgba(0,195,255,0.75) !important;
+      background: rgba(0,0,0,0.26) !important; border-radius: 10px; padding: 7px 9px; min-height: 36px; font-weight: 900;
+    }
+    .lower-dashboard { grid-template-columns: 1fr !important; }
+    .lower-card-title {
+      color: var(--pink); font-size: 14px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px;
+    }
+    .protocol-preview-card { width: 100%; display: block; }
+    .protocol-paper.mini-preview { min-height: 0; max-height: none; }
+
+</style>
 </head>
 <body>
   <div class="main-frame">
     <div class="header-top">
       <div class="title-row">
-        <h1 id="mainTitle">LEITSTAND</h1>
+        <h1 id="mainTitle">🔥 LEITSTAND</h1>
       </div>
       <div class="top-actions">
         <button class="top-action-btn protocol-btn" type="button" onclick="druckePaket()">BRENNPROTOKOLL</button>
@@ -1117,29 +1792,43 @@
       </div>
     </div>
 
-    <div class="header-panel">
-      <div class="date-picker-block">
-        <input type="hidden" id="tagPicker" value="">
-        <div class="mini-calendar" id="brandtagCalendar">
-          <div class="mini-calendar-head">
-            <button class="mini-calendar-nav" type="button" onclick="wechselKalenderMonat(-1)">‹</button>
-            <div class="mini-calendar-month" id="calendarMonthLabel">-</div>
-            <button class="mini-calendar-nav" type="button" onclick="wechselKalenderMonat(1)">›</button>
-          </div>
-          <div class="mini-calendar-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
-          <div class="mini-calendar-days" id="calendarDays"></div>
-          <div class="calendar-note">Neon grün = Brandtag vorhanden. Abgelehnte Brände werden nicht im Leitstand angezeigt. Daten werden erst nach Klick auf einen markierten Tag geladen.</div>
-        </div>
-      </div>
-      <div class="header-panel-actions" aria-hidden="true"></div>
-    </div>
-
     <div id="statusBox" class="status-box"></div>
     <div id="saveToast" class="save-toast" role="status" aria-live="polite"></div>
     <iframe id="printFrame" class="print-frame" title="Brennprotokoll-Druck"></iframe>
 
-    <div class="container" id="jobList">
-      
+    <div class="leitstand-board">
+      <div class="leitstand-sidebar">
+        <div class="leitstand-panel">
+          <input type="hidden" id="tagPicker" value="">
+          <div class="mini-calendar" id="brandtagCalendar">
+            <div class="mini-calendar-head">
+              <button class="mini-calendar-nav" type="button" onclick="wechselKalenderMonat(-1)">‹</button>
+              <div class="mini-calendar-month" id="calendarMonthLabel">-</div>
+              <button class="mini-calendar-nav" type="button" onclick="wechselKalenderMonat(1)">›</button>
+            </div>
+            <div class="mini-calendar-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+            <div class="mini-calendar-days" id="calendarDays"></div>
+            <div class="calendar-note">Grün = Brandtag vorhanden. Klick auf einen Tag lädt die Brände. Abgelehnte Brände werden nicht im Leitstand angezeigt.</div>
+          </div>
+        </div>
+
+        <div class="leitstand-panel">
+          <button class="bottom-save-btn" type="button" onclick="zurueckZurWebApp()" style="width:100%;">ZURÜCK ZUM HAUPTMENÜ</button>
+        </div>
+
+        <div class="leitstand-panel">
+          <div class="leitstand-panel-title">Brände am Tag</div>
+          <div id="dayBrandList" class="brand-day-list"></div>
+        </div>
+      </div>
+
+      <div class="leitstand-main">
+        <div class="container" id="jobList"></div>
+      </div>
+    </div>
+
+    <div class="lower-dashboard">
+      <div class="protocol-preview-card" id="protocolPreviewCard"></div>
     </div>
 
     <div class="bottom-actions">
@@ -1180,6 +1869,9 @@
   let kalenderDatum = new Date();
   let saveToastTimer = null;
   let leitstandRequestId = 0;
+  let aktuelleLeitstandJobs = [];
+  let aktuelleLeitstandGruppen = [];
+  let aktiveLeitstandGruppe = null;
 
   window.onload = function() {
     ladeGeplanteBrandtage();
@@ -1204,6 +1896,7 @@
         setzeKalenderAufNaechstenGeplantenMonatOhneAuswahl();
         zeichneKalender();
         document.getElementById('jobList').innerHTML = '';
+        showToast('', 'info', 0);
       })
       .withFailureHandler(function() {
         geplanteBrandtage = [];
@@ -1213,6 +1906,7 @@
         setzeKalenderAufHeuteOhneAuswahl();
         zeichneKalender();
         document.getElementById('jobList').innerHTML = '';
+        showToast('', 'info', 0);
       })
       .getLeitstandGeplanteBrandtage();
   }
@@ -1396,135 +2090,484 @@
 
   function drawJobs(res) {
     const cont = document.getElementById('jobList');
-    cont.innerHTML = '';
+    const dayList = document.getElementById('dayBrandList');
+    const protocolPreview = document.getElementById('protocolPreviewCard');
+
+    if (cont) cont.innerHTML = '';
+    if (dayList) dayList.innerHTML = '';
+    if (protocolPreview) protocolPreview.innerHTML = '';
+
+    aktuelleLeitstandJobs = Array.isArray(res && res.jobs) ? res.jobs : [];
 
     if (!res || !res.jobs || res.jobs.length === 0) {
-      cont.innerHTML = '';
+      if (cont) cont.innerHTML = '<div class="empty-leitstand">Für den ausgewählten Tag wurden keine Leitstand-Einträge gefunden.</div>';
+      if (dayList) dayList.innerHTML = '<div class="day-brand-meta">Keine Brände geladen.</div>';
+      zeichneProtokollVorschau(null);
       return;
     }
 
-    res.jobs.forEach(function(j, index) {
-      if (j && j.archivInfo === true) {
-        const infoCard = document.createElement('div');
-        const archivAbgelehnt = j.zollAbgelehnt === true;
-        const archivMinderausbeute = j.istMinderausbeute === true;
-        infoCard.className = archivAbgelehnt ? 'archiv-info-card zoll-abgelehnt' : (archivMinderausbeute ? 'archiv-info-card minderausbeute' : 'archiv-info-card');
-        infoCard.innerHTML = `
-          <div class="summary-line primary">
-            <div class="owner-stack">
-              <div class="owner-title">${escapeHtml_(j.owner || '-')}</div>
-              <div class="owner-subline">${archivAbgelehnt ? 'Abgelehnt' : (archivMinderausbeute ? 'Minderausbeute' : 'Gebrannt')} · Reg.-Nr. ${escapeHtml_(j.regNr || '-')} · Vorgang ${escapeHtml_(j.vId || '-')} · Fass: ${escapeHtml_(j.fassNr || '-')} · Inhalt: ${escapeHtml_(formatLiter_(j.inhalt))}</div>
-              ${j.infoSystem ? `<div class="owner-description">${escapeHtml_(j.infoSystem)}</div>` : ''}
-            </div>
-            <button class="folder-top-btn" type="button" title="Ordner öffnen" aria-label="Ordner öffnen" onclick="openLinkSafe('${escapeJs_(j.link || '')}')">📁</button>
-            <div class="${(archivAbgelehnt || archivMinderausbeute) ? 'reject-chip' : 'archive-chip'}">${archivAbgelehnt ? 'ABGELEHNT' : (archivMinderausbeute ? 'MINDERAUSBEUTE' : 'ARCHIV')}</div>
-          </div>
-          <div class="summary-line secondary">
-            <div class="mini-field">
-              <div class="mini-field-label">Von</div>
-              <div class="mini-field-value">${escapeHtml_(j.von || '-')}</div>
-            </div>
-            <div class="mini-field">
-              <div class="mini-field-label">Bis</div>
-              <div class="mini-field-value">${escapeHtml_(j.bis || '-')}</div>
-            </div>
-            <div class="mini-field ready">
-              <div class="mini-field-label">Alkohol</div>
-              <div class="mini-field-value">${escapeHtml_(j.alk || '-')}</div>
-            </div>
-            <div class="mini-field ready">
-              <div class="mini-field-label">Liter</div>
-              <div class="mini-field-value">${escapeHtml_(j.ausbeute || '-')}</div>
-            </div>
-          </div>
-        `;
-        cont.appendChild(infoCard);
-        return;
-      }
+    const gruppen = gruppiereLeitstandJobs_(res.jobs);
+    aktuelleLeitstandGruppen = gruppen;
+    aktiveLeitstandGruppe = null;
 
-      const card = document.createElement('div');
-      const istZollAbgelehnt = j.zollAbgelehnt === true;
-      card.className = istZollAbgelehnt ? 'job-card zoll-abgelehnt' : 'job-card';
-      card.dataset.row = String(Number(j.row) || 0);
-      card.dataset.vid = String(j.vId || '');
-      const minderausbeuteChecked = j.istMinderausbeute ? 'checked' : '';
-      const doneChip = j.istErledigt ? '<div class="done-chip">ERLEDIGT</div>' : '';
-      const detailId = 'detail-' + escapeAttr_(String(j.vId || j.row || Math.random()).replace(/[^a-zA-Z0-9_-]/g, ''));
-      const alkValue = String(j.alk || '').trim();
-      const ausbeuteValue = String(j.ausbeute || '').trim();
-      const alkFieldClass = alkValue ? 'mini-field ready' : 'mini-field attention';
-      const ausbeuteFieldClass = ausbeuteValue ? 'mini-field ready' : 'mini-field attention';
+    if (!gruppen.length) {
+      if (cont) cont.innerHTML = '<div class="empty-leitstand">Für den ausgewählten Tag wurden keine auswertbaren Leitstand-Einträge gefunden.</div>';
+      if (dayList) dayList.innerHTML = '<div class="day-brand-meta">Keine Brände geladen.</div>';
+      zeichneProtokollVorschau(null);
+      return;
+    }
 
-      card.innerHTML = `
-        <div class="summary-line primary">
-          <div class="owner-stack">
-            <div class="owner-title">${escapeHtml_(j.owner || '-')}</div>
-            <div class="owner-subline">${escapeHtml_(j.brenner || 'Aktiv')} · Reg.-Nr. ${escapeHtml_(j.regNr || '-')} · Material: ${escapeHtml_(j.material || '-')} · Fass: ${escapeHtml_(j.fassNr || '-')} · Inhalt: ${escapeHtml_(formatLiter_(j.inhalt))}</div>
-            ${j.infoSystem ? `<div class="owner-description">${escapeHtml_(j.infoSystem)}</div>` : ''}
-          </div>
-          <button class="folder-top-btn" type="button" title="Ordner öffnen" aria-label="Ordner öffnen" onclick="openLinkSafe('${escapeJs_(j.link || '')}')">📁</button>
-          ${doneChip || '<div></div>'}
-        </div>
-
-        <div class="summary-line secondary">
-          <div class="mini-field">
-            <div class="mini-field-label">Von</div>
-            <div class="mini-field-value">${escapeHtml_(j.von || '-')}</div>
-          </div>
-          <div class="mini-field">
-            <div class="mini-field-label">Bis</div>
-            <div class="mini-field-value">${escapeHtml_(j.bis || '-')}</div>
-          </div>
-          <div class="${alkFieldClass}">
-            <div class="mini-field-label">Alkohol</div>
-            <input type="number" step="0.01" value="${escapeAttr_(j.alk || '')}" data-role="alkohol" placeholder="ausfüllen">
-          </div>
-          <div class="${ausbeuteFieldClass}">
-            <div class="mini-field-label">Liter</div>
-            <input type="number" step="0.01" value="${escapeAttr_(j.ausbeute || '')}" data-role="ausbeute" placeholder="ausfüllen">
-          </div>
-        </div>
-
-        <div class="summary-line actions">
-          <button class="btn-inline-secondary" type="button" onclick="toggleDetails('${detailId}', this)"><span class="details-toggle-arrow">＋</span>DETAILS</button>
-          <div class="save-group">
-            <label class="mini-check"><input type="checkbox" ${minderausbeuteChecked} data-role="minderausbeute" onchange="handleMinderausbeuteChange(this)"><span>Minderausbeute melden</span></label>
-            <label class="mini-check"><input type="checkbox" data-role="zumSpeichern"><span>Diese Zeile übernehmen</span></label>
-          </div>
-        </div>
-
-        <div class="details-panel" id="${detailId}">
-          <div class="detail-block">
-            <div class="mini-field-label">Registernummer</div>
-            <div class="detail-value">${escapeHtml_(j.regNr || '-')}</div>
-          </div>
-          <div class="detail-block">
-            <div class="mini-field-label">Material</div>
-            <div class="detail-value">${escapeHtml_(j.material || '-')}</div>
-          </div>
-          <div class="detail-block">
-            <div class="mini-field-label">Fassnummer</div>
-            <div class="detail-value">${escapeHtml_(j.fassNr || '-')}</div>
-          </div>
-          <div class="detail-block">
-            <div class="mini-field-label">Inhalt in Liter</div>
-            <div class="detail-value">${escapeHtml_(formatLiter_(j.inhalt))}</div>
-          </div>
-          <div class="detail-block">
-            <div class="mini-field-label">Faßgröße</div>
-            <div class="detail-value">${escapeHtml_(j.fassgroesse || '-')}</div>
-          </div>
-          <div class="detail-block wide">
-            <div class="mini-field-label">Gewürze</div>
-            <div class="detail-value">${escapeHtml_(j.gewuerze || '-')}</div>
-          </div>
-        </div>
-      `;
-      cont.appendChild(card);
+    gruppen.forEach(function(gruppe, index) {
+      if (dayList) dayList.appendChild(baueTageslistenKarte_(gruppe, index));
     });
+
+    if (cont) cont.innerHTML = '<div class="empty-leitstand">Bitte links bei „Brände am Tag“ einen Brand auswählen.</div>';
+    zeichneProtokollVorschau(gruppen);
+  }
+
+  function gruppiereLeitstandJobs_(jobs) {
+    const map = {};
+    const gruppen = [];
+
+    (jobs || []).forEach(function(j) {
+      const schluessel = [
+        j && j.vId ? String(j.vId) : '',
+        j && j.von ? String(j.von) : '',
+        j && j.bis ? String(j.bis) : '',
+        j && j.owner ? String(j.owner) : '',
+        j && j.regNr ? String(j.regNr) : '',
+        j && j.archivInfo ? 'archiv' : 'offen'
+      ].join('||');
+
+      if (!map[schluessel]) {
+        map[schluessel] = {
+          key: schluessel,
+          jobs: [],
+          first: j || {},
+          archivInfo: !!(j && j.archivInfo === true)
+        };
+        gruppen.push(map[schluessel]);
+      }
+      map[schluessel].jobs.push(j || {});
+    });
+
+    gruppen.sort(function(a, b) {
+      const archivA = a.archivInfo ? 1 : 0;
+      const archivB = b.archivInfo ? 1 : 0;
+      if (archivA !== archivB) return archivA - archivB;
+      return String(a.first.von || '').localeCompare(String(b.first.von || ''));
+    });
+
+    return gruppen;
+  }
+
+  function baueTageslistenKarte_(gruppe, index) {
+    const j = gruppe.first || {};
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'day-brand-card';
+    button.dataset.groupIndex = String(index);
+    button.onclick = function() {
+      document.querySelectorAll('.day-brand-card').forEach(function(el) { el.classList.remove('active'); });
+      button.classList.add('active');
+      zeichneAktiveGruppe_(gruppe, index);
+    };
+
+    const statusHtml = statusPillHtml_(j, gruppe);
+    button.innerHTML = ''
+      + '<div class="day-brand-topline">'
+      + '<div class="brand-time">' + escapeHtml_(zeitspanne_(j)) + '</div>'
+      + '<div class="day-brand-owner">' + escapeHtml_(j.owner || '-') + '</div>'
+      + '<span>' + statusHtml + '</span>'
+      + '</div>'
+      + '<div class="day-brand-meta">Reg.-Nr. ' + escapeHtml_(j.regNr || '-') + ' · ' + gruppe.jobs.length + ' Fass' + (gruppe.jobs.length === 1 ? '' : 'er') + '</div>'
+      + '<div class="day-brand-meta">Brenner: ' + escapeHtml_(j.brenner || '-') + '</div>';
+
+    return button;
+  }
+
+  function zeichneAktiveGruppe_(gruppe, index) {
+    aktiveLeitstandGruppe = gruppe || null;
+    const cont = document.getElementById('jobList');
+    if (!cont) return;
+    cont.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = gruppe && gruppe.archivInfo ? 'brand-main-card archiv-info-card' : 'brand-main-card';
+    card.innerHTML = baueBrandHauptkarteHtml_(gruppe, index);
+    cont.appendChild(card);
+    berechneWasserzugabe_();
+    berechneKosten_();
+    zeichneProtokollVorschau(aktuelleLeitstandGruppen);
+  }
+
+  function baueBrandHauptkarteHtml_(gruppe, index) {
+    const j = gruppe.first || {};
+    const istArchiv = !!(gruppe && gruppe.archivInfo);
+    const disabledAttr = j.link ? '' : ' disabled';
+    const dossierClick = j.link ? ' onclick="openLinkSafe(\'' + escapeJs_(j.link || '') + '\')"' : '';
+
+    return ''
+      + '<div class="brand-headline">'
+      + '<div class="brand-time">' + escapeHtml_(zeitspanne_(j)) + '</div>'
+      + '<div class="brand-owner-name">' + escapeHtml_(j.owner || '-') + '</div>'
+      + '<button class="drive-open-btn" type="button"' + disabledAttr + dossierClick + '>📁 Drive-Ordner öffnen</button>'
+      + '</div>'
+      + '<div class="meta-grid">'
+      + '<div class="meta-cell"><div class="meta-label">Zollstatus</div><div class="meta-value">' + statusPillHtml_(j, gruppe) + '</div></div>'
+      + '<div class="meta-cell"><div class="meta-label">Registernummer</div><div class="meta-value">' + escapeHtml_(j.regNr || '-') + '</div></div>'
+      + '<div class="meta-cell"><div class="meta-label">Brenner</div><div class="meta-value">' + escapeHtml_(j.brenner || '-') + '</div></div>'
+      + '</div>'
+      + '<div class="fass-section-title">' + escapeHtml_(zeitspanne_(j) + ' · ' + (j.owner || '-')) + '</div>'
+      + '<div class="fass-cards">' + (gruppe.jobs || []).map(function(job, fassIndex) { return baueFassKarteHtml_(job, fassIndex, istArchiv); }).join('') + '</div>'
+      + '<div class="result-grid">'
+      + '<div class="meta-cell"><div class="meta-label">Von</div><div class="meta-value">' + escapeHtml_(j.von || '-') + '</div></div>'
+      + '<div class="meta-cell"><div class="meta-label">Bis</div><div class="meta-value">' + escapeHtml_(j.bis || '-') + '</div></div>'
+      + '<div class="meta-cell required-input"><div class="meta-label">Alkohol %</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.alk || '-') : '<input type="number" step="0.01" value="' + escapeAttr_(j.alk || '') + '" data-role="gruppenAlkohol" oninput="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'alkohol\', this.value)" onchange="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'alkohol\', this.value)">') + '</div></div>'
+      + '<div class="meta-cell required-input"><div class="meta-label">Ausbeute l A</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.ausbeute || '-') : '<input type="number" step="0.01" value="' + escapeAttr_(j.ausbeute || '') + '" data-role="gruppenAusbeute" oninput="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'ausbeute\', this.value)" onchange="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'ausbeute\', this.value)">') + '</div></div>'
+      + '</div>'
+      + '<div class="fass-section-title">Branddetails / Herabsetzung / Kosten</div>'
+      + '<div class="result-grid">'
+      + '<div class="meta-cell required-input"><div class="meta-label">Trinkstärke %</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.trinkstaerke || '-') : '<input type="number" step="0.1" value="' + escapeAttr_(j.trinkstaerke || '') + '" data-role="gruppenTrinkstaerke" oninput="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'trinkstaerke\', this.value)" onchange="berechneWasserzugabe_(); uebernehmeGruppenFeld_(\'trinkstaerke\', this.value)">') + '</div></div>'
+      + '<div class="meta-cell calculated-output"><div class="meta-label">Wasserzugabe</div><div class="meta-value" data-role="wasserzugabeAnzeige">-</div></div>'
+      + '<div class="meta-cell calculated-output"><div class="meta-label">Liter Destillat</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.liter || j.literDestillat || '-') : '<input type="number" step="0.01" readonly value="' + escapeAttr_(j.liter || j.literDestillat || '') + '" data-role="gruppenLiter" title="Wird aus Ausbeute l A und Alkohol % berechnet">') + '</div></div>'
+      + '<div class="meta-cell required-input"><div class="meta-label">Kostensatz</div><div class="meta-value">' + (istArchiv ? escapeHtml_(j.kostenart || '-') : selectKostenartHtml_(j)) + '</div></div>'
+      + '<div class="meta-cell calculated-output"><div class="meta-label">Kosten Brand</div><div class="meta-value" data-role="kostenAnzeige">-</div></div>'
+      + '</div>'
+      + (istArchiv ? '' : '<div class="brand-action-row"><button class="brand-save-btn" type="button" onclick="markiereAktiveBrandKartenZumSpeichern_(false); saveAllCards(this)">💾 SPEICHERN</button><button class="brand-burn-btn" type="button" onclick="markiereAktiveBrandKartenZumSpeichern_(true); saveAllCards(this)">🔥 ALS GEBRANNT MARKIEREN</button></div>');
   }
 
 
+  function statusPillHtml_(j, gruppe) {
+    const text = String((j && (j.zollOk || j.zollStatus || j.status)) || '').trim();
+    const archiv = !!(gruppe && gruppe.archivInfo);
+    const abgelehnt = /abgelehnt/i.test(text) || !!(j && j.zollAbgelehnt);
+    const genehmigt = istZollGenehmigt(text) || !!(j && j.regNr);
+    let klasse = 'status-pill';
+    if (archiv) klasse += ' done';
+    else if (abgelehnt) klasse += ' rejected';
+    else if (genehmigt) klasse += ' approved';
+    else klasse += ' open';
+    return '<span class="' + klasse + '">' + escapeHtml_(text || (genehmigt ? 'ZOLL GENEHMIGT' : 'OFFEN')) + '</span>';
+  }
+
+  function ermittleZollListenText_(j) {
+    const info = String((j && (j.zollListe || j.zollliste || j.infoSystem || j.bemerkung || j.fassSplittung)) || '').trim();
+    const match = info.match(/\bZL[-_ ]?\d{2,4}[-_ ]?\d{1,6}\b/i);
+    if (match) return match[0];
+    return j && j.regNr ? 'über Reg.-Nr. zugeordnet' : '-';
+  }
+
+  function zeichneZollVorschau(gruppe) {
+    const ziel = document.getElementById('zollPreviewCard');
+    if (!ziel) return;
+    if (!gruppe) { ziel.innerHTML = '<div class="lower-card-title">Zoll</div><div class="day-brand-meta">Kein Brand ausgewählt.</div>'; return; }
+    const j = gruppe.first || {};
+    ziel.innerHTML = '<div class="lower-card-title">Zoll</div>'
+      + '<div class="meta-grid">'
+      + '<div class="meta-cell"><div class="meta-label">Zollstatus</div><div class="meta-value">' + statusPillHtml_(j, gruppe) + '</div></div>'
+      + '<div class="meta-cell"><div class="meta-label">Registernummer</div><div class="meta-value">' + escapeHtml_(j.regNr || '-') + '</div></div>'
+      + '</div><button type="button" class="zoll-open-btn" onclick="openZollKontakte(event)">Zoll / Kontaktliste öffnen</button>';
+  }
+
+  function zeichneProtokollVorschau(gruppeOderGruppen) {
+    const ziel = document.getElementById('protocolPreviewCard');
+    if (!ziel) return;
+    const gruppen = Array.isArray(gruppeOderGruppen)
+      ? gruppeOderGruppen
+      : (gruppeOderGruppen ? [gruppeOderGruppen] : []);
+
+    if (!gruppen.length) {
+      ziel.innerHTML = '<div class="lower-card-title">Brennprotokoll Vorschau</div><div class="day-brand-meta">Kein Brenntag geladen.</div>';
+      return;
+    }
+
+    const erster = (gruppen[0] && gruppen[0].first) || {};
+    const brandtag = erster.tagBrand || document.getElementById('tagPicker').value || '-';
+    const zeilen = gruppen.map(function(gruppe) {
+      const j = gruppe.first || {};
+      const fassText = (gruppe.jobs || []).map(function(job) {
+        const anteile = fallbackFassanteileAusJob_(job);
+        if (anteile && anteile.length) {
+          return anteile.map(function(a) {
+            return 'Fass ' + (a.fassnummer || '-')
+              + (a.material ? ' – ' + a.material : '')
+              + (a.entnahme ? ' · Entnahme ' + formatLiter_(a.entnahme) : '')
+              + (a.rest ? ' · Rest ' + formatLiter_(a.rest) : '');
+          }).join('<br>');
+        }
+        return job.fassNr || job.fassnummer || '-';
+      }).join('<br>');
+
+      return '<tr>'
+        + '<td>' + escapeHtml_(zeitspanne_(j)) + '</td>'
+        + '<td>' + escapeHtml_(j.owner || '-') + '</td>'
+        + '<td>' + escapeHtml_(j.regNr || '-') + '</td>'
+        + '<td>' + fassText + '</td>'
+        + '</tr>';
+    }).join('');
+
+    ziel.innerHTML = '<div class="lower-card-title">Brennprotokoll Vorschau · ganzer Tag</div>'
+      + '<div class="protocol-paper mini-preview">'
+      + '<div class="protocol-paper-title">Brennprotokoll</div>'
+      + '<div class="protocol-line"><strong>Brandtag</strong><span>' + escapeHtml_(brandtag) + '</span></div>'
+      + '<table class="protocol-table"><thead><tr><th>Uhrzeit</th><th>Stoffbesitzer</th><th>Registernummer</th><th>Fässer / Material / Entnahme</th></tr></thead><tbody>' + zeilen + '</tbody></table>'
+      + '</div>'
+      + '<div class="protocol-button-row"><button type="button" class="protocol-action-btn primary" onclick="druckePaket()">Brennprotokoll öffnen</button></div>';
+  }
+
+  function zeitspanne_(j) {
+    const von = String(j && j.von || '').trim();
+    const bis = String(j && j.bis || '').trim();
+    if (von && bis) return von + '–' + bis;
+    if (von) return von + '–?';
+    if (bis) return '?–' + bis;
+    return '-';
+  }
+
+  function zahlAusEingabe_(wert) {
+    const text = String(wert || '').replace(',', '.').replace(/[^0-9.\-]/g, '');
+    const zahl = Number(text);
+    return isFinite(zahl) ? zahl : 0;
+  }
+
+  function berechneWasserzugabe_() {
+    const literInput = document.querySelector('[data-role="gruppenLiter"]');
+    const ziel = document.querySelector('[data-role="wasserzugabeAnzeige"]');
+    if (!ziel) return;
+
+    const alkohol = zahlAusEingabe_(document.querySelector('[data-role="gruppenAlkohol"]') && document.querySelector('[data-role="gruppenAlkohol"]').value);
+    const ausbeute = zahlAusEingabe_(document.querySelector('[data-role="gruppenAusbeute"]') && document.querySelector('[data-role="gruppenAusbeute"]').value);
+    const trink = zahlAusEingabe_(document.querySelector('[data-role="gruppenTrinkstaerke"]') && document.querySelector('[data-role="gruppenTrinkstaerke"]').value);
+    let liter = zahlAusEingabe_(literInput && literInput.value);
+
+    if (ausbeute > 0 && alkohol > 0) {
+      liter = (ausbeute * 100) / alkohol;
+      if (literInput) {
+        literInput.value = liter.toFixed(2).replace('.', ',');
+        uebernehmeGruppenFeld_('liter', literInput.value);
+      }
+    }
+
+    if (!liter || !alkohol || !trink) {
+      ziel.textContent = '-';
+      return;
+    }
+
+    let endmenge;
+    if (ausbeute > 0) {
+      endmenge = (ausbeute * 100) / trink;
+    } else {
+      endmenge = (liter * alkohol) / trink;
+    }
+    const wasser = endmenge - liter;
+    ziel.textContent = (wasser >= 0 ? wasser.toFixed(2).replace('.', ',') + ' Liter' : '-');
+  }
+
+  function normalisiereKostenart_(wert) {
+    const text = String(wert || '').trim().toLowerCase();
+    if (/nicht/.test(text) || /40/.test(text)) return 'nichtmitglied';
+    if (/mitglied/.test(text) || /32/.test(text)) return 'mitglied';
+    return 'mitglied';
+  }
+
+  function selectKostenartHtml_(j) {
+    const wert = normalisiereKostenart_((j && (j.kostenart || j.kostensatz || j.kosten)) || '');
+    return '<select data-role="kostenart" onchange="berechneKosten_(); uebernehmeGruppenFeld_(\'kostenart\', this.value)">'
+      + '<option value="mitglied"' + (wert === 'mitglied' ? ' selected' : '') + '>Mitglied – 32 €</option>'
+      + '<option value="nichtmitglied"' + (wert === 'nichtmitglied' ? ' selected' : '') + '>Nichtmitglied – 40 €</option>'
+      + '</select>';
+  }
+
+  function berechneKosten_() {
+    const select = document.querySelector('[data-role="kostenart"]');
+    const ziel = document.querySelector('[data-role="kostenAnzeige"]');
+    if (!select || !ziel) return;
+    const kosten = select.value === 'nichtmitglied' ? '40 €' : '32 €';
+    ziel.textContent = kosten;
+    uebernehmeGruppenFeld_('kosten', kosten);
+  }
+
+  function uebernehmeGruppenFeld_(feld, wert) {
+    const rollen = {
+      alkohol: 'alkohol',
+      ausbeute: 'ausbeute',
+      liter: 'liter',
+      trinkstaerke: 'trinkstaerke',
+      kostenart: 'kostenart',
+      kosten: 'kosten'
+    };
+    const role = rollen[feld] || feld;
+    document.querySelectorAll('#jobList .job-card').forEach(function(card) {
+      const input = card.querySelector('[data-role="' + role + '"]');
+      if (input) input.value = wert;
+    });
+  }
+
+  function extrahiereFassanteileAusText_(text) {
+        const roh = String(text || '').trim();
+        if (!roh) return [];
+        const lines = roh.split(/\r?\n/);
+        const anteile = [];
+        lines.forEach(function(line) {
+          const zeile = String(line || '').trim();
+          if (!zeile) return;
+
+          let match = zeile.match(/^[-•]?\s*Fass\s+(.+?)\s*\|\s*Fassvolumen:\s*(.*?)\s*\|\s*Fassinhalt:\s*(.*?)\s*\|\s*Material:\s*(.*?)\s*\|\s*Gewürze:\s*(.*?)\s*\|\s*Entnahme:\s*(.*?)\s*\|\s*Rest:\s*(.*?)\s*\|\s*Zuordnung:\s*(.*)$/i);
+          if (match) {
+            anteile.push({
+              fassnummer: String(match[1] || '').trim(),
+              fassvolumen: String(match[2] || '').trim(),
+              fassinhalt: String(match[3] || '').trim(),
+              material: String(match[4] || '').trim(),
+              gewuerze: String(match[5] || '').trim(),
+              entnahme: String(match[6] || '').trim(),
+              rest: String(match[7] || '').trim(),
+              zuordnung: String(match[8] || '').trim()
+            });
+            return;
+          }
+
+          match = zeile.match(/^[-•]?\s*Fass\s+(.+?)\s*\|\s*Gesamt:\s*(.*?)\s*\|\s*Entnahme:\s*(.*?)\s*\|\s*Rest:\s*(.*?)\s*\|\s*Zuordnung:\s*(.*)$/i);
+          if (match) {
+            anteile.push({
+              fassnummer: String(match[1] || '').trim(),
+              fassvolumen: '',
+              fassinhalt: String(match[2] || '').trim(),
+              material: '',
+              gewuerze: '',
+              entnahme: String(match[3] || '').trim(),
+              rest: String(match[4] || '').trim(),
+              zuordnung: String(match[5] || '').trim()
+            });
+          }
+        });
+        return anteile;
+  }
+
+  function entferneFassanteileBlockAusText_(text) {
+        const roh = String(text || '');
+        if (!roh.trim()) return '';
+        return roh
+          .split(/\r?\n/)
+          .filter(function(line) {
+            const zeile = String(line || '').trim();
+            if (!zeile) return true;
+            if (/^FASSANTEILE_DIESES_BRANDS\s*:/i.test(zeile)) return false;
+            if (/^[-•]?\s*Fass\s+.+?\s*\|\s*Fassvolumen:\s*.*?\s*\|\s*Fassinhalt:/i.test(zeile)) return false;
+            if (/^[-•]?\s*Fass\s+.+?\s*\|\s*Gesamt:\s*.*?\s*\|\s*Entnahme:/i.test(zeile)) return false;
+            if (/^Entnahme\s+für\s+diesen\s+Brand\s*:/i.test(zeile)) return false;
+            return true;
+          })
+          .join('\n')
+          .trim();
+  }
+
+  function fallbackFassanteileAusJob_(j) {
+    const anteile = extrahiereFassanteileAusText_(j && j.fassSplittung);
+    if (anteile.length) return anteile;
+    const fassNrText = String(j && j.fassNr || '').trim();
+    if (!fassNrText) return [{ fassnummer: '-', fassvolumen: j && j.fassgroesse || '', fassinhalt: j && j.inhalt || '', material: j && j.material || '', gewuerze: j && j.gewuerze || '', entnahme: j && j.inhalt || '', rest: '', zuordnung: '' }];
+    return fassNrText.split(/\s*\/\s*|\s*,\s*|\s*;\s*/).map(function(fass) {
+      return { fassnummer: fass, fassvolumen: j && j.fassgroesse || '', fassinhalt: j && j.inhalt || '', material: j && j.material || '', gewuerze: j && j.gewuerze || '', entnahme: j && j.inhalt || '', rest: '', zuordnung: '' };
+    });
+  }
+
+  function fassanteilDoppeltErfasst_(job, anteil) {
+    const row = String(Number(job && job.row) || 0);
+    const fass = String(anteil && anteil.fassnummer || '').trim().toLowerCase();
+    const entnahme = String(anteil && anteil.entnahme || '').trim().toLowerCase();
+    const alleJobs = Array.isArray(aktuelleLeitstandJobs) ? aktuelleLeitstandJobs : [];
+    if (!fass || !entnahme || !alleJobs.length) return false;
+    return alleJobs.some(function(other) {
+      if (String(Number(other && other.row) || 0) === row) return false;
+      if (!other || (!other.alk && !other.ausbeute && !other.erledigt && !other.istMinderausbeute)) return false;
+      return fallbackFassanteileAusJob_(other).some(function(a) {
+        return String(a.fassnummer || '').trim().toLowerCase() === fass && String(a.entnahme || '').trim().toLowerCase() === entnahme;
+      });
+    });
+  }
+
+  function fassIstInAnderemBrandGesperrt_(job) {
+    return false;
+  }
+
+  function baueFassKarteHtml_(j, index, istArchiv) {
+    const row = String(Number(j.row) || 0);
+    const vId = escapeAttr_(j.vId || '');
+    const anteile = fallbackFassanteileAusJob_(j);
+    const bemerkung = entferneFassanteileBlockAusText_(j.fassSplittung || '');
+    const minderausbeuteChecked = j.istMinderausbeute ? 'checked' : '';
+    const readonlyInfo = istArchiv ? ' data-readonly="true"' : '';
+
+    const fassHtml = anteile.map(function(anteil, anteilIndex) {
+      const doppelt = !istArchiv && fassanteilDoppeltErfasst_(j, anteil);
+      const chip = doppelt ? '<div class="fass-type-chip split">BEREITS ERFASST</div>' : (anteil.rest && anteil.rest !== '-' ? '<div class="fass-type-chip split">GESPLITTET</div>' : '<div class="fass-type-chip">FASSANTEIL</div>');
+      return ''
+        + '<div class="fass-anteil-box' + (doppelt ? ' locked-other-brand' : '') + '">'
+        + '<div class="fass-title-row"><div class="fass-title">Fass ' + escapeHtml_(anteil.fassnummer || '-') + (anteil.material ? ' – ' + escapeHtml_(anteil.material) : '') + '</div>' + chip + '</div>'
+        + '<div class="fass-values">'
+        + '<div class="meta-cell"><div class="meta-label">Fassnummer</div><div class="meta-value">' + escapeHtml_(anteil.fassnummer || '-') + '</div></div>'
+        + '<div class="meta-cell"><div class="meta-label">Fassvolumen</div><div class="meta-value">' + escapeHtml_(formatLiter_(anteil.fassvolumen || '-')) + '</div></div>'
+        + '<div class="meta-cell"><div class="meta-label">Fassinhalt</div><div class="meta-value">' + escapeHtml_(formatLiter_(anteil.fassinhalt || '-')) + '</div></div>'
+        + '<div class="meta-cell"><div class="meta-label">Material</div><div class="meta-value">' + escapeHtml_(anteil.material || '-') + '</div></div>'
+        + '<div class="meta-cell"><div class="meta-label">Gewürze</div><div class="meta-value">' + escapeHtml_(anteil.gewuerze || '-') + '</div></div>'
+        + '<div class="meta-cell"><div class="meta-label">Entnahme für diesen Brand</div><div class="meta-value">' + escapeHtml_(formatLiter_(anteil.entnahme || '-')) + '</div></div>'
+        + '<div class="meta-cell"><div class="meta-label">Rest</div><div class="meta-value">' + escapeHtml_(formatLiter_(anteil.rest || '-')) + '</div></div>'
+        + '<div class="meta-cell"><div class="meta-label">Rest / Zuordnung</div><div class="meta-value">' + escapeHtml_(anteil.zuordnung || '-') + '</div></div>'
+        + (doppelt ? '<div class="fass-lock-note">Dieser Fassanteil ist bereits in einem anderen Brand mit Brenndaten erfasst.</div>' : '')
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    return ''
+      + '<div class="fass-card job-card" data-row="' + row + '" data-vid="' + vId + '"' + readonlyInfo + '>'
+      + '<div class="fass-icon">▥</div>'
+      + '<div class="fass-body">'
+      + '<div class="fass-title-row"><div class="fass-title">' + escapeHtml_(zeitspanne_(j) + ' · ' + (j.owner || '-')) + '</div><div class="fass-type-chip">BRAND</div></div>'
+      + '<div class="fass-anteil-list">' + fassHtml + '</div>'
+      + (bemerkung ? '<div class="fass-split-note">' + escapeHtml_(bemerkung) + '</div>' : '')
+      + (istArchiv ? '<div class="archive-chip">ARCHIV</div>' : '<div class="fass-action-row"><label class="mini-check fass-check"><input type="checkbox" data-role="zumSpeichern"><span>Übernehmen</span></label><label class="mini-check fass-check"><input type="checkbox" ' + minderausbeuteChecked + ' data-role="minderausbeute" onchange="handleMinderausbeuteChange(this)"><span>Minderausbeute</span></label></div>')
+      + '</div>'
+      + '<div class="fass-card-actions">'
+      + '<input type="hidden" data-role="alkohol" value="' + escapeAttr_(j.alk || '') + '">'
+      + '<input type="hidden" data-role="ausbeute" value="' + escapeAttr_(j.ausbeute || '') + '">'
+      + '<input type="hidden" data-role="liter" value="' + escapeAttr_(j.liter || j.literDestillat || '') + '">'
+      + '<input type="hidden" data-role="trinkstaerke" value="' + escapeAttr_(j.trinkstaerke || '') + '">'
+      + '<input type="hidden" data-role="kostenart" value="' + escapeAttr_(normalisiereKostenart_((j.kostenart || j.kostensatz || j.kosten) || '')) + '">'
+      + '<input type="hidden" data-role="kosten" value="' + escapeAttr_(j.kosten || '') + '">'
+      + '</div>'
+      + '<input type="hidden" data-role="zollAbgelehnt" value="false">'
+      + '<input type="hidden" data-role="ablehnungBemerkung" value="">'
+      + '</div>';
+  }
+
+  function markiereAktiveBrandKartenZumSpeichern_(auchErledigt) {
+    const gruppenAlkohol = document.querySelector('[data-role="gruppenAlkohol"]');
+    const gruppenAusbeute = document.querySelector('[data-role="gruppenAusbeute"]');
+    const gruppenLiter = document.querySelector('[data-role="gruppenLiter"]');
+    const gruppenTrinkstaerke = document.querySelector('[data-role="gruppenTrinkstaerke"]');
+    const kostenart = document.querySelector('[data-role="kostenart"]');
+    const kostenAnzeige = document.querySelector('[data-role="kostenAnzeige"]');
+
+    document.querySelectorAll('#jobList .job-card').forEach(function(card) {
+      if (card.dataset && card.dataset.readonly === 'true') return;
+      const speichern = card.querySelector('[data-role="zumSpeichern"]');
+      const alkohol = card.querySelector('[data-role="alkohol"]');
+      const ausbeute = card.querySelector('[data-role="ausbeute"]');
+      const liter = card.querySelector('[data-role="liter"]');
+      const trinkstaerke = card.querySelector('[data-role="trinkstaerke"]');
+      const kostenartHidden = card.querySelector('[data-role="kostenart"]');
+      const kostenHidden = card.querySelector('[data-role="kosten"]');
+
+      if (speichern) speichern.checked = true;
+      if (alkohol && gruppenAlkohol) alkohol.value = gruppenAlkohol.value;
+      if (ausbeute && gruppenAusbeute) ausbeute.value = gruppenAusbeute.value;
+      if (liter && gruppenLiter) liter.value = gruppenLiter.value;
+      if (trinkstaerke && gruppenTrinkstaerke) trinkstaerke.value = gruppenTrinkstaerke.value;
+      if (kostenartHidden && kostenart) kostenartHidden.value = kostenart.value;
+      if (kostenHidden && kostenAnzeige) kostenHidden.value = kostenAnzeige.textContent || '';
+    });
+  }
 
   function toggleDetails(detailId, button) {
     const panel = document.getElementById(detailId);
@@ -1574,6 +2617,10 @@
       vId: card && card.dataset ? String(card.dataset.vid || '') : '',
       alkohol: leseFeldwert(card, 'alkohol'),
       ausbeute: leseFeldwert(card, 'ausbeute'),
+      liter: leseFeldwert(card, 'liter'),
+      trinkstaerke: leseFeldwert(card, 'trinkstaerke'),
+      kostenart: leseFeldwert(card, 'kostenart'),
+      kosten: leseFeldwert(card, 'kosten'),
       erledigt: true,
       minderausbeute: leseCheckbox(card, 'minderausbeute'),
       zollAbgelehnt: false,
@@ -1591,6 +2638,7 @@
     }
 
     const markierteCards = cards.filter(function(card) {
+      if (card.dataset && card.dataset.readonly === 'true') return false;
       return leseCheckbox(card, 'zumSpeichern');
     });
 
@@ -1602,6 +2650,10 @@
     const payloads = markierteCards.map(lesePayloadAusKarte).filter(function(payload) {
       const hatEingabe = String(payload.alkohol || '').trim()
         || String(payload.ausbeute || '').trim()
+        || String(payload.liter || '').trim()
+        || String(payload.trinkstaerke || '').trim()
+        || String(payload.kostenart || '').trim()
+        || String(payload.kosten || '').trim()
         || payload.minderausbeute === true;
       return (payload.row || payload.vId) && hatEingabe;
     });
@@ -1666,7 +2718,7 @@
       printWin = null;
     }
 
-    showStatus('Brennprotokoll wird geladen ...', 'info');
+    showToast('Brennprotokoll wird geladen ...', 'info', 1800);
     google.script.run
       .withSuccessHandler(function(html) {
         html = html || '<html><body>Kein Brennprotokoll erzeugt.</body></html>';
@@ -1680,9 +2732,9 @@
             setTimeout(function() {
               try {
                 printWin.print();
-                showStatus('Brennprotokoll geöffnet.', 'info');
+                showToast('Brennprotokoll geöffnet.', 'success', 1800);
               } catch (e) {
-                showStatus('Brennprotokoll geöffnet. Bitte im Fenster manuell drucken.', 'info');
+                showToast('Brennprotokoll geöffnet. Bitte im Fenster manuell drucken.', 'success', 2400);
               }
             }, 450);
             return;
@@ -1711,9 +2763,9 @@
           try {
             frame.contentWindow.focus();
             frame.contentWindow.print();
-            showStatus('Brennprotokoll geöffnet.', 'info');
+            showToast('Brennprotokoll geöffnet.', 'success', 1800);
           } catch (e) {
-            showStatus('Brennprotokoll geladen, Druckdialog konnte nicht automatisch geöffnet werden.', 'error');
+            showToast('Brennprotokoll geladen, Druckdialog konnte nicht automatisch geöffnet werden.', 'error', 4200);
           }
         }, 450);
       })
@@ -1794,12 +2846,9 @@
     }
 
     if (!window.google || !window.google.script || !window.google.script.run) {
-      showToast('Zoll-Kontaktliste: Direkt-Aufruf außerhalb der WebApp', 'error', 5000);
-      setZollModalFehler_(
-        'Zoll-Kontaktliste kann hier nicht nachgeladen werden. ' +
-        'Öffne den Leitstand über die Apps-Script-Web-App, ' +
-        'damit die Kontakte automatisch beim Laden mitgeliefert werden.'
-      );
+      showToast('Zoll-Kontaktliste wird separat geöffnet', 'success', 1800);
+      try { window.top.location.href = GITHUB_INDEX_URL + '?mode=zollkontakte'; }
+      catch (e) { window.location.href = GITHUB_INDEX_URL + '?mode=zollkontakte'; }
       return;
     }
 
@@ -1826,7 +2875,7 @@
         zollKontaktLaedt = false;
         const msg = err && err.message ? err.message : String(err || 'Unbekannter Fehler');
         showToast('Zoll-Kontaktliste konnte nicht geladen werden', 'error', 4200);
-        setZollModalFehler_('Fehler beim Laden: ' + msg);
+        setZollModalFehler_('Fehler beim Laden: ' + msg + '<br><br><button class="modal-btn" type="button" onclick="window.top.location.href=\'' + GITHUB_INDEX_URL + '?mode=zollkontakte\'">Zoll-Kontaktliste separat öffnen</button>');
       })
       .getZollNotfallKontaktliste();
   }
@@ -1885,7 +2934,11 @@
     const zusatz = document.getElementById('zollZusatz');
     if (modal) modal.classList.add('active');
     if (note) note.textContent = 'Fehler';
-    if (liste) liste.innerHTML = '<div class="zoll-row"><div class="zoll-name">' + escapeHtml_(text || 'Unbekannter Fehler') + '</div></div>';
+    if (liste) {
+      const meldung = String(text || 'Unbekannter Fehler');
+      if (meldung.indexOf('<button') >= 0) liste.innerHTML = '<div class="zoll-row"><div class="zoll-name">' + meldung + '</div></div>';
+      else liste.innerHTML = '<div class="zoll-row"><div class="zoll-name">' + escapeHtml_(meldung) + '</div></div>';
+    }
     if (zusatz) zusatz.innerHTML = '';
   }
 
@@ -1964,6 +3017,17 @@
     showStatus(msg, 'error');
   }
 
+  function hideToast() {
+    const toast = document.getElementById('saveToast');
+    if (!toast) return;
+    if (saveToastTimer) {
+      clearTimeout(saveToastTimer);
+      saveToastTimer = null;
+    }
+    toast.textContent = '';
+    toast.className = 'save-toast';
+  }
+
   function showStatus(message, type) {
     const box = document.getElementById('statusBox');
     const text = message || '';
@@ -1987,6 +3051,12 @@
     if (saveToastTimer) {
       clearTimeout(saveToastTimer);
       saveToastTimer = null;
+    }
+
+    if (!message) {
+      toast.textContent = '';
+      toast.className = 'save-toast';
+      return;
     }
 
     toast.textContent = message || '';

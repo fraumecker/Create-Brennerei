@@ -496,6 +496,121 @@
         resize: vertical;
       }
 
+
+      .fass-splittung-box {
+        display: grid;
+        gap: 6px;
+        padding: 10px;
+        border-radius: 16px;
+        background: rgba(255, 216, 77, 0.10);
+        border: 1px solid rgba(255, 216, 77, 0.80);
+        box-shadow: 0 0 14px rgba(255, 216, 77, 0.22);
+      }
+
+      .fass-splittung-title {
+        color: #ffd84d !important;
+        font-size: 12px !important;
+        font-weight: 900 !important;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      textarea.fass-splittung-feld {
+        width: 100%;
+        min-height: 64px;
+        background: rgba(0, 0, 0, 0.28) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 216, 77, 0.55) !important;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.35;
+        outline: none;
+        resize: vertical;
+        box-shadow: none !important;
+      }
+
+
+      .fass-entnahme-feld {
+        width: 100%;
+        min-height: 38px;
+        background: rgba(0, 0, 0, 0.28) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 216, 77, 0.55) !important;
+        border-radius: 12px;
+        padding: 8px 12px;
+        font-size: 14px;
+        font-weight: 900;
+        outline: none;
+        box-shadow: none !important;
+      }
+
+
+
+      .fassanteile-box {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+
+      .fassanteile-title {
+        color: #ffffff !important;
+        font-size: 12px !important;
+        font-weight: 900 !important;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .fassanteil-row {
+        display: grid;
+        grid-template-columns: minmax(86px, .9fr) minmax(86px, .9fr) minmax(92px, .9fr) minmax(92px, .9fr) minmax(110px, 1fr) minmax(92px, .9fr) minmax(92px, .9fr) minmax(120px, 1.1fr) 38px;
+        gap: 8px;
+        align-items: end;
+        padding: 8px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .fassanteil-row input {
+        min-height: 36px !important;
+        padding: 7px 9px !important;
+      }
+
+      .fassanteil-row .multi-picker-input {
+        min-height: 36px !important;
+        padding: 7px 30px 7px 9px !important;
+        font-size: 13px !important;
+      }
+
+      .fassanteil-row .multi-picker-panel {
+        z-index: 80;
+      }
+
+      .fassanteil-remove-btn {
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 10px;
+        background: linear-gradient(145deg, #7a0000, #ff2b2b);
+        color: #ffffff;
+        font-size: 15px !important;
+        font-weight: 900;
+        box-shadow: var(--neo-out);
+        cursor: pointer;
+      }
+
+      @media (max-width: 768px) {
+        .fassanteil-row {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
       .multi-picker-hint {display:block;padding:8px 10px;color:#bdbdbd;font-size:13px;font-weight:800;}
       .check-chip.selected {color:var(--neon) !important;border-color:var(--neon);box-shadow:0 0 22px rgba(0,255,0,.95);background:rgba(0,255,0,.20);text-shadow:0 0 10px rgba(0,255,0,1);}
 
@@ -1160,7 +1275,14 @@
         });
         let leer = picker.querySelector('.multi-picker-empty');
         if (!leer) { leer = document.createElement('div'); leer.className = 'multi-picker-hint multi-picker-empty'; picker.querySelector('.multi-picker-panel').appendChild(leer); }
-        if (!suchtext && sichtbar === 0) { leer.textContent = 'Bitte Suchbegriff eintippen.'; leer.style.display = 'block'; picker.classList.add('open'); return; }
+        if (suchtext.length > 0 && suchtext.length < 3) {
+          picker.querySelectorAll('.check-chip').forEach(function(chip) { chip.style.display = 'none'; });
+          leer.textContent = 'Mindestens 3 Buchstaben eintippen.';
+          leer.style.display = 'block';
+          picker.classList.add('open');
+          return;
+        }
+        if (!suchtext && sichtbar === 0) { leer.textContent = 'Bitte mindestens 3 Buchstaben eintippen.'; leer.style.display = 'block'; picker.classList.add('open'); return; }
         if (suchtext && sichtbar === 0) { leer.textContent = 'Kein passender Wert gefunden.'; leer.style.display = 'block'; } else { leer.style.display = 'none'; }
         picker.classList.add('open');
       }
@@ -1601,13 +1723,194 @@
         aktualisiereFeldOptik(document.getElementById('bereichMaischeannahme'));
       }
 
+      function extrahiereFassanteileAusText(text) {
+        const roh = String(text || '').trim();
+        if (!roh) return [];
+        const lines = roh.split(/\r?\n/);
+        const anteile = [];
+        lines.forEach(function(line) {
+          const zeile = String(line || '').trim();
+          if (!zeile) return;
+
+          let match = zeile.match(/^[-•]?\s*Fass\s+(.+?)\s*\|\s*Fassvolumen:\s*(.*?)\s*\|\s*Fassinhalt:\s*(.*?)\s*\|\s*Material:\s*(.*?)\s*\|\s*Gewürze:\s*(.*?)\s*\|\s*Entnahme:\s*(.*?)\s*\|\s*Rest:\s*(.*?)\s*\|\s*Zuordnung:\s*(.*)$/i);
+          if (match) {
+            anteile.push({
+              fassnummer: String(match[1] || '').trim(),
+              fassvolumen: String(match[2] || '').trim(),
+              fassinhalt: String(match[3] || '').trim(),
+              material: String(match[4] || '').trim(),
+              gewuerze: String(match[5] || '').trim(),
+              entnahme: String(match[6] || '').trim(),
+              rest: String(match[7] || '').trim(),
+              zuordnung: String(match[8] || '').trim()
+            });
+            return;
+          }
+
+          match = zeile.match(/^[-•]?\s*Fass\s+(.+?)\s*\|\s*Gesamt:\s*(.*?)\s*\|\s*Entnahme:\s*(.*?)\s*\|\s*Rest:\s*(.*?)\s*\|\s*Zuordnung:\s*(.*)$/i);
+          if (match) {
+            anteile.push({
+              fassnummer: String(match[1] || '').trim(),
+              fassvolumen: '',
+              fassinhalt: String(match[2] || '').trim(),
+              material: '',
+              gewuerze: '',
+              entnahme: String(match[3] || '').trim(),
+              rest: String(match[4] || '').trim(),
+              zuordnung: String(match[5] || '').trim()
+            });
+          }
+        });
+        return anteile;
+      }
+
+      function entferneFassanteileBlockAusText(text) {
+        const roh = String(text || '');
+        if (!roh.trim()) return '';
+        return roh
+          .split(/\r?\n/)
+          .filter(function(line) {
+            const zeile = String(line || '').trim();
+            if (!zeile) return true;
+            if (/^FASSANTEILE_DIESES_BRANDS\s*:/i.test(zeile)) return false;
+            if (/^[-•]?\s*Fass\s+.+?\s*\|\s*Fassvolumen:\s*.*?\s*\|\s*Fassinhalt:/i.test(zeile)) return false;
+            if (/^[-•]?\s*Fass\s+.+?\s*\|\s*Gesamt:\s*.*?\s*\|\s*Entnahme:/i.test(zeile)) return false;
+            if (/^Entnahme\s+für\s+diesen\s+Brand\s*:/i.test(zeile)) return false;
+            return true;
+          })
+          .join('\n')
+          .trim();
+      }
+
+      function baueFassanteilZeileHtml(anteil) {
+        const a = anteil || {};
+        return ''
+          + '<div class="fassanteil-row">'
+          + '  <div><label>Fassnummer</label><input type="text" class="fassanteil-fassnummer" placeholder="A / B / 63" value="' + escapeHtml(a.fassnummer || '') + '"></div>'
+          + '  <div><label>Fassvolumen</label><input type="text" class="fassanteil-fassvolumen" placeholder="z. B. 120 l" value="' + escapeHtml(a.fassvolumen || '') + '"></div>'
+          + '  <div><label>Fassinhalt</label><input type="text" class="fassanteil-fassinhalt" placeholder="z. B. 80 l" value="' + escapeHtml(a.fassinhalt || a.gesamt || '') + '"></div>'
+          + '  <div><label>Material</label><div class="multi-picker fassanteil-materialien" data-titel="Material"></div></div>'
+          + '  <div><label>Gewürze</label><div class="multi-picker fassanteil-gewuerze" data-titel="Gewürze"></div></div>'
+          + '  <div><label>Entnahme Brand</label><input type="text" class="fassanteil-entnahme" placeholder="z. B. 30 l" value="' + escapeHtml(a.entnahme || '') + '"></div>'
+          + '  <div><label>Rest</label><input type="text" class="fassanteil-rest" placeholder="z. B. 50 l" value="' + escapeHtml(a.rest || '') + '"></div>'
+          + '  <div><label>Rest / Zuordnung</label><input type="text" class="fassanteil-zuordnung" placeholder="z. B. Rest Brand 2" value="' + escapeHtml(a.zuordnung || '') + '"></div>'
+          + '  <button type="button" class="fassanteil-remove-btn" onclick="fassanteilZeileLoeschen(this)" title="Fassanteil löschen">X</button>'
+          + '</div>';
+      }
+
+      function initialisiereFassanteilAuswahl(row, anteil) {
+        if (!row) return;
+        const data = anteil || {};
+        const materialPicker = row.querySelector('.fassanteil-materialien');
+        if (materialPicker) {
+          materialPicker.innerHTML = checkboxGruppeHtml(maischeMaterialListe, splitMehrfachWert(data.material || ''), 'fassanteil-material-check', 'Material');
+        }
+        const gewuerzePicker = row.querySelector('.fassanteil-gewuerze');
+        if (gewuerzePicker) {
+          gewuerzePicker.innerHTML = checkboxGruppeHtml(maischeGewuerzeListe, splitMehrfachWert(data.gewuerze || ''), 'fassanteil-gewuerz-check', 'Gewürze');
+        }
+        aktualisiereMultiPickerInRoot(row);
+      }
+
+      function fassanteilHinzufuegen(button, anteil) {
+        const slotRoot = button && button.closest ? button.closest('[data-slot-index]') : null;
+        const container = slotRoot ? slotRoot.querySelector('.fassanteile-container') : null;
+        if (!container) return;
+        const wrapper = document.createElement('div');
+        const daten = anteil || {};
+        wrapper.innerHTML = baueFassanteilZeileHtml(daten);
+        const row = wrapper.firstChild;
+        container.appendChild(row);
+        initialisiereFassanteilAuswahl(row, daten);
+        feldOptikEventsAktivieren(container);
+        aktualisiereFeldOptik(container);
+      }
+
+      function fassanteilZeileLoeschen(button) {
+        const row = button && button.closest ? button.closest('.fassanteil-row') : null;
+        if (row) row.remove();
+      }
+
+      function fuelleFassanteile(slotRoot, data) {
+        const container = slotRoot ? slotRoot.querySelector('.fassanteile-container') : null;
+        if (!container) return;
+        container.innerHTML = '';
+        let anteile = extrahiereFassanteileAusText(data && data.fassSplittung);
+        if (!anteile.length) {
+          const fassListe = String(data && data.fassnummern || '').split(/\s*\/\s*|\s*,\s*|\s*;\s*/).map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+          if (fassListe.length) {
+            anteile = fassListe.map(function(fass) {
+              return {
+                fassnummer: fass,
+                fassvolumen: data && data.fassgroesse || '',
+                fassinhalt: data && data.inhalt || '',
+                material: data && data.material || '',
+                gewuerze: data && data.gewuerze || '',
+                entnahme: '',
+                rest: '',
+                zuordnung: ''
+              };
+            });
+          }
+        }
+        if (!anteile.length) anteile = [{ fassnummer: '', fassvolumen: '', fassinhalt: '', material: '', gewuerze: '', entnahme: '', rest: '', zuordnung: '' }];
+        anteile.forEach(function(anteil) {
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = baueFassanteilZeileHtml(anteil);
+          const row = wrapper.firstChild;
+          container.appendChild(row);
+          initialisiereFassanteilAuswahl(row, anteil);
+        });
+      }
+
+      function leseFassanteile(root) {
+        return Array.prototype.slice.call(root.querySelectorAll('.fassanteil-row')).map(function(row) {
+          return {
+            fassnummer: row.querySelector('.fassanteil-fassnummer').value.trim(),
+            fassvolumen: row.querySelector('.fassanteil-fassvolumen').value.trim(),
+            fassinhalt: row.querySelector('.fassanteil-fassinhalt').value.trim(),
+            material: checkboxGruppeWerte(row, 'fassanteil-material-check').join(' | '),
+            gewuerze: checkboxGruppeWerte(row, 'fassanteil-gewuerz-check').join(' | '),
+            entnahme: row.querySelector('.fassanteil-entnahme').value.trim(),
+            rest: row.querySelector('.fassanteil-rest').value.trim(),
+            zuordnung: row.querySelector('.fassanteil-zuordnung').value.trim()
+          };
+        }).filter(function(a) {
+          return a.fassnummer || a.fassvolumen || a.fassinhalt || a.material || a.gewuerze || a.entnahme || a.rest || a.zuordnung;
+        });
+      }
+
+      function fassanteileZuText(anteile) {
+        const liste = Array.isArray(anteile) ? anteile : [];
+        if (!liste.length) return '';
+        return ['FASSANTEILE_DIESES_BRANDS:'].concat(liste.map(function(a) {
+          return '- Fass ' + (a.fassnummer || '-')
+            + ' | Fassvolumen: ' + (a.fassvolumen || '-')
+            + ' | Fassinhalt: ' + (a.fassinhalt || '-')
+            + ' | Material: ' + (a.material || '-')
+            + ' | Gewürze: ' + (a.gewuerze || '-')
+            + ' | Entnahme: ' + (a.entnahme || '-')
+            + ' | Rest: ' + (a.rest || '-')
+            + ' | Zuordnung: ' + (a.zuordnung || '-');
+        })).join('\n');
+      }
+
+      function kombiniereFassanteileUndBemerkung(anteile, bemerkung) {
+        const teile = [];
+        const anteilText = fassanteileZuText(anteile);
+        const bemerkungText = String(bemerkung || '').trim();
+        if (anteilText) teile.push(anteilText);
+        if (bemerkungText) teile.push('BEMERKUNG:\n' + bemerkungText);
+        return teile.join('\n');
+      }
+
       function baueSlotHtml(idx) {
         return ''
           + '<div class="slot-card" data-slot-index="' + idx + '">'
           + '  <input type="hidden" class="maische-bestehendeZeile">'
           + '  <div class="slot-header">'
-          + '    <div></div>'
-          + '    <div class="slot-remove-cell"><button type="button" class="slot-remove-btn" onclick="maischeSlotLoeschen(this)" aria-label="Slot löschen" title="Slot löschen">X</button></div>'
+          + '    <div style="font-weight:900;color:#ffffff;">Brand ' + idx + '</div>'
+          + '    <div class="slot-remove-cell"><button type="button" class="slot-remove-btn" onclick="maischeSlotLoeschen(this)" aria-label="Brand löschen" title="Brand löschen">X</button></div>'
           + '  </div>'
           + '  <div class="slot-core slot-time-row">'
           + '    <div><label>Brandtag</label><div class="pflicht-tab"><input type="date" class="maische-tagBrand"></div></div>'
@@ -1615,20 +1918,14 @@
           + '    <div><label>bis</label><div class="pflicht-tab"><input type="text" inputmode="numeric" placeholder="1200" maxlength="8" class="maische-bis time-text-input" onblur="uhrzeitFeldNormalisieren(this)"></div></div>'
           + '    <div class="slot-brenner-cell"><label>Brenner</label><div class="pflicht-tab"><select class="maische-brenner"></select></div></div>'
           + '  </div>'
-          + '  <div class="grid-3">'
-          + '    <div><label>Faßnummern</label><div class="pflicht-tab"><input type="text" class="maische-fassnummern" placeholder="z. B. 63 / 64"></div></div>'
-          + '    <div><label>Faßgröße</label><div class="pflicht-tab"><select class="maische-fassgroesse"></select></div></div>'
-          + '    <div><label>Inhalt</label><div class="pflicht-tab"><input type="text" class="maische-inhalt"></div></div>'
+          + '  <div class="fassanteile-box">'
+          + '    <div class="fassanteile-title">Fass-Zuordnung zu diesem Brand</div>'
+          + '    <div class="fassanteile-container"></div>'
+          + '    <div><button type="button" class="btn-save small-plus-btn" onclick="fassanteilHinzufuegen(this)" title="Fassanteil hinzufügen">+</button></div>'
           + '  </div>'
-          + '  <div class="grid-2">'
-          + '    <div>'
-          + '      <label>Material</label>'
-          + '      <div class="multi-picker maische-materialien" data-titel="Material"></div>'
-          + '    </div>'
-          + '    <div>'
-          + '      <label>Gewürze</label>'
-          + '      <div class="multi-picker maische-gewuerze" data-titel="Gewürze"></div>'
-          + '    </div>'
+          + '  <div class="fass-splittung-box">'
+          + '    <label class="fass-splittung-title">Bemerkung zur Fasssplittung / Brandzuordnung</label>'
+          + '    <textarea class="maische-fassSplittung fass-splittung-feld" placeholder="Optional: z. B. Fass B wird auf Brand 1 und Brand 2 verteilt. Keine freie Entnahme ohne Fassbezug eintragen."></textarea>'
           + '  </div>'
           + '</div>';
       }
@@ -1644,17 +1941,15 @@
         const slotRoot = wrapper.querySelector('[data-slot-index]');
         const data = vorbelegung || {};
 
-        slotRoot.querySelector('.maische-brenner').innerHTML = optionenHtml(maischeBrennerListe, data.brenner || '', 'Brenner');
-        slotRoot.querySelector('.maische-fassgroesse').innerHTML = optionenHtml(maischeFassgroessenListe, data.fassgroesse || '', 'Auswahl');
-        slotRoot.querySelector('.maische-materialien').innerHTML = checkboxGruppeHtml(maischeMaterialListe, splitMehrfachWert(data.material || ''), 'maische-material-check', 'Material');
-        slotRoot.querySelector('.maische-gewuerze').innerHTML = checkboxGruppeHtml(maischeGewuerzeListe, splitMehrfachWert(data.gewuerze || ''), 'maische-gewuerz-check', 'Gewürze');
+        const brennerSelect = slotRoot.querySelector('.maische-brenner');
+        if (brennerSelect) brennerSelect.innerHTML = optionenHtml(maischeBrennerListe, data.brenner || '', 'Brenner');
 
         slotRoot.querySelector('.maische-bestehendeZeile').value = data.bestehendeZeile || '';
         slotRoot.querySelector('.maische-tagBrand').value = data.tagBrand || '';
         slotRoot.querySelector('.maische-von').value = data.von || '';
         slotRoot.querySelector('.maische-bis').value = data.bis || '';
-        slotRoot.querySelector('.maische-fassnummern').value = data.fassnummern || '';
-        slotRoot.querySelector('.maische-inhalt').value = data.inhalt || '';
+        fuelleFassanteile(slotRoot, data);
+        slotRoot.querySelector('.maische-fassSplittung').value = entferneFassanteileBlockAusText(data.fassSplittung || '');
         aktualisiereMultiPickerInRoot(slotRoot);
         feldOptikEventsAktivieren(slotRoot);
       }
@@ -1768,8 +2063,12 @@
         const zollOkGlobal = document.getElementById('maischeZollOkGlobal').value || '';
 
         return Array.prototype.slice.call(document.querySelectorAll('#maischeSlotsContainer [data-slot-index]')).map(function(root) {
-          const materialien = checkboxGruppeWerte(root, 'maische-material-check');
-          const gewuerze = checkboxGruppeWerte(root, 'maische-gewuerz-check');
+          const anteile = leseFassanteile(root);
+          const fassnummern = anteile.map(function(a) { return a.fassnummer; }).filter(Boolean).join(' / ');
+          const volumenText = anteile.map(function(a) { return (a.fassnummer || 'Fass') + ': ' + (a.fassvolumen || '-'); }).join(' | ');
+          const inhaltText = anteile.map(function(a) { return (a.fassnummer || 'Fass') + ': ' + (a.fassinhalt || '-'); }).join(' | ');
+          const materialAusFass = anteile.map(function(a) { return a.material; }).filter(Boolean).filter(function(v, i, arr) { return arr.indexOf(v) === i; });
+          const gewuerzeAusFass = anteile.map(function(a) { return a.gewuerze; }).filter(Boolean).filter(function(v, i, arr) { return arr.indexOf(v) === i; });
           return {
             bestehendeZeile: root.querySelector('.maische-bestehendeZeile').value.trim(),
             terminMaische: terminMaischeGlobal,
@@ -1777,12 +2076,13 @@
             von: normalisiereUhrzeitEingabe(root.querySelector('.maische-von').value),
             bis: normalisiereUhrzeitEingabe(root.querySelector('.maische-bis').value),
             brenner: root.querySelector('.maische-brenner').value,
-            fassnummern: normalisiereFassnummernEingabe(root.querySelector('.maische-fassnummern').value),
-            fassgroesse: root.querySelector('.maische-fassgroesse').value,
-            inhalt: root.querySelector('.maische-inhalt').value.trim(),
-            materialien: materialien,
-            material: materialien,
-            gewuerze: gewuerze,
+            fassnummern: normalisiereFassnummernEingabe(fassnummern),
+            fassgroesse: volumenText,
+            inhalt: inhaltText,
+            materialien: materialAusFass,
+            material: materialAusFass,
+            gewuerze: gewuerzeAusFass,
+            fassSplittung: kombiniereFassanteileUndBemerkung(anteile, root.querySelector('.maische-fassSplittung').value.trim()),
             anzahlBraende: anzahlBraendeGlobal,
             zollOk: zollOkGlobal
           };
@@ -1825,7 +2125,21 @@
           const nr = i + 1;
 
           if (!slot.fassnummern) {
-            zeigeStatus('statusBoxMaische', 'Faßnummern fehlen in Slot ' + nr + '.', 'error');
+            zeigeStatus('statusBoxMaische', 'Mindestens ein Fassanteil fehlt in Brand ' + nr + '.', 'error');
+            return false;
+          }
+
+          if (!slot.fassSplittung || String(slot.fassSplittung).indexOf('FASSANTEILE_DIESES_BRANDS:') === -1) {
+            zeigeStatus('statusBoxMaische', 'Fass-Zuordnung fehlt in Brand ' + nr + '.', 'error');
+            return false;
+          }
+
+          const unvollstaendig = slot.fassSplittung.split(/\r?\n/).some(function(zeile) {
+            if (!/^[-•]?\s*Fass\s+/i.test(String(zeile || '').trim())) return false;
+            return String(zeile).indexOf('Fassvolumen: -') !== -1 || String(zeile).indexOf('Fassinhalt: -') !== -1 || String(zeile).indexOf('Material: -') !== -1;
+          });
+          if (unvollstaendig) {
+            zeigeStatus('statusBoxMaische', 'Fassnummer, Fassvolumen, Fassinhalt und Material müssen je Fass in Brand ' + nr + ' gefüllt sein.', 'error');
             return false;
           }
 

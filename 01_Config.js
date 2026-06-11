@@ -126,6 +126,7 @@ var KONFIGURATION = {
     STATUS: "Status",
     DOSSIER_LINK: "Dossier_Link",
     INFO_SYSTEM: "Info_System",
+    FASS_SPLITTUNG: "Fass_Splittung",
 
     TERMIN_MAISCHE: "Termin_Maische",
     FASS_VP: "Faßgröße",
