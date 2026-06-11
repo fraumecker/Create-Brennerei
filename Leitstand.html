@@ -2408,9 +2408,10 @@
         if (!roh) return [];
         const lines = roh.split(/\r?\n/);
         const anteile = [];
+
         lines.forEach(function(line) {
           const zeile = String(line || '').trim();
-          if (!zeile) return;
+          if (!zeile || !/^[-•]?\s*Fass\s+/i.test(zeile)) return;
 
           let match = zeile.match(/^[-•]?\s*Fass\s+(.+?)\s*\|\s*Fassvolumen:\s*(.*?)\s*\|\s*Fassinhalt:\s*(.*?)\s*\|\s*Material:\s*(.*?)\s*\|\s*Gewürze:\s*(.*?)\s*\|\s*Entnahme:\s*(.*?)\s*\|\s*Rest:\s*(.*?)\s*\|\s*Zuordnung:\s*(.*)$/i);
           if (match) {
@@ -2439,7 +2440,44 @@
               rest: String(match[4] || '').trim(),
               zuordnung: String(match[5] || '').trim()
             });
+            return;
           }
+
+          const teile = zeile.replace(/^[-•]\s*/, '').split(/\s*\|\s*/).map(function(v) {
+            return String(v || '').trim();
+          }).filter(Boolean);
+
+          const kopf = teile.shift() || '';
+          const kopfMatch = kopf.match(/^Fass\s+(.+)$/i);
+          if (!kopfMatch || !teile.length) return;
+
+          const obj = {
+            fassnummer: String(kopfMatch[1] || '').trim(),
+            fassvolumen: '',
+            fassinhalt: '',
+            material: '',
+            gewuerze: '',
+            entnahme: '',
+            rest: '',
+            zuordnung: ''
+          };
+
+          teile.forEach(function(teil) {
+            const feld = String(teil || '').split(/\s*:\s*/);
+            const label = String(feld.shift() || '').trim().toLowerCase();
+            const wert = feld.join(':').trim();
+            if (!label) return;
+
+            if (label.indexOf('fassvolumen') >= 0 || label === 'volumen') obj.fassvolumen = wert;
+            else if (label.indexOf('fassinhalt') >= 0 || label === 'inhalt' || label === 'gesamt') obj.fassinhalt = wert;
+            else if (label.indexOf('material') >= 0 || label.indexOf('rohstoff') >= 0) obj.material = wert;
+            else if (label.indexOf('gewürz') >= 0 || label.indexOf('gewuerz') >= 0) obj.gewuerze = wert;
+            else if (label.indexOf('entnahme') >= 0) obj.entnahme = wert;
+            else if (label === 'rest') obj.rest = wert;
+            else if (label.indexOf('zuordnung') >= 0 || label.indexOf('rest /') >= 0) obj.zuordnung = wert;
+          });
+
+          anteile.push(obj);
         });
         return anteile;
   }
@@ -2462,13 +2500,111 @@
           .trim();
   }
 
+  function normalisiereFassKey_(wert) {
+    return String(wert || '')
+      .trim()
+      .replace(/^fass\s*/i, '')
+      .replace(/\s+/g, '')
+      .toLowerCase();
+  }
+
+  function fassListeAusText_(text) {
+    const roh = String(text || '').trim();
+    if (!roh) return [];
+
+    return roh
+      .replace(/\bFass\b/gi, '')
+      .split(/\s*\/\s*|\s*,\s*|\s*;\s*|\s*\|\s*/)
+      .map(function(v) { return String(v || '').trim(); })
+      .filter(Boolean);
+  }
+
+  function wertJeFassAusSammelfeld_(text, fassnummer, index) {
+    const roh = String(text || '').trim();
+    if (!roh) return '';
+
+    const gesucht = normalisiereFassKey_(fassnummer);
+    const teile = roh.split(/\s*\|\s*|\s*;\s*|\r?\n/).map(function(v) {
+      return String(v || '').trim();
+    }).filter(Boolean);
+
+    for (let i = 0; i < teile.length; i++) {
+      const teil = teile[i];
+      let match = teil.match(/^(?:Fass\s*)?([^:=]+?)\s*[:=]\s*(.+)$/i);
+      if (match && normalisiereFassKey_(match[1]) === gesucht) {
+        return String(match[2] || '').trim();
+      }
+
+      match = teil.match(/^(?:Fass\s*)?([A-Za-z0-9_-]+)\s+(.+)$/i);
+      if (match && normalisiereFassKey_(match[1]) === gesucht) {
+        return String(match[2] || '').trim();
+      }
+    }
+
+    const positionswerte = roh
+      .split(/\s*\/\s*|\s*\|\s*|\s*;\s*/)
+      .map(function(v) { return String(v || '').trim(); })
+      .filter(Boolean)
+      .filter(function(v) { return !/^[A-Za-z]$/.test(v); });
+
+    if (positionswerte.length > 1 && index >= 0 && index < positionswerte.length) {
+      const wert = positionswerte[index];
+      const keyed = wert.match(/^(?:Fass\s*)?[^:=]+?\s*[:=]\s*(.+)$/i);
+      return keyed ? String(keyed[1] || '').trim() : wert;
+    }
+
+    return roh;
+  }
+
+  function erstesNichtLeer_(werte) {
+    for (let i = 0; i < werte.length; i++) {
+      const wert = String(werte[i] || '').trim();
+      if (wert) return wert;
+    }
+    return '';
+  }
+
   function fallbackFassanteileAusJob_(j) {
     const anteile = extrahiereFassanteileAusText_(j && j.fassSplittung);
     if (anteile.length) return anteile;
+
     const fassNrText = String(j && j.fassNr || '').trim();
-    if (!fassNrText) return [{ fassnummer: '-', fassvolumen: j && j.fassgroesse || '', fassinhalt: j && j.inhalt || '', material: j && j.material || '', gewuerze: j && j.gewuerze || '', entnahme: j && j.inhalt || '', rest: '', zuordnung: '' }];
-    return fassNrText.split(/\s*\/\s*|\s*,\s*|\s*;\s*/).map(function(fass) {
-      return { fassnummer: fass, fassvolumen: j && j.fassgroesse || '', fassinhalt: j && j.inhalt || '', material: j && j.material || '', gewuerze: j && j.gewuerze || '', entnahme: j && j.inhalt || '', rest: '', zuordnung: '' };
+    const fassListe = fassListeAusText_(fassNrText);
+
+    if (!fassListe.length) {
+      return [{
+        fassnummer: '-',
+        fassvolumen: j && j.fassgroesse || '',
+        fassinhalt: j && j.inhalt || '',
+        material: j && j.material || '',
+        gewuerze: j && j.gewuerze || '',
+        entnahme: '',
+        rest: '',
+        zuordnung: ''
+      }];
+    }
+
+    return fassListe.map(function(fass, index) {
+      const fassvolumen = wertJeFassAusSammelfeld_(j && j.fassgroesse, fass, index);
+      const fassinhalt = wertJeFassAusSammelfeld_(j && j.inhalt, fass, index);
+      const material = wertJeFassAusSammelfeld_(j && j.material, fass, index);
+      const gewuerze = wertJeFassAusSammelfeld_(j && j.gewuerze, fass, index);
+      const entnahme = erstesNichtLeer_([
+        wertJeFassAusSammelfeld_(j && j.entnahmeBrand, fass, index),
+        wertJeFassAusSammelfeld_(j && j.entnahme, fass, index),
+        wertJeFassAusSammelfeld_(j && j.entnahmeFuerDiesenBrand, fass, index)
+      ]);
+
+      return {
+        fassnummer: fass,
+        fassvolumen: fassvolumen,
+        fassinhalt: fassinhalt,
+        material: material,
+        gewuerze: gewuerze,
+        entnahme: entnahme,
+        rest: '',
+        zuordnung: ''
+      };
     });
   }
 
@@ -2981,7 +3117,7 @@
 
   function formatLiter_(wert) {
     const text = String(wert || '').trim();
-    if (!text) return '-';
+    if (!text || text === '-' || text === '—') return '-';
     return /liter|litre| l$/i.test(text) ? text : text + ' Liter';
   }
 

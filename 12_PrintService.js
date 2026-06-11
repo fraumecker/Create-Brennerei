@@ -35,19 +35,6 @@ function protokollDrucken() {
     ? KONFIGURATION.IDENTITAET.BRENNEREI_NUMMER
     : "1460927";
 
-  const zollOrdnerUrl = "https://drive.google.com/drive/folders/1W8OO9I6viZYlCqapX2uqcONDES0vySPn";
-
-  let qrZollOrdner = "";
-  try {
-    const qrBlob = UrlFetchApp.fetch(
-      "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(zollOrdnerUrl),
-      { muteHttpExceptions: true }
-    ).getBlob();
-    qrZollOrdner = "data:" + qrBlob.getContentType() + ";base64," + Utilities.base64Encode(qrBlob.getBytes());
-  } catch (e) {
-    systemLogSchreiben_("WARN", "PrintService", "QR-Code für Zollordner fehlgeschlagen", "", String(e));
-  }
-
   let html = `<html><head><style>
     @page {
       size: A4 landscape;
@@ -201,19 +188,6 @@ function protokollDrucken() {
       word-break: break-word;
     }
 
-    .qr-col {
-      text-align: center;
-      padding: 2px !important;
-    }
-
-    .row-qr {
-      width: 28px;
-      height: 28px;
-      object-fit: contain;
-      display: block;
-      margin: 0 auto;
-    }
-
     @media print {
       .no-p {
         display: none;
@@ -241,7 +215,6 @@ function protokollDrucken() {
           📧 ${printEscapeHtml_(KONFIGURATION.KONTAKT.MAIL)}
 
           <div class="zoll-contact-inline">
-            ${qrZollOrdner ? `<img src="${qrZollOrdner}" alt="">` : ``}
             <div class="zoll-contact-title">Kontaktdaten Zoll</div>
             <div>bei Notfall / Minderausbeute</div>
           </div>
@@ -264,8 +237,11 @@ function protokollDrucken() {
             <th style="width:7%;">Inhalt</th>
             <th style="width:6%;">Alkohol</th>
             <th style="width:6%;">Ausbeute</th>
-            <th style="width:3%;">Wasser</th>
-            <th style="width:4%;">QR</th>
+            <th style="width:5%;">Trinkstärke</th>
+            <th style="width:5%;">Wasser</th>
+            <th style="width:6%;">Liter Destillat</th>
+            <th style="width:6%;">Endmenge</th>
+            <th style="width:5%;">Kosten</th>
           </tr>
         </thead>
         <tbody>`;
@@ -288,27 +264,15 @@ function protokollDrucken() {
     const fassSplittung = protokollWertAusZeile_(displayRow, map, "FASS_SPLITTUNG");
     const alkohol = protokollWertAusZeile_(displayRow, map, "ALKOHOL");
     const ausbeute = protokollWertAusZeile_(displayRow, map, "AUSBEUTE");
-    const wasser = protokollWertAusZeile_(displayRow, map, "WASSER");
-    const dossierLink =
-      protokollWertAusZeile_(displayRow, map, "DOSSIER_LINK") ||
-      protokollWertAusZeile_(displayRow, map, "DOSSIERLINK") ||
-      protokollWertAusZeile_(displayRow, map, "Dossier_Link");
-
-    let rowQrHtml = "";
-    if (dossierLink) {
-      try {
-        const rowQrBlob = UrlFetchApp.fetch(
-          "https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=" + encodeURIComponent(dossierLink),
-          { muteHttpExceptions: true }
-        ).getBlob();
-        const rowQrBase64 = "data:" + rowQrBlob.getContentType() + ";base64," + Utilities.base64Encode(rowQrBlob.getBytes());
-        rowQrHtml = `<img src="${rowQrBase64}" class="row-qr">`;
-      } catch (e) {
-        rowQrHtml = "";
-        systemLogSchreiben_("WARN", "PrintService", "QR-Code pro Vorgang fehlgeschlagen", String(vorgangsId), String(e));
-      }
-    }
-
+    let wasser = protokollWertAusZeileFlexibel_(displayRow, map, ["WASSERZUGABE", "WASSER", "LITER_WASSER"]);
+    const trinkstaerke = protokollWertAusZeileFlexibel_(displayRow, map, ["TRINKSTAERKE", "TRINKSTÄRKE", "TRINK_STAERKE", "TRINK_STÄRKE"]);
+    let literDestillat = protokollWertAusZeileFlexibel_(displayRow, map, ["LITER_DESTILLAT", "LITER", "DESTILLAT_LITER"]);
+    let endmenge = protokollWertAusZeileFlexibel_(displayRow, map, ["ENDMENGE", "ENDMENGE_DESTILLAT", "FERTIGES_DESTILLAT"]);
+    const kosten = protokollWertAusZeileFlexibel_(displayRow, map, ["KOSTEN", "KOSTEN_BRAND"]);
+    const herabsetzung = protokollHerabsetzungBerechnen_(alkohol, ausbeute, literDestillat, trinkstaerke, wasser, endmenge);
+    wasser = herabsetzung.wasser;
+    literDestillat = herabsetzung.liter;
+    endmenge = herabsetzung.endmenge;
     html += `<tr>
       <td>${printEscapeHtml_(brandtag)}</td>
       <td>${printEscapeHtml_(brenner)}</td>
@@ -323,8 +287,11 @@ function protokollDrucken() {
       <td>${printEscapeHtml_(inhalt)}</td>
       <td>${printEscapeHtml_(alkohol)}</td>
       <td>${printEscapeHtml_(ausbeute)}</td>
+      <td>${printEscapeHtml_(trinkstaerke)}</td>
       <td>${printEscapeHtml_(wasser)}</td>
-      <td class="qr-col">${rowQrHtml}</td>
+      <td>${printEscapeHtml_(literDestillat)}</td>
+      <td>${printEscapeHtml_(endmenge)}</td>
+      <td>${printEscapeHtml_(kosten)}</td>
     </tr>`;
   });
 
@@ -343,6 +310,49 @@ function protokollDrucken() {
 // FUNKTION: Liest einen Feldwert aus der Zeile über Mapping-Schlüssel | EINGRIFF: Mapping
 function protokollWertAusZeile_(row, map, key) {
   return map[key] ? (row[map[key] - 1] || "") : "";
+}
+
+
+// FUNKTION: Liest einen Feldwert über mehrere mögliche Mapping-Schlüssel | EINGRIFF: Mapping
+function protokollWertAusZeileFlexibel_(row, map, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const wert = protokollWertAusZeile_(row, map, keys[i]);
+    if (textNormalisieren_(wert)) return wert;
+  }
+  return "";
+}
+
+// FUNKTION: Wandelt Zahlen aus deutschen Anzeigeformaten in Number | EINGRIFF: Druckdarstellung
+function protokollZahlAusText_(wert) {
+  const text = textNormalisieren_(wert).replace(',', '.').replace(/[^0-9.\-]/g, '');
+  const zahl = Number(text);
+  return isFinite(zahl) ? zahl : 0;
+}
+
+// FUNKTION: Ergänzt Wasserzugabe / Endmenge rechnerisch, wenn die gespeicherten Werte fehlen | EINGRIFF: Druckdarstellung
+function protokollHerabsetzungBerechnen_(alkoholText, ausbeuteText, literText, trinkstaerkeText, wasserText, endmengeText) {
+  const alkohol = protokollZahlAusText_(alkoholText);
+  const ausbeute = protokollZahlAusText_(ausbeuteText);
+  const trink = protokollZahlAusText_(trinkstaerkeText);
+  let liter = protokollZahlAusText_(literText);
+
+  if (!liter && ausbeute > 0 && alkohol > 0) {
+    liter = (ausbeute * 100) / alkohol;
+    literText = liter.toFixed(2).replace('.', ',');
+  }
+
+  if (liter > 0 && alkohol > 0 && trink > 0) {
+    const endmenge = (liter * alkohol) / trink;
+    const wasser = endmenge - liter;
+    if (!textNormalisieren_(endmengeText)) endmengeText = endmenge.toFixed(2).replace('.', ',');
+    if (!textNormalisieren_(wasserText)) wasserText = wasser >= 0 ? wasser.toFixed(2).replace('.', ',') : "";
+  }
+
+  return {
+    liter: literText || "",
+    wasser: wasserText || "",
+    endmenge: endmengeText || ""
+  };
 }
 
 
@@ -628,19 +638,6 @@ function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
     ? KONFIGURATION.IDENTITAET.BRENNEREI_NUMMER
     : "1460927";
 
-  const zollOrdnerUrl = "https://drive.google.com/drive/folders/1W8OO9I6viZYlCqapX2uqcONDES0vySPn";
-
-  let qrZollOrdner = "";
-  try {
-    const qrBlob = UrlFetchApp.fetch(
-      "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(zollOrdnerUrl),
-      { muteHttpExceptions: true }
-    ).getBlob();
-    qrZollOrdner = "data:" + qrBlob.getContentType() + ";base64," + Utilities.base64Encode(qrBlob.getBytes());
-  } catch (e) {
-    systemLogSchreiben_("WARN", "PrintService", "QR-Code für Zollordner fehlgeschlagen", "", String(e));
-  }
-
   let html = `<html><head><style>
     @page { size: A4 landscape; margin: 8mm; }
     html, body { margin: 0; padding: 0; }
@@ -661,8 +658,6 @@ function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
     .protokoll-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 0; margin-bottom: 8px; }
     .protokoll-table th { border: 1.2px solid #000; background: #eaeaea; color: #000; padding: 4px 3px; font-size: 8.2px; font-weight: 800; text-transform: uppercase; line-height: 1.05; }
     .protokoll-table td { border: 1.2px solid #000; padding: 5px 4px; font-size: 9.5px; line-height: 1.15; vertical-align: top; word-break: break-word; }
-    .qr-col { text-align: center; padding: 2px !important; }
-    .row-qr { width: 28px; height: 28px; object-fit: contain; display: block; margin: 0 auto; }
     @media print { .no-p { display: none; } }
   </style></head><body>
     <div class="no-p"><button class="print-btn" onclick="window.print()">DRUCKEN</button></div>
@@ -678,7 +673,6 @@ function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
           📞 ${printEscapeHtml_(KONFIGURATION.KONTAKT.TEL)}<br>
           📧 ${printEscapeHtml_(KONFIGURATION.KONTAKT.MAIL)}
           <div class="zoll-contact-inline">
-            ${qrZollOrdner ? `<img src="${qrZollOrdner}" alt="">` : ``}
             <div class="zoll-contact-title">Kontaktdaten Zoll</div>
             <div>bei Notfall / Minderausbeute</div>
           </div>
@@ -700,8 +694,11 @@ function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
             <th style="width:7%;">Inhalt</th>
             <th style="width:6%;">Alkohol</th>
             <th style="width:6%;">Ausbeute</th>
-            <th style="width:3%;">Wasser</th>
-            <th style="width:4%;">QR</th>
+            <th style="width:5%;">Trinkstärke</th>
+            <th style="width:5%;">Wasser</th>
+            <th style="width:6%;">Liter Destillat</th>
+            <th style="width:6%;">Endmenge</th>
+            <th style="width:5%;">Kosten</th>
           </tr>
         </thead>
         <tbody>`;
@@ -723,20 +720,15 @@ function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
     const fassSplittung = protokollWertAusZeile_(displayRow, map, "FASS_SPLITTUNG");
     const alkohol = protokollWertAusZeile_(displayRow, map, "ALKOHOL");
     const ausbeute = protokollWertAusZeile_(displayRow, map, "AUSBEUTE");
-    const wasser = protokollWertAusZeile_(displayRow, map, "WASSER");
-    const dossierLink = protokollWertAusZeile_(displayRow, map, "DOSSIER_LINK") || protokollWertAusZeile_(displayRow, map, "DOSSIERLINK") || protokollWertAusZeile_(displayRow, map, "Dossier_Link");
-
-    let rowQrHtml = "";
-    if (dossierLink) {
-      try {
-        const rowQrBlob = UrlFetchApp.fetch("https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=" + encodeURIComponent(dossierLink), { muteHttpExceptions: true }).getBlob();
-        const rowQrBase64 = "data:" + rowQrBlob.getContentType() + ";base64," + Utilities.base64Encode(rowQrBlob.getBytes());
-        rowQrHtml = `<img src="${rowQrBase64}" class="row-qr">`;
-      } catch (e) {
-        rowQrHtml = "";
-        systemLogSchreiben_("WARN", "PrintService", "QR-Code pro Vorgang fehlgeschlagen", String(vorgangsId), String(e));
-      }
-    }
+    let wasser = protokollWertAusZeileFlexibel_(displayRow, map, ["WASSERZUGABE", "WASSER", "LITER_WASSER"]);
+    const trinkstaerke = protokollWertAusZeileFlexibel_(displayRow, map, ["TRINKSTAERKE", "TRINKSTÄRKE", "TRINK_STAERKE", "TRINK_STÄRKE"]);
+    let literDestillat = protokollWertAusZeileFlexibel_(displayRow, map, ["LITER_DESTILLAT", "LITER", "DESTILLAT_LITER"]);
+    let endmenge = protokollWertAusZeileFlexibel_(displayRow, map, ["ENDMENGE", "ENDMENGE_DESTILLAT", "FERTIGES_DESTILLAT"]);
+    const kosten = protokollWertAusZeileFlexibel_(displayRow, map, ["KOSTEN", "KOSTEN_BRAND"]);
+    const herabsetzung = protokollHerabsetzungBerechnen_(alkohol, ausbeute, literDestillat, trinkstaerke, wasser, endmenge);
+    wasser = herabsetzung.wasser;
+    literDestillat = herabsetzung.liter;
+    endmenge = herabsetzung.endmenge;
 
     html += `<tr>
       <td>${printEscapeHtml_(brandtag)}</td>
@@ -752,8 +744,11 @@ function protokollHtmlAusZeilenErstellen_(sh, map, zeilen) {
       <td>${printEscapeHtml_(inhalt)}</td>
       <td>${printEscapeHtml_(alkohol)}</td>
       <td>${printEscapeHtml_(ausbeute)}</td>
+      <td>${printEscapeHtml_(trinkstaerke)}</td>
       <td>${printEscapeHtml_(wasser)}</td>
-      <td class="qr-col">${rowQrHtml}</td>
+      <td>${printEscapeHtml_(literDestillat)}</td>
+      <td>${printEscapeHtml_(endmenge)}</td>
+      <td>${printEscapeHtml_(kosten)}</td>
     </tr>`;
   });
 
