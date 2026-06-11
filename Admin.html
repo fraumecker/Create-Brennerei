@@ -369,6 +369,109 @@
         color: #333;
       }
 
+      .zoll-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.72);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 2147483000;
+        box-sizing: border-box;
+      }
+
+      .zoll-modal-backdrop.active {
+        display: flex;
+      }
+
+      .zoll-modal-card {
+        width: min(760px, 100%);
+        max-height: 90vh;
+        overflow: auto;
+        background: #2a2a2a;
+        color: #ffffff;
+        border-radius: 20px;
+        box-shadow: 12px 12px 24px #151515, -12px -12px 24px #333333;
+        border: 1px solid #3b3b3b;
+      }
+
+      .zoll-modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #3b3b3b;
+      }
+
+      .zoll-modal-title {
+        font-size: 17px;
+        color: var(--admin-pink);
+        font-weight: 950;
+      }
+
+      .zoll-modal-note {
+        margin-top: 4px;
+        color: var(--text-soft);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .zoll-modal-close {
+        background: linear-gradient(145deg, var(--admin-pink), var(--admin-pink-dark));
+        color: #ffffff;
+        min-height: 38px;
+        padding: 8px 12px;
+        font-size: 12px;
+        border: none;
+        border-radius: 12px;
+        font-weight: 950;
+        cursor: pointer;
+      }
+
+      .zoll-modal-body {
+        padding: 14px 16px 16px;
+      }
+
+      .zoll-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .zoll-row {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.16);
+        border: 1px solid #3a3a3a;
+        line-height: 1.35;
+        font-size: 12px;
+      }
+
+      .zoll-name {
+        color: #ffffff;
+        font-weight: 950;
+        margin-bottom: 4px;
+      }
+
+      .zoll-meta {
+        color: var(--text-soft);
+        margin-bottom: 4px;
+      }
+
+      .zoll-line a,
+      .zoll-summary a {
+        color: var(--admin-green);
+      }
+
+      .zoll-summary {
+        margin-top: 12px;
+        display: grid;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 850;
+      }
+
 </style>
   </head>
 
@@ -379,9 +482,9 @@
       <div class="card cockpit-stack admin-entry-section">
         <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorplanung_admin" target="_top">Vorplanung</a>
         <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorgang" target="_top">Vorgang bearbeiten</a>
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=leitstand_admin" target="_top">Leitstand</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/?mode=leitstand_admin" target="_top">Leitstand</a>
         <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=jahresarchiv_admin" target="_top">Jahresarchiv-Übersicht</a>
-        <a class="btn-save cockpit-btn zoll-access-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=zollkontakte_admin" target="_top">Zoll-Kontaktliste</a>
+        <button class="btn-save cockpit-btn zoll-access-btn" type="button" onclick="openZollKontakte(event)">Zoll-Kontaktliste</button>
         <button class="btn-save cockpit-btn admin-close-btn" type="button" onclick="return adminAppSchliessen(event)">Schließen</button>
       </div>
 
@@ -519,6 +622,24 @@
       </div>
     </div>
 
+
+    <div id="zollModal" class="zoll-modal-backdrop" onclick="handleZollModalBackdropClick(event)">
+      <div class="zoll-modal-card" onclick="event.stopPropagation()">
+        <div class="zoll-modal-head">
+          <div>
+            <div id="zollModalTitle" class="zoll-modal-title">Zoll-Kontaktliste</div>
+            <div id="zollModalNote" class="zoll-modal-note">Nur Anzeige der hinterlegten Zoll-Liste.</div>
+          </div>
+          <button class="zoll-modal-close" type="button" onclick="closeZollModal(event)">Schließen</button>
+        </div>
+
+        <div class="zoll-modal-body">
+          <div id="zollListe" class="zoll-list"></div>
+          <div id="zollZusatz" class="zoll-summary"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="adminToast" style="
       position: fixed;
       left: 50%;
@@ -543,6 +664,15 @@
     "></div>
 
     <script>
+      (function adminRoutingSichern() {
+        const params = new URLSearchParams(window.location.search);
+        const mode = String(params.get('mode') || '').toLowerCase();
+
+        if (mode === 'leitstand_admin') {
+          window.location.href = 'https://fraumecker.github.io/brennerei-startogv/?mode=leitstand_admin';
+          return;
+        }
+      })();
       let adminPinToken = '';
       let mitgliederCache = [];
       let sucheTimer = null;
@@ -1162,6 +1292,136 @@
           })
           .adminStoffbesitzerOrdnerSicherstellen(adminPinToken, payload);
       }
+
+
+      const ZOLL_KONTAKT_FALLBACK = {
+        titel: 'Hauptzollamt Saarbrücken',
+        untertitel: 'Telefonliste Steueraufsicht Abfindungsbrennereien',
+        stand: '19. Januar 2026',
+        faxAlleStandorte: '0681/8308-0901',
+        zentraleEmail: 'poststelle.hza-saarbruecken@zoll.bund.de',
+        kontakte: [
+          { name: 'Benedum', dienstsitz: 'KL', telefon: '0681 8308-0953', mobil: '0151-20482069', email: 'florian.benedum@zoll.bund.de' },
+          { name: 'Saxler', dienstsitz: 'SB', telefon: '0681/8308-0954', mobil: '0171-5410791', email: 'hans-ulrich.saxler@zoll.bund.de' },
+          { name: 'Bethge', dienstsitz: 'SB', telefon: '0681/8308-0934', mobil: '0171-5574045', email: 'dariusz.bethge@zoll.bund.de' },
+          { name: 'Enzweiler', dienstsitz: 'SB', telefon: '0681/8308-0940', mobil: '0151-46212125', email: 'andreas.enzweiler@zoll.bund.de' },
+          { name: 'Letzelter', dienstsitz: 'SB', telefon: '0681/8308-0908', mobil: '0160-98019895', email: 'fabian.letzelter@zoll.bund.de' },
+          { name: 'Müller', dienstsitz: 'SB', telefon: '0681/8308-0670', mobil: '0175-1168740', email: 'leon.mueller@zoll.bund.de' },
+          { name: 'Becker', dienstsitz: 'KL', telefon: '', mobil: '0160-98033505', email: 'tobias.becker@zoll.bund.de' },
+          { name: 'Ludwig', dienstsitz: 'KL', telefon: '', mobil: '0171-5416871', email: 'elias.ludwig@zoll.bund.de' }
+        ]
+      };
+
+      let zollKontaktPayload = null;
+
+      function openZollKontakte(event) {
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+
+        zollKontaktPayload = zollKontaktPayload || normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
+        showZollKontaktModal(zollKontaktPayload);
+
+        return false;
+      }
+
+      function showZollKontaktModal(payload) {
+        const modal = document.getElementById('zollModal');
+        const titel = document.getElementById('zollModalTitle');
+        const note = document.getElementById('zollModalNote');
+        const liste = document.getElementById('zollListe');
+        const zusatz = document.getElementById('zollZusatz');
+
+        if (!modal || !titel || !note || !liste || !zusatz) {
+          alert('Zoll-Kontaktliste konnte nicht geöffnet werden: Modal fehlt in admin.html.');
+          return;
+        }
+
+        titel.textContent = payload.titel || 'Zoll-Kontaktliste';
+        note.textContent = payload.untertitel || 'Nur Anzeige der hinterlegten Zoll-Liste.';
+
+        liste.innerHTML = payload.kontakte.map(function(k) {
+          return '<div class="zoll-row">'
+            + '<div class="zoll-name">👤 ' + esc(k.name || '') + '</div>'
+            + '<div class="zoll-meta">🏢 ' + esc(k.dienstsitz || '-') + '</div>'
+            + '<div class="zoll-line">📞 Telefon: ' + kontaktLinkHtml_(k.telefon, 'tel') + '</div>'
+            + '<div class="zoll-line">📱 Mobil: ' + kontaktLinkHtml_(k.mobil, 'tel') + '</div>'
+            + '<div class="zoll-line">✉️ E-Mail: ' + kontaktLinkHtml_(k.email, 'mail') + '</div>'
+            + '</div>';
+        }).join('');
+
+        zusatz.innerHTML = ''
+          + '<div><strong>Stand:</strong> ' + esc(payload.stand || '-') + '</div>'
+          + '<div><strong>Fax alle Standorte:</strong> ' + esc(payload.faxAlleStandorte || '-') + '</div>'
+          + '<div><strong>Zentrale E-Mail:</strong> ' + kontaktLinkHtml_(payload.zentraleEmail || '-', 'mail') + '</div>';
+
+        modal.classList.add('active');
+      }
+
+      function closeZollModal(event) {
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
+        const modal = document.getElementById('zollModal');
+        if (modal) modal.classList.remove('active');
+        return false;
+      }
+
+      function handleZollModalBackdropClick(event) {
+        if (event && event.target && event.target.id === 'zollModal') {
+          closeZollModal(event);
+        }
+      }
+
+      function normalisiereZollPayload_(daten) {
+        if (!daten) {
+          return {
+            titel: 'Zoll-Kontaktliste',
+            untertitel: '',
+            stand: '',
+            faxAlleStandorte: '',
+            zentraleEmail: '',
+            kontakte: []
+          };
+        }
+
+        const kontakte = Array.isArray(daten.kontakte) ? daten.kontakte : [];
+
+        return {
+          titel: daten.titel || 'Zoll-Kontaktliste',
+          untertitel: daten.untertitel || 'Zentrale Kontaktliste',
+          stand: daten.stand || '',
+          faxAlleStandorte: daten.faxAlleStandorte || '',
+          zentraleEmail: daten.zentraleEmail || '',
+          kontakte: kontakte.map(function(k) {
+            return {
+              name: k.name || '',
+              dienstsitz: k.dienstsitz || '',
+              telefon: k.telefon || '',
+              mobil: k.mobil || '',
+              email: k.email || ''
+            };
+          })
+        };
+      }
+
+      function kontaktLinkHtml_(wert, typ) {
+        const text = String(wert || '').trim();
+        if (!text || text === '-') return '-';
+
+        if (typ === 'mail') {
+          return '<a href="mailto:' + escAttr_(text) + '">' + esc(text) + '</a>';
+        }
+
+        const tel = text.replace(/[^0-9+]/g, '');
+        return '<a href="tel:' + escAttr_(tel) + '">' + esc(text) + '</a>';
+      }
+
+      function escAttr_(text) {
+        return esc(text);
+      }
+
+      window.openZollKontakte = openZollKontakte;
+      window.closeZollModal = closeZollModal;
+      window.handleZollModalBackdropClick = handleZollModalBackdropClick;
+
 
       document.addEventListener('DOMContentLoaded', appStartEventsBinden);
     </script>

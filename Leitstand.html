@@ -2986,13 +2986,18 @@
 
   function normalisiereZollPayload_(daten) {
     if (daten && typeof daten === 'object' && !Array.isArray(daten)) {
-      const kontakte = Array.isArray(daten.kontakte) ? daten.kontakte : (Array.isArray(daten.Kontakte) ? daten.Kontakte : []);
+      const kontakte = Array.isArray(daten.kontakte)
+        ? daten.kontakte
+        : (Array.isArray(daten.Kontakte)
+          ? daten.Kontakte
+          : (Array.isArray(daten.KONTAKTE) ? daten.KONTAKTE : []));
+
       return {
-        titel: daten.titel || daten.Titel || 'Zoll-Kontaktliste',
-        untertitel: daten.untertitel || daten.Untertitel || 'Zentrale Kontaktliste',
-        stand: daten.stand || daten.Stand || '',
-        faxAlleStandorte: daten.faxAlleStandorte || daten.FaxAlleStandorte || daten.fax || daten.Fax || '',
-        zentraleEmail: daten.zentraleEmail || daten.ZentraleEmail || daten.email || daten.Email || '',
+        titel: daten.titel || daten.Titel || daten.TITEL || 'Zoll-Kontaktliste',
+        untertitel: daten.untertitel || daten.Untertitel || daten.UNTERTITEL || 'Zentrale Kontaktliste',
+        stand: daten.stand || daten.Stand || daten.STAND || '',
+        faxAlleStandorte: daten.faxAlleStandorte || daten.FaxAlleStandorte || daten.FAX_ALLE_STANDORTE || daten.fax || daten.Fax || '',
+        zentraleEmail: daten.zentraleEmail || daten.ZentraleEmail || daten.ZENTRALE_EMAIL || daten.email || daten.Email || '',
         kontakte: kontakte.map(normalisiereZollKontakt_)
       };
     }
@@ -3020,18 +3025,13 @@
         showToast('Zoll-Kontaktliste geöffnet', 'success', 2600);
         return;
       }
-      if (zollKontaktBootstrap.fehler) {
-        showToast('Zoll-Kontaktliste konnte nicht geladen werden', 'error', 4200);
-        setZollModalFehler_('Zoll-Kontaktliste konnte nicht geladen werden: ' + zollKontaktBootstrap.fehler);
-        return;
-      }
     }
 
     if (!window.google || !window.google.script || !window.google.script.run) {
       const fallbackPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
       zollKontaktPayload = fallbackPayload;
       showZollKontaktModal(fallbackPayload, true);
-      showToast('Zoll-Kontaktliste geöffnet', 'success', 2600);
+      showToast('Zoll-Kontaktliste lokal geöffnet', 'success', 2600);
       return;
     }
 
@@ -3045,18 +3045,21 @@
       .withSuccessHandler(function(daten) {
         zollKontaktLaedt = false;
         const payload = normalisiereZollPayload_(daten);
-        zollKontaktPayload = payload;
+
         if (!payload.kontakte.length) {
-          setZollModalFehler_('Zoll-Kontaktliste geladen, aber keine Kontakte vorhanden.');
-          showToast('Zoll-Liste leer', 'error', 4200);
+          const fallbackPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
+          zollKontaktPayload = fallbackPayload;
+          showZollKontaktModal(fallbackPayload, true);
+          showToast('Zoll-Kontaktliste lokal geöffnet', 'success', 2600);
           return;
         }
+
+        zollKontaktPayload = payload;
         showZollKontaktModal(payload, true);
         showToast('Zoll-Kontaktliste geöffnet', 'success', 2600);
       })
       .withFailureHandler(function(err) {
         zollKontaktLaedt = false;
-        const msg = err && err.message ? err.message : String(err || 'Unbekannter Fehler');
         const fallbackPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
         zollKontaktPayload = fallbackPayload;
         showZollKontaktModal(fallbackPayload, true);
