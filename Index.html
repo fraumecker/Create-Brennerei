@@ -1376,7 +1376,7 @@
       align-items: center;
       justify-content: center;
       padding: 16px;
-      z-index: 99;
+      z-index: 2147483000;
     }
 
     .modal-backdrop.active {
@@ -1788,7 +1788,7 @@
       </div>
       <div class="top-actions">
         <button class="top-action-btn protocol-btn" type="button" onclick="druckePaket()">BRENNPROTOKOLL</button>
-        <button class="top-action-btn zoll-btn" type="button" onclick="openZollKontakte()">ZOLL</button>
+        <button id="leitstandZollButton" class="top-action-btn zoll-btn" type="button" onclick="openZollKontakte(event)">ZOLL</button>
       </div>
     </div>
 
@@ -1838,7 +1838,7 @@
   </div>
 
   <div class="modal-backdrop" id="zollModal" onclick="handleModalBackdropClick(event)">
-    <div class="modal-card">
+    <div class="modal-card" onclick="event.stopPropagation()">
       <div class="modal-head">
         <div id="zollModalTitle" class="modal-title">Zoll-Kontaktliste</div>
         <button class="modal-close" type="button" onclick="closeZollModal()">SCHLIESSEN</button>
@@ -2095,10 +2095,12 @@
   }
 
   function zurueckZurWebApp() {
-    const ziel = istAdminRuecksprung ? GITHUB_ADMIN_URL : GITHUB_INDEX_URL;
+    const params = new URLSearchParams(window.location.search);
+    const mode = String(params.get('mode') || '').trim().toLowerCase();
+    const ziel = mode === 'leitstand_admin' ? GITHUB_ADMIN_URL : GITHUB_INDEX_URL;
 
     try {
-      window.top.location.replace(ziel);
+      window.top.location.href = ziel;
     } catch (e1) {
       try {
         window.open(ziel, '_top');
@@ -3006,71 +3008,87 @@
     return { titel: 'Zoll-Kontaktliste', untertitel: 'Keine gültigen Daten erhalten.', stand: '', faxAlleStandorte: '', zentraleEmail: '', kontakte: [] };
   }
 
+  function stelleZollModalSicher_() {
+    if (document.getElementById('zollModal')) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.id = 'zollModal';
+    modal.onclick = handleModalBackdropClick;
+
+    modal.innerHTML = ''
+      + '<div class="modal-card" onclick="event.stopPropagation()">'
+      + '<div class="modal-head">'
+      + '<div id="zollModalTitle" class="modal-title">Zoll-Kontaktliste</div>'
+      + '<button class="modal-close" type="button" onclick="closeZollModal()">SCHLIESSEN</button>'
+      + '</div>'
+      + '<div class="modal-body">'
+      + '<div id="zollModalNote" style="margin-bottom:10px; color:#bbbbbb;"></div>'
+      + '<div class="zoll-list" id="zollListe"></div>'
+      + '<div class="zoll-summary" id="zollZusatz"></div>'
+      + '<div class="modal-actions">'
+      + '<button class="modal-btn" type="button" onclick="closeZollModal()">SCHLIESSEN</button>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+
+    document.body.appendChild(modal);
+  }
+
   function openZollKontakte(event) {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
 
-    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e) {}
-    try { window.top.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e) {}
+    stelleZollModalSicher_();
 
+    const fallbackPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
+
+    /*
+      Wichtig:
+      Der Leitstand läuft bei GitHub Pages nicht im direkten Apps-Script-Kontext.
+      Deshalb wird die vorhandene Kontaktliste sofort geöffnet.
+      Falls google.script.run verfügbar ist, wird danach zusätzlich die zentrale Apps-Script-Liste nachgeladen.
+    */
     if (zollKontaktPayload && Array.isArray(zollKontaktPayload.kontakte) && zollKontaktPayload.kontakte.length) {
       showZollKontaktModal(zollKontaktPayload, true);
-      showToast('Zoll-Kontaktliste geöffnet', 'success', 2600);
-      return;
-    }
-
-    if (zollKontaktBootstrap) {
-      const bootstrapPayload = normalisiereZollPayload_(zollKontaktBootstrap);
-      if (bootstrapPayload.kontakte.length) {
-        zollKontaktPayload = bootstrapPayload;
-        showZollKontaktModal(bootstrapPayload, true);
-        showToast('Zoll-Kontaktliste geöffnet', 'success', 2600);
-        return;
-      }
-    }
-
-    if (!window.google || !window.google.script || !window.google.script.run) {
-      const fallbackPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
+    } else {
       zollKontaktPayload = fallbackPayload;
       showZollKontaktModal(fallbackPayload, true);
-      showToast('Zoll-Kontaktliste lokal geöffnet', 'success', 2600);
-      return;
     }
 
-    if (zollKontaktLaedt) return;
-    zollKontaktLaedt = true;
+    showToast('Zoll-Kontaktliste geöffnet', 'success', 2600);
 
-    showToast('Zoll-Kontaktliste wird geladen ...', 'success', 0);
-    showZollKontaktModal({ titel: 'Zoll-Kontaktliste', untertitel: 'Wird geladen ...', stand: '', faxAlleStandorte: '', zentraleEmail: '', kontakte: [] }, true);
+    if (!window.google || !window.google.script || !window.google.script.run) {
+      return false;
+    }
+
+    if (zollKontaktLaedt) return false;
+    zollKontaktLaedt = true;
 
     google.script.run
       .withSuccessHandler(function(daten) {
         zollKontaktLaedt = false;
+
         const payload = normalisiereZollPayload_(daten);
 
         if (!payload.kontakte.length) {
-          const fallbackPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
-          zollKontaktPayload = fallbackPayload;
-          showZollKontaktModal(fallbackPayload, true);
-          showToast('Zoll-Kontaktliste lokal geöffnet', 'success', 2600);
           return;
         }
 
         zollKontaktPayload = payload;
         showZollKontaktModal(payload, true);
-        showToast('Zoll-Kontaktliste geöffnet', 'success', 2600);
       })
-      .withFailureHandler(function(err) {
+      .withFailureHandler(function() {
         zollKontaktLaedt = false;
-        const fallbackPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
-        zollKontaktPayload = fallbackPayload;
-        showZollKontaktModal(fallbackPayload, true);
-        showToast('Zoll-Kontaktliste lokal geöffnet', 'success', 2600);
       })
       .getZollNotfallKontaktliste();
+
+    return false;
   }
 
+
   function showZollKontaktModal(payload, offenHalten) {
+    stelleZollModalSicher_();
     zollKontaktPayload = payload || null;
 
     const modal = document.getElementById('zollModal');
@@ -3133,7 +3151,8 @@
   }
 
   function closeZollModal() {
-    document.getElementById('zollModal').classList.remove('active');
+    const modal = document.getElementById('zollModal');
+    if (modal) modal.classList.remove('active');
   }
 
   function leseFeldwert(card, role) {
@@ -3270,6 +3289,15 @@
       button.textContent = button.dataset.originalText || button.textContent;
     }
   }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const zollButton = document.getElementById('leitstandZollButton');
+    if (zollButton) {
+      zollButton.addEventListener('click', function(event) {
+        return openZollKontakte(event);
+      });
+    }
+  });
 
   window.openZollKontakte = openZollKontakte;
   window.closeZollModal = closeZollModal;

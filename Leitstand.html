@@ -2093,10 +2093,28 @@
   }
 
   function zurueckZurWebApp() {
-    const ziel = istAdminRuecksprung ? GITHUB_ADMIN_URL : GITHUB_INDEX_URL;
+    const params = new URLSearchParams(window.location.search);
+    const mode = String(params.get('mode') || '').trim().toLowerCase();
+    const rueckkehr = String(params.get('return') || params.get('rueckkehr') || '').trim().toLowerCase();
+    const herkunft = String(params.get('origin') || params.get('herkunft') || '').trim().toLowerCase();
+
+    const adminRuecksprung =
+      mode === 'leitstand_admin' ||
+      rueckkehr === 'admin' ||
+      herkunft === 'admin' ||
+      String(typeof returnModus !== 'undefined' ? returnModus : '').trim().toLowerCase() === 'admin' ||
+      String(typeof originModus !== 'undefined' ? originModus : '').trim().toLowerCase() === 'admin' ||
+      Boolean(typeof istAdminRuecksprung !== 'undefined' && istAdminRuecksprung);
+
+    const ziel = adminRuecksprung ? GITHUB_ADMIN_URL : GITHUB_INDEX_URL;
 
     try {
-      window.top.location.replace(ziel);
+      sessionStorage.setItem('ogvRuecksprung', adminRuecksprung ? 'admin' : 'index');
+      localStorage.setItem('ogvRuecksprung', adminRuecksprung ? 'admin' : 'index');
+    } catch (e0) {}
+
+    try {
+      window.top.location.href = ziel;
     } catch (e1) {
       try {
         window.open(ziel, '_top');
@@ -2970,7 +2988,7 @@
     window.open(url, '_blank');
   }
 
-  let zollKontaktPayload = null;
+  let zollKontaktPayload = normalisiereZollPayload_(zollKontaktBootstrap || ZOLL_KONTAKT_FALLBACK);
   let zollKontaktLaedt = false;
 
   function normalisiereZollKontakt_(k) {

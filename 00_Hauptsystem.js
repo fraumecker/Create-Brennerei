@@ -129,15 +129,15 @@ function doGet(e) {
   }
 
   if (mode === 'index') {
-    const template = HtmlService.createTemplateFromFile('Index');
+    const template = HtmlService.createTemplateFromFile('Cockpit');
     template.startModus = '';
     template.webAppUrl = webAppUrl;
     template.returnModus = returnModus;
-    template.originModus = originModus;
+    template.originModus = originModus || 'index';
     template.istAdminRuecksprung = istAdminRuecksprung;
     return template
       .evaluate()
-      .setTitle('OGV BREITFURT - Vorgangserfassung')
+      .setTitle('OGV BREITFURT - WEB APP')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -230,15 +230,15 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
-  const template = HtmlService.createTemplateFromFile('Index');
+  const template = HtmlService.createTemplateFromFile('Cockpit');
   template.startModus = '';
   template.webAppUrl = webAppUrl;
   template.returnModus = returnModus;
-  template.originModus = originModus;
+  template.originModus = originModus || 'index';
   template.istAdminRuecksprung = istAdminRuecksprung;
   return template
     .evaluate()
-    .setTitle('OGV BREITFURT - Vorgangserfassung')
+    .setTitle('OGV BREITFURT - WEB APP')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

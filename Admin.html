@@ -482,7 +482,7 @@
       <div class="card cockpit-stack admin-entry-section">
         <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorplanung_admin" target="_top">Vorplanung</a>
         <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorgang" target="_top">Vorgang bearbeiten</a>
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/?mode=leitstand_admin" target="_top">Leitstand</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=leitstand_admin&return=admin&origin=admin" target="_top" onclick="try{sessionStorage.setItem('ogvRuecksprung','admin');localStorage.setItem('ogvRuecksprung','admin');}catch(e){}">Leitstand</a>
         <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=jahresarchiv_admin" target="_top">Jahresarchiv-Übersicht</a>
         <button class="btn-save cockpit-btn zoll-access-btn" type="button" onclick="openZollKontakte(event)">Zoll-Kontaktliste</button>
         <button class="btn-save cockpit-btn admin-close-btn" type="button" onclick="return adminAppSchliessen(event)">Schließen</button>
@@ -664,15 +664,6 @@
     "></div>
 
     <script>
-      (function adminRoutingSichern() {
-        const params = new URLSearchParams(window.location.search);
-        const mode = String(params.get('mode') || '').toLowerCase();
-
-        if (mode === 'leitstand_admin') {
-          window.location.href = 'https://fraumecker.github.io/brennerei-startogv/?mode=leitstand_admin';
-          return;
-        }
-      })();
       let adminPinToken = '';
       let mitgliederCache = [];
       let sucheTimer = null;
@@ -1318,8 +1309,39 @@
         if (event && typeof event.preventDefault === 'function') event.preventDefault();
         if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
 
-        zollKontaktPayload = zollKontaktPayload || normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
-        showZollKontaktModal(zollKontaktPayload);
+        showToast('Zoll-Kontaktliste wird geladen ...', 'success', 0);
+
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+          zollKontaktPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
+          showZollKontaktModal(zollKontaktPayload);
+          showToast('Zoll-Kontaktliste lokal geladen.', 'success', 3200);
+          return false;
+        }
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (adminAppIstGeschlossen) return;
+
+            if (!res || res.fehler) {
+              zollKontaktPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
+              showZollKontaktModal(zollKontaktPayload);
+              showToast(res && res.fehler ? res.fehler : 'Zoll-Liste nicht bestätigt. Notfallliste geladen.', 'error', 6000);
+              return;
+            }
+
+            zollKontaktPayload = normalisiereZollPayload_(res);
+            showZollKontaktModal(zollKontaktPayload);
+            showToast('Zoll-Kontaktliste geladen.', 'success', 2600);
+          })
+          .withFailureHandler(function(err) {
+            if (adminAppIstGeschlossen) return;
+
+            const msg = err && err.message ? err.message : String(err);
+            zollKontaktPayload = normalisiereZollPayload_(ZOLL_KONTAKT_FALLBACK);
+            showZollKontaktModal(zollKontaktPayload);
+            showToast('Zoll-Liste konnte nicht geladen werden: ' + msg, 'error', 7000);
+          })
+          .getZollNotfallKontaktliste();
 
         return false;
       }
@@ -1418,12 +1440,56 @@
         return esc(text);
       }
 
+      function adminIstZollButtonElement_(el) {
+        if (!el) return false;
+
+        const text = String(el.innerText || el.textContent || '').trim().toLowerCase();
+        const aria = String(el.getAttribute && el.getAttribute('aria-label') || '').trim().toLowerCase();
+        const title = String(el.getAttribute && el.getAttribute('title') || '').trim().toLowerCase();
+        const href = String(el.getAttribute && el.getAttribute('href') || '').trim().toLowerCase();
+        const id = String(el.id || '').trim().toLowerCase();
+        const cls = String(el.className || '').trim().toLowerCase();
+
+        const gesammelt = [text, aria, title, href, id, cls].join(' ');
+
+        if (gesammelt.indexOf('zoll') === -1) return false;
+
+        return true;
+      }
+
+      function adminZollButtonKlickAbfangen() {
+        document.addEventListener('click', function(event) {
+          let ziel = event.target;
+
+          if (!ziel) return;
+
+          if (ziel.nodeType === 3) {
+            ziel = ziel.parentNode;
+          }
+
+          const button = ziel.closest ? ziel.closest('button, a, [role="button"], .btn-save, .zoll-access-btn') : null;
+
+          if (!button) return;
+          if (!adminIstZollButtonElement_(button)) return;
+
+          if (event && typeof event.preventDefault === 'function') event.preventDefault();
+          if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+          if (event && typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+
+          return openZollKontakte(event);
+        }, true);
+      }
+
+
       window.openZollKontakte = openZollKontakte;
       window.closeZollModal = closeZollModal;
       window.handleZollModalBackdropClick = handleZollModalBackdropClick;
 
 
-      document.addEventListener('DOMContentLoaded', appStartEventsBinden);
+      document.addEventListener('DOMContentLoaded', function() {
+        appStartEventsBinden();
+        adminZollButtonKlickAbfangen();
+      });
     </script>
   </body>
 </html>
