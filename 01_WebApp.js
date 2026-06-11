@@ -401,6 +401,7 @@ function saveLeitstandEintrag(payload) {
   }, 'saveLeitstandEintrag');
 }
 
+// FIX: Archivierungsprüfung verwendet leitstandZeileIstArchivfaehigMitWerten_ (kein Re-Read, kein Flush-Cache-Bug)
 function saveLeitstandEintraegeBatch(payloads) {
   return mitSperreAusfuehren_(function() {
     const liste = Array.isArray(payloads) ? payloads : [];
@@ -434,8 +435,18 @@ function saveLeitstandEintraegeBatch(payloads) {
 
     SpreadsheetApp.flush();
 
+    // FIX: Archivfähigkeit mit den gerade geschriebenen Werten prüfen — kein Re-Read der Tabelle
     const direktZuArchivierendeDetails = result.details.filter(function(einzel) {
-      return einzel && (einzel.erledigt === true || einzel.zollAbgelehnt === true) && einzel.row && einzel.vId;
+      if (!einzel || (!einzel.erledigt && !einzel.zollAbgelehnt)) return false;
+      if (!einzel.row || !einzel.vId) return false;
+      return leitstandZeileIstArchivfaehigMitWerten_(
+        einzel.alkohol,
+        einzel.ausbeute,
+        einzel.statusAktion,
+        einzel.zollAbgelehnt ? '❌ ABGELEHNT' : KONFIGURATION.STATUSWERTE.GEBRANNT,
+        einzel.zollOk || '',
+        einzel.minderausbeute === true
+      );
     }).sort(function(a, b) {
       return Number(b.row) - Number(a.row);
     });
@@ -465,6 +476,7 @@ function saveLeitstandEintraegeBatch(payloads) {
   }, 'saveLeitstandEintraegeBatch');
 }
 
+// FIX: 0 ist gültiger Wert für Alkohol/Ausbeute; alkohol/ausbeute/zollOk im Rückgabeobjekt
 function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
   const opts = optionen || {};
   const sollFlushen = opts.flush !== false;
@@ -515,6 +527,9 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
       zollAbgelehnt: true,
       row: zeile,
       vId: vId,
+      alkohol: '',
+      ausbeute: '',
+      zollOk: '❌ ABGELEHNT',
       statusAktion: '❌ ABGELEHNT',
       archiviert: archivAblehnung && archivAblehnung.archiviert === true,
       verschoben: archivAblehnung && archivAblehnung.verschoben === true,
@@ -525,8 +540,10 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
   const minderausbeute = daten.minderausbeute === true || daten.minderausbeute === 'true' || daten.minderausbeute === 1 || daten.minderausbeute === '1';
   const alkohol = minderausbeute ? '0' : webAppFeldwertNormalisieren_('ALKOHOL', daten.alkohol);
   const ausbeute = minderausbeute ? '0' : webAppFeldwertNormalisieren_('AUSBEUTE', daten.ausbeute);
-  const hatAlkohol = !!textNormalisieren_(alkohol);
-  const hatAusbeute = !!textNormalisieren_(ausbeute);
+
+  // FIX: 0 ist gültiger Wert — explizite Prüfung statt !!textNormalisieren_()
+  const hatAlkohol = alkohol !== null && alkohol !== undefined && alkohol !== '';
+  const hatAusbeute = ausbeute !== null && ausbeute !== undefined && ausbeute !== '';
   const hatEingabe = hatAlkohol || hatAusbeute || minderausbeute;
 
   if (!hatEingabe) {
@@ -613,10 +630,13 @@ function leitstandEintragSpeichernOhneSperre_(payload, optionen) {
     minderausbeute: minderausbeute,
     row: zeile,
     vId: vId,
+    alkohol: alkohol,
+    ausbeute: ausbeute,
+    zollOk: '',
+    statusAktion: statusAktion,
     archiviert: archivDirekt && archivDirekt.archiviert === true,
     verschoben: archivDirekt && archivDirekt.verschoben === true,
-    archivierung: minderausbeute ? 'MINDERAUSBEUTE_SOFORT_NUR_MARKIERTE_ZEILE' : 'SOFORT_NUR_MARKIERTE_ZEILE',
-    statusAktion: statusAktion
+    archivierung: minderausbeute ? 'MINDERAUSBEUTE_SOFORT_NUR_MARKIERTE_ZEILE' : 'SOFORT_NUR_MARKIERTE_ZEILE'
   };
 }
 
@@ -1255,13 +1275,6 @@ function holeDropdownWerteAusQuelleFuerWebApp_(key) {
 
 /**
  * FUNKTION: Liefert die Zollkontaktliste aus der zentralen KONFIGURATION.
- * ZWECK:
- * - Anzeige im Leitstand
- * - keine automatische Mail
- * - keine automatische Benachrichtigung
- * - keine hart codierten Kontaktdaten im Leitstand
- * QUELLE:
- * - KONFIGURATION.ZOLL_KONTAKTLISTE
  */
 function getZollNotfallKontaktliste() {
   var quelle = KONFIGURATION.ZOLL_KONTAKTLISTE;
@@ -1291,7 +1304,6 @@ function getZollNotfallKontaktliste() {
 
 /**
  * FUNKTION: Prüft die Admin-PIN für die geschützte Mitgliederverwaltung.
- * HINWEIS: Bei Linkzugang ohne Google-Anmeldung ersetzt diese PIN keine echte Nutzeridentität.
  */
 function adminMitgliederPinPruefen(pin) {
   pruefeAdminMitgliederPin_(pin);
@@ -1300,7 +1312,6 @@ function adminMitgliederPinPruefen(pin) {
 
 /**
  * FUNKTION: Lädt Mitglieder für die Admin-Mitgliederverwaltung.
- * RÜCKGABE: Vollständige sichtbare Kontaktdaten aus 👥_MITGLIEDER.
  */
 function adminMitgliederListeLaden(pin, suchtext) {
   pruefeAdminMitgliederPin_(pin);
@@ -1432,8 +1443,7 @@ function adminMitgliedSpeichern(pin, payload) {
 
 
 /**
- * FUNKTION: Erstellt oder öffnet den Hauptordner des Stoffbesitzers unter dem konfigurierten Drive-Wurzelordner.
- * HINWEIS: Die eigentliche Ordnerlogik liegt in 05_DriveService.gs.
+ * FUNKTION: Erstellt oder öffnet den Hauptordner des Stoffbesitzers.
  */
 function adminStoffbesitzerOrdnerSicherstellen(pin, payload) {
   pruefeAdminMitgliederPin_(pin);

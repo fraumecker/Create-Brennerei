@@ -4,10 +4,10 @@
   <base target="_self">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <style>
-      /* GitHub-iframe: Der Google-"Missbrauch melden"-Banner ist ~55px hoch.
-         margin-top schiebt den gesamten Inhalt darunter, damit Titel und Buttons sichtbar sind. */
+      /* GitHub-Wrapper schneidet oben 80px ab, um den Google-Hinweis auszublenden.
+         Dieser Ausgleich macht Überschrift und obere Buttons wieder sichtbar. */
       .main-frame {
-        margin-top: 60px !important;
+        margin-top: 80px !important;
       }
 
     :root {
@@ -382,30 +382,28 @@
     }
 
     .save-toast {
-      position: fixed !important;
-      left: 50% !important;
-      top: 50% !important;
-      right: auto !important;
-      bottom: auto !important;
-      transform: translate(-50%, -50%) scale(0.96) !important;
-      min-width: 260px;
+      position: fixed;
+      left: 50%;
+      bottom: 82px;
+      transform: translateX(-50%) translateY(24px);
+      min-width: 240px;
       max-width: calc(100vw - 32px);
-      padding: 14px 18px;
-      border-radius: 18px;
-      font-size: 14px;
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 13px;
       font-weight: 900;
       letter-spacing: 0.3px;
       text-align: center;
-      z-index: 999999 !important;
+      z-index: 9999;
       opacity: 0;
       pointer-events: none;
       transition: opacity 160ms ease, transform 160ms ease;
-      box-shadow: 0 18px 42px rgba(0,0,0,0.68);
+      box-shadow: 0 16px 34px rgba(0,0,0,0.55);
     }
 
     .save-toast.active {
       opacity: 1;
-      transform: translate(-50%, -50%) scale(1) !important;
+      transform: translateX(-50%) translateY(0);
     }
 
     .save-toast.info {
@@ -433,19 +431,9 @@
       padding-bottom: 18px;
     }
 
-    .top-actions {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 8px;
-      margin: 0 0 10px 0;
-      padding: 0 0 10px 0;
-      border-bottom: 1px solid #333333;
-    }
-
     .bottom-actions {
       display: flex;
-      justify-content: flex-start;
+      justify-content: flex-end;
       align-items: center;
       gap: 8px;
       margin-top: 10px;
@@ -454,7 +442,6 @@
     }
 
     .bottom-back-btn,
-    .top-save-btn,
     .bottom-save-btn {
       width: min(260px, 100%);
       min-height: 46px;
@@ -469,15 +456,9 @@
     }
 
     .bottom-back-btn {
-      background: linear-gradient(145deg, #4a4a4a, #1d1d1d);
-      color: #d6d6d6;
-      border: 1px solid #6a6a6a;
-    }
-
-    .top-save-btn {
-      background: linear-gradient(145deg, var(--pink), var(--pink-dark));
-      color: #ffffff;
-      border: none;
+      background: #202020;
+      color: var(--text);
+      border: 1px solid #3d3d3d;
     }
 
     .archiv-info-card {
@@ -876,16 +857,13 @@
 
     .modal-backdrop {
       position: fixed;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
+      inset: 0;
       background: rgba(0, 0, 0, 0.7);
       display: none;
       align-items: center;
       justify-content: center;
       padding: 16px;
-      z-index: 19000;
+      z-index: 99;
     }
 
     .modal-backdrop.active {
@@ -1135,7 +1113,7 @@
       </div>
       <div class="top-actions">
         <button class="top-action-btn protocol-btn" type="button" onclick="druckePaket()">BRENNPROTOKOLL</button>
-        <button id="zollKontaktButton" class="top-action-btn zoll-btn" type="button" onclick="openZollKontakte(event)">ZOLL</button>
+        <button class="top-action-btn zoll-btn" type="button" onclick="openZollKontakte()">ZOLL</button>
       </div>
     </div>
 
@@ -1226,7 +1204,6 @@
         setzeKalenderAufNaechstenGeplantenMonatOhneAuswahl();
         zeichneKalender();
         document.getElementById('jobList').innerHTML = '';
-        showToast('Kalender geladen — Brandtag auswählen', 'success', 2800);
       })
       .withFailureHandler(function() {
         geplanteBrandtage = [];
@@ -1236,7 +1213,6 @@
         setzeKalenderAufHeuteOhneAuswahl();
         zeichneKalender();
         document.getElementById('jobList').innerHTML = '';
-        showToast('Kalender konnte nicht geladen werden', 'error', 4200);
       })
       .getLeitstandGeplanteBrandtage();
   }
@@ -1387,8 +1363,6 @@
       return;
     }
 
-    showToast('Brandtag wird geladen ...', 'success', 0);
-
     if (liste) {
       liste.innerHTML = '<div class="archiv-info-card"><div class="archive-chip">LÄDT</div><div class="mini-field-value">Brandtag wird geladen ...</div></div>';
     }
@@ -1475,6 +1449,7 @@
       card.dataset.vid = String(j.vId || '');
       const minderausbeuteChecked = j.istMinderausbeute ? 'checked' : '';
       const doneChip = j.istErledigt ? '<div class="done-chip">ERLEDIGT</div>' : '';
+      const detailId = 'detail-' + escapeAttr_(String(j.vId || j.row || Math.random()).replace(/[^a-zA-Z0-9_-]/g, ''));
       const alkValue = String(j.alk || '').trim();
       const ausbeuteValue = String(j.ausbeute || '').trim();
       const alkFieldClass = alkValue ? 'mini-field ready' : 'mini-field attention';
@@ -1511,14 +1486,14 @@
         </div>
 
         <div class="summary-line actions">
-          <button class="btn-inline-secondary" type="button" onclick="toggleDetails(this)"><span class="details-toggle-arrow">＋</span>DETAILS</button>
+          <button class="btn-inline-secondary" type="button" onclick="toggleDetails('${detailId}', this)"><span class="details-toggle-arrow">＋</span>DETAILS</button>
           <div class="save-group">
             <label class="mini-check"><input type="checkbox" ${minderausbeuteChecked} data-role="minderausbeute" onchange="handleMinderausbeuteChange(this)"><span>Minderausbeute melden</span></label>
             <label class="mini-check"><input type="checkbox" data-role="zumSpeichern"><span>Diese Zeile übernehmen</span></label>
           </div>
         </div>
 
-        <div class="details-panel">
+        <div class="details-panel" id="${detailId}">
           <div class="detail-block">
             <div class="mini-field-label">Registernummer</div>
             <div class="detail-value">${escapeHtml_(j.regNr || '-')}</div>
@@ -1551,10 +1526,8 @@
 
 
 
-  function toggleDetails(button) {
-    const card = button ? button.closest('.job-card') : null;
-    const panel = card ? card.querySelector('.details-panel') : null;
-
+  function toggleDetails(detailId, button) {
+    const panel = document.getElementById(detailId);
     if (!panel) {
       showStatus('Details konnten nicht geöffnet werden: Detailbereich nicht gefunden.', 'error');
       return;
@@ -1766,30 +1739,19 @@
   let zollKontaktPayload = null;
   let zollKontaktLaedt = false;
 
-  function normalisiereZollKontakt_(kontakt) {
-    kontakt = kontakt || {};
+  function normalisiereZollKontakt_(k) {
+    if (!k || typeof k !== 'object') return { name: '', dienstsitz: '', telefon: '', mobil: '', email: '' };
     return {
-      name: kontakt.name || kontakt.Name || kontakt.ansprechpartner || kontakt.Ansprechpartner || kontakt.person || kontakt.Person || '',
-      dienstsitz: kontakt.dienstsitz || kontakt.Dienstsitz || kontakt.standort || kontakt.Standort || kontakt.ort || kontakt.Ort || '-',
-      telefon: kontakt.telefon || kontakt.Telefon || kontakt.tel || kontakt.Tel || kontakt.festnetz || kontakt.Festnetz || '',
-      mobil: kontakt.mobil || kontakt.Mobil || kontakt.handy || kontakt.Handy || kontakt.mobile || kontakt.Mobile || '',
-      email: kontakt.email || kontakt.Email || kontakt.eMail || kontakt['E-Mail'] || kontakt.mail || kontakt.Mail || ''
+      name: k.name || k.Name || k.NAME || '',
+      dienstsitz: k.dienstsitz || k.Dienstsitz || k.DIENSTSITZ || '',
+      telefon: k.telefon || k.Telefon || k.TELEFON || '',
+      mobil: k.mobil || k.Mobil || k.MOBIL || '',
+      email: k.email || k.Email || k.EMAIL || ''
     };
   }
 
   function normalisiereZollPayload_(daten) {
-    if (Array.isArray(daten)) {
-      return {
-        titel: 'Zoll-Kontaktliste',
-        untertitel: 'Zentrale Kontaktliste',
-        stand: '',
-        faxAlleStandorte: '',
-        zentraleEmail: '',
-        kontakte: daten.map(normalisiereZollKontakt_)
-      };
-    }
-
-    if (daten && typeof daten === 'object') {
+    if (daten && typeof daten === 'object' && !Array.isArray(daten)) {
       const kontakte = Array.isArray(daten.kontakte) ? daten.kontakte : (Array.isArray(daten.Kontakte) ? daten.Kontakte : []);
       return {
         titel: daten.titel || daten.Titel || 'Zoll-Kontaktliste',
@@ -1800,33 +1762,22 @@
         kontakte: kontakte.map(normalisiereZollKontakt_)
       };
     }
-
-    return {
-      titel: 'Zoll-Kontaktliste',
-      untertitel: 'Keine gültigen Daten erhalten.',
-      stand: '',
-      faxAlleStandorte: '',
-      zentraleEmail: '',
-      kontakte: []
-    };
+    return { titel: 'Zoll-Kontaktliste', untertitel: 'Keine gültigen Daten erhalten.', stand: '', faxAlleStandorte: '', zentraleEmail: '', kontakte: [] };
   }
 
   function openZollKontakte(event) {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
 
-    // Beim Öffnen immer nach oben scrollen damit das Modal sichtbar ist
     try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e) {}
     try { window.top.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e) {}
 
-    // Bereits gecachte Kontakte sofort anzeigen
     if (zollKontaktPayload && Array.isArray(zollKontaktPayload.kontakte) && zollKontaktPayload.kontakte.length) {
       showZollKontaktModal(zollKontaktPayload, true);
       showToast('Zoll-Kontaktliste geöffnet', 'success', 2600);
       return;
     }
 
-    // Beim Bootstrap bereits mitgelieferte Daten (vom Server beim Seitenaufruf)
     if (zollKontaktBootstrap) {
       const bootstrapPayload = normalisiereZollPayload_(zollKontaktBootstrap);
       if (bootstrapPayload.kontakte.length) {
@@ -1842,27 +1793,21 @@
       }
     }
 
-    // Kein google.script.run verfügbar (z.B. beim Direktaufruf außerhalb der Apps-Script-WebApp)
     if (!window.google || !window.google.script || !window.google.script.run) {
       showToast('Zoll-Kontaktliste: Direkt-Aufruf außerhalb der WebApp', 'error', 5000);
       setZollModalFehler_(
         'Zoll-Kontaktliste kann hier nicht nachgeladen werden. ' +
-        'Öffne den Leitstand über die Apps-Script-Web-App ' +
-        '(nicht direkt über GitHub), damit die Kontakte automatisch beim Laden mitgeliefert werden.'
+        'Öffne den Leitstand über die Apps-Script-Web-App, ' +
+        'damit die Kontakte automatisch beim Laden mitgeliefert werden.'
       );
       return;
     }
 
-    // Nur ein paralleler Ladevorgang
     if (zollKontaktLaedt) return;
     zollKontaktLaedt = true;
 
     showToast('Zoll-Kontaktliste wird geladen ...', 'success', 0);
-    showZollKontaktModal({
-      titel: 'Zoll-Kontaktliste',
-      untertitel: 'Wird geladen ...',
-      stand: '', faxAlleStandorte: '', zentraleEmail: '', kontakte: []
-    }, true);
+    showZollKontaktModal({ titel: 'Zoll-Kontaktliste', untertitel: 'Wird geladen ...', stand: '', faxAlleStandorte: '', zentraleEmail: '', kontakte: [] }, true);
 
     google.script.run
       .withSuccessHandler(function(daten) {

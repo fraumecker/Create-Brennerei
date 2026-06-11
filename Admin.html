@@ -369,33 +369,11 @@
         color: #333;
       }
 
-
-      /* Toast */
-      #adminToast {
-        display: none;
-        position: sticky;
-        top: 8px;
-        z-index: 9999;
-        width: 100%;
-        padding: 13px 16px;
-        border-radius: 14px;
-        font-size: 14px;
-        font-weight: 900;
-        text-align: center;
-        margin-bottom: 12px;
-        box-sizing: border-box;
-        box-shadow: 0 6px 22px rgba(0,0,0,0.32);
-      }
-      #adminToast.active  { display: block; }
-      #adminToast.success { background: #12a139; color: #ffffff; border: 1px solid #9dffb1; box-shadow: 0 0 16px rgba(57,255,20,0.45), 0 6px 22px rgba(0,0,0,0.32); }
-      #adminToast.error   { background: #7d1225; color: #ffffff; border: 1px solid #ffb6c9; }
-      #adminToast.info    { background: #1c1c1c; color: #eeeeee; border: 1px solid #555555; }
 </style>
   </head>
 
   <body>
     <div class="main-frame">
-      <div id="adminToast" role="status" aria-live="polite"></div>
       <h1 id="mainTitle">OGV BREITFURT – ADMIN</h1>
 
       <div class="card cockpit-stack admin-entry-section">
@@ -541,6 +519,29 @@
       </div>
     </div>
 
+    <div id="adminToast" style="
+      position: fixed;
+      left: 50%;
+      bottom: 32px;
+      transform: translateX(-50%) translateY(24px);
+      min-width: 240px;
+      max-width: calc(100vw - 32px);
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+      text-align: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.55);
+      background: #1c1c1c;
+      color: #eeeeee;
+      border: 1px solid #555555;
+    "></div>
+
     <script>
       let adminPinToken = '';
       let mitgliederCache = [];
@@ -553,39 +554,22 @@
       let ordnerRequestLaeuft = false;
       let adminAppIstGeschlossen = false;
 
-      let adminToastTimer = null;
-
-      function showToast(msg, type, durationMs) {
-        const toast = document.getElementById('adminToast');
-        if (!toast) return;
-        if (adminToastTimer) { clearTimeout(adminToastTimer); adminToastTimer = null; }
-        toast.textContent = msg || '';
-        toast.className = msg ? ('active ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : 'info')) : '';
-        if (msg && durationMs && durationMs > 0) {
-          adminToastTimer = setTimeout(function() {
-            toast.className = '';
-            toast.textContent = '';
-          }, durationMs);
-        }
-      }
-
       const feldMap = {
-        MitgliederID: 'feldMitgliederID',
-        Stoffbesitzernummer: 'feldStoffbesitzernummer',
-        Zuname: 'feldZuname',
-        Vorname: 'feldVorname',
-        'Geb.datum': 'feldGebdatum',
-        Eintritt: 'feldEintritt',
-        'Straße': 'feldStrasse',
-        'Nr.': 'feldNr',
-        PLZ: 'feldPLZ',
-        Wohnort: 'feldWohnort',
-        Telefon: 'feldTelefon',
-        'E-Mail': 'feldEmail',
-        Vereinsmitglied: 'feldVereinsmitglied',
-        NameAnzeige: 'feldNameAnzeige'
+        'MitgliederID':        'feldMitgliederID',
+        'Stoffbesitzernummer': 'feldStoffbesitzernummer',
+        'Zuname':              'feldZuname',
+        'Vorname':             'feldVorname',
+        'Geb.datum':           'feldGebdatum',
+        'Eintritt':            'feldEintritt',
+        'Straße':              'feldStrasse',
+        'Nr.':                 'feldNr',
+        'PLZ':                 'feldPLZ',
+        'Wohnort':             'feldWohnort',
+        'Telefon':             'feldTelefon',
+        'E-Mail':              'feldEmail',
+        'Vereinsmitglied':     'feldVereinsmitglied',
+        'NameAnzeige':         'feldNameAnzeige'
       };
-
 
       function adminAppSchliessen(evt) {
         /*
@@ -685,6 +669,47 @@
         if (el) el.textContent = text || '';
       }
 
+      let adminToastTimer = null;
+
+      function showToast(message, type, durationMs) {
+        const toast = document.getElementById('adminToast');
+        if (!toast) return;
+
+        if (adminToastTimer) {
+          clearTimeout(adminToastTimer);
+          adminToastTimer = null;
+        }
+
+        toast.textContent = message || '';
+
+        if (type === 'success') {
+          toast.style.background = '#12a139';
+          toast.style.color = '#ffffff';
+          toast.style.border = '1px solid #9dffb1';
+          toast.style.boxShadow = '0 0 22px rgba(57,255,20,0.65), 0 16px 34px rgba(0,0,0,0.55)';
+        } else if (type === 'error') {
+          toast.style.background = '#7d1225';
+          toast.style.color = '#ffffff';
+          toast.style.border = '1px solid #ffb6c9';
+          toast.style.boxShadow = '0 16px 34px rgba(0,0,0,0.55)';
+        } else {
+          toast.style.background = '#1c1c1c';
+          toast.style.color = '#eeeeee';
+          toast.style.border = '1px solid #555555';
+          toast.style.boxShadow = '0 16px 34px rgba(0,0,0,0.55)';
+        }
+
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(-50%) translateY(0)';
+
+        if (durationMs && durationMs > 0) {
+          adminToastTimer = setTimeout(function() {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(24px)';
+          }, durationMs);
+        }
+      }
+
       function setBusy(selector, busy) {
         const el = document.querySelector(selector);
         if (!el) return;
@@ -735,10 +760,12 @@
         const pin = pinFeld ? pinFeld.value.trim() : '';
 
         if (!pin) {
+          setText('pinStatus', 'PIN fehlt.');
           showToast('PIN fehlt.', 'error', 4000);
           return;
         }
 
+        setText('pinStatus', 'PIN wird geprüft ...');
         showToast('PIN wird geprüft ...', 'success', 0);
         setBusy('#pinBox .admin-pink-btn', true);
 
@@ -748,7 +775,8 @@
             setBusy('#pinBox .admin-pink-btn', false);
 
             if (!res || !res.ok) {
-              showToast('PIN ungültig.', 'error', 5000);
+              setText('pinStatus', 'PIN ungültig.');
+              showToast('PIN ungültig.', 'error', 4000);
               return;
             }
 
@@ -757,7 +785,8 @@
             document.getElementById('mitgliederBereich').classList.remove('admin-hidden');
             document.body.classList.add('admin-members-open');
 
-            showToast('', 'info', 1);
+            setText('pinStatus', '');
+            showToast('Freigegeben. Bitte suchen.', 'success', 2600);
             sucheLeeren();
 
             mitgliederCache = [];
@@ -772,7 +801,9 @@
           .withFailureHandler(function(err) {
             if (adminAppIstGeschlossen) return;
             setBusy('#pinBox .admin-pink-btn', false);
-            showToast(err && err.message ? err.message : String(err), 'error', 6000);
+            const msg = err && err.message ? err.message : String(err);
+            setText('pinStatus', msg);
+            showToast(msg, 'error', 6000);
           })
           .adminMitgliederPinPruefen(pin);
       }
@@ -794,6 +825,7 @@
         renderMitgliederTreffer();
 
         setText('listenStatus', '');
+        setText('pinStatus', '');
         showToast('', 'info', 1);
       }
 
@@ -852,11 +884,19 @@
               'listenStatus',
               mitgliederCache.length ? mitgliederCache.length + ' Treffer. Eintrag anklicken.' : 'Keine Treffer'
             );
+
+            if (!mitgliederCache.length) {
+              showToast('Keine Treffer', 'error', 3200);
+            } else {
+              showToast(mitgliederCache.length + ' Treffer', 'success', 2600);
+            }
           })
           .withFailureHandler(function(err) {
             if (adminAppIstGeschlossen) return;
             if (requestId !== mitgliederSucheRequestId) return;
-            showToast(err && err.message ? err.message : String(err), 'error', 6000);
+            const msg = err && err.message ? err.message : String(err);
+            setText('listenStatus', msg);
+            showToast(msg, 'error', 6000);
           })
           .adminMitgliederListeLaden(adminPinToken, suchtext);
       }
@@ -1009,6 +1049,7 @@
         if (speichernRequestLaeuft) return;
 
         if (!adminPinToken) {
+          setText('detailStatus', 'PIN fehlt.');
           showToast('PIN fehlt.', 'error', 4000);
           return;
         }
@@ -1016,12 +1057,14 @@
         const payload = payloadAusFormular();
 
         if (!payload.Zuname && !payload.Vorname && !payload.NameAnzeige) {
+          setText('detailStatus', 'Name fehlt.');
           showToast('Name fehlt.', 'error', 4000);
           return;
         }
 
         speichernRequestLaeuft = true;
         setBusy('#mitgliederDetailMaske .admin-green-btn', true);
+        setText('detailStatus', 'Speichern ...');
         showToast('Wird gespeichert ...', 'success', 0);
 
         google.script.run
@@ -1031,27 +1074,28 @@
             setBusy('#mitgliederDetailMaske .admin-green-btn', false);
 
             if (!res || !res.ok) {
-              showToast('Speichern nicht bestätigt.', 'error', 5000);
+              setText('detailStatus', 'Speichern nicht bestätigt.');
+              showToast('Speichern nicht bestätigt.', 'error', 4000);
               return;
             }
 
             sucheLeeren();
-
             mitgliederCache = [];
             renderMitgliederTreffer();
-
             formularLeeren({ ohneAnsichtWechsel: true });
             ansichtSuche();
 
-            showToast('Gespeichert!', 'success', 3000);
             setText('listenStatus', '');
             setText('detailStatus', '');
+            showToast('Gespeichert ✓', 'success', 3200);
           })
           .withFailureHandler(function(err) {
             if (adminAppIstGeschlossen) return;
             speichernRequestLaeuft = false;
             setBusy('#mitgliederDetailMaske .admin-green-btn', false);
-            showToast(err && err.message ? err.message : String(err), 'error', 6000);
+            const msg = err && err.message ? err.message : String(err);
+            setText('detailStatus', msg);
+            showToast(msg, 'error', 6000);
           })
           .adminMitgliedSpeichern(adminPinToken, payload);
       }
@@ -1069,6 +1113,7 @@
         if (ordnerRequestLaeuft) return;
 
         if (!adminPinToken) {
+          setText('detailStatus', 'PIN fehlt.');
           showToast('PIN fehlt.', 'error', 4000);
           return;
         }
@@ -1076,13 +1121,15 @@
         const payload = payloadAusFormular();
 
         if (!payload.Zuname && !payload.Vorname && !payload.NameAnzeige) {
-          showToast('Name fehlt.', 'error', 4000);
+          setText('detailStatus', 'Name fehlt.');
+          showToast('Name fehlt — bitte erst Namen eingeben.', 'error', 4000);
           return;
         }
 
         ordnerRequestLaeuft = true;
         setBusy('#mitgliederDetailMaske .admin-pink-btn', true);
-        showToast('Drive-Ordner wird geöffnet ...', 'success', 0);
+        setText('detailStatus', 'Ordner ...');
+        showToast('Drive-Ordner wird gesucht / angelegt ...', 'success', 0);
 
         google.script.run
           .withSuccessHandler(function(res) {
@@ -1091,7 +1138,8 @@
             setBusy('#mitgliederDetailMaske .admin-pink-btn', false);
 
             if (!res || !res.ok || !res.url) {
-              showToast('Ordner nicht gefunden.', 'error', 5000);
+              setText('detailStatus', 'Ordner nicht bestätigt.');
+              showToast('Ordner nicht bestätigt.', 'error', 4000);
               return;
             }
 
@@ -1102,12 +1150,15 @@
 
             window.open(res.url, '_blank');
             setText('detailStatus', '');
+            showToast('Ordner geöffnet ✓', 'success', 2600);
           })
           .withFailureHandler(function(err) {
             if (adminAppIstGeschlossen) return;
             ordnerRequestLaeuft = false;
             setBusy('#mitgliederDetailMaske .admin-pink-btn', false);
-            showToast(err && err.message ? err.message : String(err), 'error', 6000);
+            const msg = err && err.message ? err.message : String(err);
+            setText('detailStatus', msg);
+            showToast(msg, 'error', 6000);
           })
           .adminStoffbesitzerOrdnerSicherstellen(adminPinToken, payload);
       }

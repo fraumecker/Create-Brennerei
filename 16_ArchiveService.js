@@ -277,6 +277,7 @@ function leitstandEintragInsJahresarchivUebertragenOhneSperre_(vId, statusAktion
   };
 }
 
+// FIX: 0 ist gültiger Wert für Alkohol/Ausbeute (Platzhalter zusammengemischte Fässer)
 function leitstandZeileIstArchivfaehig_(row, sMapQuelle) {
   const statusAktion = textNormalisieren_(sMapQuelle.STATUS_AKTION ? row[sMapQuelle.STATUS_AKTION - 1] : '').toUpperCase();
   const status = textNormalisieren_(sMapQuelle.STATUS ? row[sMapQuelle.STATUS - 1] : '').toUpperCase();
@@ -290,14 +291,46 @@ function leitstandZeileIstArchivfaehig_(row, sMapQuelle) {
   if (!istErledigt) return false;
 
   if (istMinderausbeute) {
-    if (sMapQuelle.AUSBEUTE && !textNormalisieren_(row[sMapQuelle.AUSBEUTE - 1])) return false;
+    // FIX: 0 ist gültig — explizite Prüfung auf leer statt !textNormalisieren_()
+    if (sMapQuelle.AUSBEUTE) {
+      const v = row[sMapQuelle.AUSBEUTE - 1];
+      if (v === null || v === undefined || v === '') return false;
+    }
     return true;
   }
 
-  if (sMapQuelle.ALKOHOL && !textNormalisieren_(row[sMapQuelle.ALKOHOL - 1])) return false;
-  if (sMapQuelle.AUSBEUTE && !textNormalisieren_(row[sMapQuelle.AUSBEUTE - 1])) return false;
+  // FIX: 0 ist gültig — explizite Prüfung auf leer statt !textNormalisieren_()
+  if (sMapQuelle.ALKOHOL) {
+    const v = row[sMapQuelle.ALKOHOL - 1];
+    if (v === null || v === undefined || v === '') return false;
+  }
+  if (sMapQuelle.AUSBEUTE) {
+    const v = row[sMapQuelle.AUSBEUTE - 1];
+    if (v === null || v === undefined || v === '') return false;
+  }
 
   return true;
+}
+
+// NEU: Prüft Archivfähigkeit anhand der gerade geschriebenen Werte — kein Re-Read der Tabelle
+// Verhindert den Flush-Cache-Bug in saveLeitstandEintraegeBatch
+function leitstandZeileIstArchivfaehigMitWerten_(alkohol, ausbeute, statusAktion, status, zollOk, istMinderausbeute) {
+  const saUpper = textNormalisieren_(statusAktion).toUpperCase();
+  const stUpper = textNormalisieren_(status).toUpperCase();
+  const zoUpper = textNormalisieren_(zollOk).toUpperCase();
+
+  const istAbgelehnt = istZollstatusAbgelehnt_(zoUpper) || istZollstatusAbgelehnt_(saUpper) || istZollstatusAbgelehnt_(stUpper);
+  if (istAbgelehnt) return true;
+
+  const istErledigt = saUpper.indexOf(KONFIGURATION.STATUSWERTE.ERLEDIGT) === 0 || stUpper === KONFIGURATION.STATUSWERTE.GEBRANNT;
+  if (!istErledigt) return false;
+
+  if (istMinderausbeute) {
+    return ausbeute !== null && ausbeute !== undefined && ausbeute !== '';
+  }
+
+  return (alkohol !== null && alkohol !== undefined && alkohol !== '')
+      && (ausbeute !== null && ausbeute !== undefined && ausbeute !== '');
 }
 
 function leitstandErledigteEintraegeMitternachtArchivieren() {
