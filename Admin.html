@@ -480,10 +480,10 @@
       <h1 id="mainTitle">OGV BREITFURT – ADMIN</h1>
 
       <div class="card cockpit-stack admin-entry-section">
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorplanung_admin" target="_top">Vorplanung</a>
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorgang" target="_top">Vorgang bearbeiten</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorplanung_admin&return=admin&origin=admin" target="_top" onclick="try{sessionStorage.setItem('ogvRuecksprung','admin');localStorage.setItem('ogvRuecksprung','admin');}catch(e){}">Vorplanung</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=vorgang&return=admin&origin=admin" target="_top" onclick="try{sessionStorage.setItem('ogvRuecksprung','admin');localStorage.setItem('ogvRuecksprung','admin');}catch(e){}">Vorgang bearbeiten</a>
         <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=leitstand_admin&return=admin&origin=admin" target="_top" onclick="try{sessionStorage.setItem('ogvRuecksprung','admin');localStorage.setItem('ogvRuecksprung','admin');}catch(e){}">Leitstand</a>
-        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=jahresarchiv_admin" target="_top">Jahresarchiv-Übersicht</a>
+        <a class="btn-save cockpit-btn" href="https://fraumecker.github.io/brennerei-startogv/admin.html?mode=jahresarchiv_admin&return=admin&origin=admin" target="_top" onclick="try{sessionStorage.setItem('ogvRuecksprung','admin');localStorage.setItem('ogvRuecksprung','admin');}catch(e){}">Jahresarchiv-Übersicht</a>
         <button class="btn-save cockpit-btn zoll-access-btn" type="button" onclick="openZollKontakte(event)">Zoll-Kontaktliste</button>
         <button class="btn-save cockpit-btn admin-close-btn" type="button" onclick="return adminAppSchliessen(event)">Schließen</button>
       </div>

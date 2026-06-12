@@ -73,7 +73,7 @@ function doGet(e) {
   }
 
   if (mode === 'vorplanung') {
-    const template = HtmlService.createTemplateFromFile('Index');
+    const template = HtmlService.createTemplateFromFile('Cockpit');
     template.startModus = 'vorplanung';
     template.webAppUrl = webAppUrl;
     template.returnModus = returnModus;
@@ -87,7 +87,7 @@ function doGet(e) {
   }
 
   if (mode === 'vorplanung_admin') {
-    const template = HtmlService.createTemplateFromFile('Index');
+    const template = HtmlService.createTemplateFromFile('Cockpit');
     template.startModus = 'vorplanung';
     template.webAppUrl = webAppUrl;
     template.returnModus = 'admin';
@@ -101,7 +101,7 @@ function doGet(e) {
   }
 
   if (mode === 'maischeannahme' || mode === 'vorgang') {
-    const template = HtmlService.createTemplateFromFile('Index');
+    const template = HtmlService.createTemplateFromFile('Cockpit');
     template.startModus = 'vorgang';
     template.webAppUrl = webAppUrl;
     template.returnModus = returnModus;
@@ -115,7 +115,7 @@ function doGet(e) {
   }
 
   if (mode === 'brennfreigabe') {
-    const template = HtmlService.createTemplateFromFile('Index');
+    const template = HtmlService.createTemplateFromFile('Cockpit');
     template.startModus = 'brennfreigabe';
     template.webAppUrl = webAppUrl;
     template.returnModus = returnModus;
@@ -186,6 +186,9 @@ function doGet(e) {
   if (mode === 'jahresarchiv_admin') {
     const template = HtmlService.createTemplateFromFile('Jahresarchiv_Uebersicht');
     template.webAppUrl = webAppUrl;
+    template.returnModus = 'admin';
+    template.originModus = 'admin';
+    template.istAdminRuecksprung = true;
     return template
       .evaluate()
       .setTitle('OGV BREITFURT - JAHRESARCHIV-ÜBERSICHT')

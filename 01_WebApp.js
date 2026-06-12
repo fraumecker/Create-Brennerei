@@ -1432,42 +1432,6 @@ function holeDropdownWerteAusQuelleFuerWebApp_(key) {
 }
 
 /**
- * FUNKTION: Liefert die Zollkontaktliste aus der zentralen KONFIGURATION.
- * ZWECK:
- * - Anzeige im Leitstand
- * - keine automatische Mail
- * - keine automatische Benachrichtigung
- * - keine hart codierten Kontaktdaten im Leitstand
- * QUELLE:
- * - KONFIGURATION.ZOLL_KONTAKTLISTE
- */
-function getZollNotfallKontaktliste() {
-  var quelle = KONFIGURATION.ZOLL_KONTAKTLISTE;
-
-  if (!quelle || !Array.isArray(quelle.KONTAKTE)) {
-    throw new Error("ZOLL_KONTAKTLISTE ist in 01_Config.gs nicht korrekt gepflegt.");
-  }
-
-  return {
-    titel: quelle.TITEL || "Hauptzollamt Saarbrücken",
-    untertitel: quelle.UNTERTITEL || "Telefonliste Steueraufsicht Abfindungsbrennereien",
-    stand: quelle.STAND || "",
-    faxAlleStandorte: quelle.FAX_ALLE_STANDORTE || "",
-    zentraleEmail: quelle.ZENTRALE_EMAIL || "",
-    kontakte: quelle.KONTAKTE.map(function(kontakt) {
-      return {
-        name: kontakt.NAME || "",
-        dienstsitz: kontakt.DIENSTSITZ || "",
-        telefon: kontakt.TELEFON || "",
-        mobil: kontakt.MOBIL || "",
-        email: kontakt.EMAIL || ""
-      };
-    })
-  };
-}
-
-
-/**
  * FUNKTION: Prüft die Admin-PIN für die geschützte Mitgliederverwaltung.
  * HINWEIS: Bei Linkzugang ohne Google-Anmeldung ersetzt diese PIN keine echte Nutzeridentität.
  */

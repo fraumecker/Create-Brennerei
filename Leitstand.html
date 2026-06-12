@@ -1788,7 +1788,7 @@
       </div>
       <div class="top-actions">
         <button class="top-action-btn protocol-btn" type="button" onclick="druckePaket()">BRENNPROTOKOLL</button>
-        <button class="top-action-btn zoll-btn" type="button" onclick="openZollKontakte()">ZOLL</button>
+        <button class="top-action-btn zoll-btn" type="button" onclick="oeffneZollKontaktlisteAdminSicher(event)">ZOLL</button>
       </div>
     </div>
 
@@ -3022,6 +3022,47 @@
     return { titel: 'Zoll-Kontaktliste', untertitel: 'Keine gültigen Daten erhalten.', stand: '', faxAlleStandorte: '', zentraleEmail: '', kontakte: [] };
   }
 
+  function oeffneZollKontaktlisteAdminSicher(event) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+
+    const params = new URLSearchParams(window.location.search);
+    const mode = String(params.get('mode') || '').trim().toLowerCase();
+    const rueckkehr = String(params.get('return') || params.get('rueckkehr') || '').trim().toLowerCase();
+    const herkunft = String(params.get('origin') || params.get('herkunft') || '').trim().toLowerCase();
+
+    const adminKontext =
+      mode === 'leitstand_admin' ||
+      rueckkehr === 'admin' ||
+      herkunft === 'admin' ||
+      String(typeof returnModus !== 'undefined' ? returnModus : '').trim().toLowerCase() === 'admin' ||
+      String(typeof originModus !== 'undefined' ? originModus : '').trim().toLowerCase() === 'admin' ||
+      Boolean(typeof istAdminRuecksprung !== 'undefined' && istAdminRuecksprung);
+
+    if (adminKontext) {
+      try {
+        sessionStorage.setItem('ogvRuecksprung', 'admin');
+        localStorage.setItem('ogvRuecksprung', 'admin');
+      } catch (e0) {}
+
+      const ziel = 'https://fraumecker.github.io/brennerei-startogv/admin.html?mode=zollkontakte_admin&return=admin&origin=admin';
+
+      try {
+        window.top.location.href = ziel;
+      } catch (e1) {
+        try {
+          window.open(ziel, '_top');
+        } catch (e2) {
+          window.location.href = ziel;
+        }
+      }
+
+      return false;
+    }
+
+    return openZollKontakte(event);
+  }
+
   function openZollKontakte(event) {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
@@ -3288,6 +3329,7 @@
   }
 
   window.openZollKontakte = openZollKontakte;
+  window.oeffneZollKontaktlisteAdminSicher = oeffneZollKontaktlisteAdminSicher;
   window.closeZollModal = closeZollModal;
   window.handleModalBackdropClick = handleModalBackdropClick;
   window.toggleDetails = toggleDetails;
